@@ -54,7 +54,7 @@
 <hr>
 <div id="navigation">
     <div class="next">
-        <button class="btn btn-success" id="{FLIP_ID}" onclick="nextCard(this)">Next card</button>
+        <button class="btn btn-success" id="{FLIP_ID}" onclick="nextCard(this)">Start</button>
     </div>
     <div class="homepage">
         <a href="{SITE_URL}/wine">
@@ -87,6 +87,10 @@
                 $("#question").text(response['question']);
                 $("#answer").text(response['answer']);
                 $(".next button").attr('id', response['questionId']);
+                $(".next button").html('Next card');
+                if (response['questionId'] == 0) {
+                    $(".next button").html('Start again');
+                }
             }
         });
     }</script>

@@ -7,15 +7,6 @@ $session = Zend_Registry::get('session');
 // all actions MUST set  the variable  $pageTitle
 $pageTitle = $option->pageTitle->action->{$registry->requestAction};
 
-$flipQuestion = $wineModel->getWineQuestions('1');
-$flipAnswer = $wineModel->getWineAnswerByQuestionId($flipQuestion['id']);
-$questionIdList = $wineModel->getWineQuestionIds();
-foreach ($questionIdList as $id) {
-    $questionIds[] = $id['id'];
-}
-shuffle($questionIds);
-
-
 switch ($registry->requestAction)
 {
     default:
@@ -37,6 +28,13 @@ switch ($registry->requestAction)
             $flipQuestion = $wineModel->getWineQuestions('1');
             $flipAnswer = $wineModel->getWineAnswerByQuestionId($flipQuestion['id']);
 
+            $questionIdList = $wineModel->getWineQuestionIds();
+            foreach ($questionIdList as $id) {
+                $questionIdList['id'][] = $id['id'];
+            }
+            shuffle($questionIdList['id']);
+            $session->questionIdList['questionIdList'] = $questionIdList['id'];
+
             $response = [
                 "success" => "true",
                 "questionId" => $flipQuestion['id'],
@@ -47,12 +45,20 @@ switch ($registry->requestAction)
             echo Zend_Json::encode($response);
             exit();
         } else {
-            if (count($questionIds) > 0) {
-                $rand = array_rand($questionIds, 1);
-                //TODO fix $questionIds update (id remove);
+            if (count($session->questionIdList['questionIdList']) > 1) {
+                $cardId = $_POST['cardId'];
+                if(($key = array_search($cardId, $session->questionIdList['questionIdList'])) !== false) {
+                    unset($session->questionIdList['questionIdList'][$key]);
+                }
+                $randKey = array_rand($session->questionIdList['questionIdList'], 1);
+                $rand = $session->questionIdList['questionIdList'][$randKey];
                 $flipQuestion = $wineModel->getNextRandomQuestionById($rand);
                 $flipAnswer = $wineModel->getWineAnswerByQuestionId($flipQuestion['id']);
             } else {
+                $cardId = $_POST['cardId'];
+                if(($key = array_search($cardId, $session->questionIdList['questionIdList'])) !== false) {
+                    unset($session->questionIdList['questionIdList'][$key]);
+                }
                 $flipQuestion['question'] = 'No more questions!';
                 $flipQuestion['id'] = 0;
                 $flipAnswer['answer'] = 'No more questions!';
