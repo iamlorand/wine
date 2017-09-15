@@ -1,0 +1,32 @@
+/**
+ * Remove Facebook Hash which is appended by Facebook to the redirect URL
+ */
+// Test for the ugliness.
+if (window.location.hash == '#_=_'){
+
+    // Check if the browser supports history.replaceState.
+    if (history.replaceState) {
+
+        // Keep the exact URL up to the hash.
+        var cleanHref = window.location.href.split('#')[0];
+
+        // Replace the URL in the address bar without messing with the back button.
+        history.replaceState(null, null, cleanHref);
+
+    } else {
+
+        // Well, you're on an old browser, we can get rid of the _=_ but not the #.
+        window.location.hash = '';
+
+    }
+
+}
+
+/**
+ * Short form for the above function
+ */
+//if (window.location.hash == '#_=_'){
+//	    history.replaceState 
+//	        ? history.replaceState(null, null, window.location.href.split('#')[0])
+//	        : window.location.hash = '';
+//	}

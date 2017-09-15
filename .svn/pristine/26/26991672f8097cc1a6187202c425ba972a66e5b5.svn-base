@@ -1,0 +1,7 @@
+<?php
+interface SocialAuthInterface{
+    public function login($configArray);
+    
+    public function logout();
+    
+}

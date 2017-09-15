@@ -1,0 +1,83 @@
+<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="{SITE_URL}/templates/js/admin/datePicker.js"></script>
+
+<table style="width: 1000px">
+	<tr>
+		<td>
+			<div class="box-shadow" style="width: 400px">
+				<div class="box_header">
+					Export Csv Email tld by platform
+				</div>
+				<form name="form" action="{SITE_URL}/admin/export/export-csv-email" method="post">
+				<table class="medium_table no_border-top">
+					<tr>
+					<!-- BEGIN date_block -->
+						<td><input type="text" class="datepicker" name="dateFrom"></td>
+						<td><input type="text" class="datepicker" name="dateUntil"></td>
+					<!-- END date_block -->
+					</tr>
+					<tr>
+						<td></td>
+						<td>
+							<input type="submit" value="Export" class='button'>
+						</td>
+					</tr>
+				</table>
+				</form>
+			</div>
+		</td>
+	</tr>
+</table>
+
+<table style="width: 1000px; margin-top:50px;">
+	<tr>
+		<td>
+			<div class="box-shadow" style="width: 400px">
+				<div class="box_header">
+					Export Csv Email tld by main categories
+				</div>
+				<form name="form" action="{SITE_URL}/admin/export/export-csv-email-by-main-categories" method="post">
+				<table class="medium_table no_border-top">
+					<tr>
+					<!-- BEGIN date_block -->
+						<td><input type="text" class="datepicker" name="dateFrom"></td>
+						<td><input type="text" class="datepicker" name="dateUntil"></td>
+					<!-- END date_block -->
+					</tr>
+					<tr>
+						<td></td>
+						<td>
+							<input type="submit" value="Export" class='button'>
+						</td>
+					</tr>
+				</table>
+				</form>
+			</div>
+		</td>
+		<td>
+			<div class="box-shadow" style="width: 400px">
+				<div class="box_header">
+					Export Csv Email tld by orphan categories
+				</div>
+				<form name="form" action="{SITE_URL}/admin/export/export-csv-email-by-orphan-categories" method="post">
+				<table class="medium_table no_border-top">
+					<tr>
+					<!-- BEGIN date_block -->
+						<td><input type="text" class="datepicker" name="dateFrom"></td>
+						<td><input type="text" class="datepicker" name="dateUntil"></td>
+					<!-- END date_block -->
+					</tr>
+					<tr>
+						<td></td>
+						<td>
+							<input type="submit" value="Export" class='button'>
+						</td>
+					</tr>
+				</table>
+				</form>
+			</div>
+		</td>
+	</tr>
+</table>

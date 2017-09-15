@@ -1,0 +1,19 @@
+$(function() {
+	$('[name="image"]').change(function() {
+		if($(this).attr('value') == 'upload')
+		{
+			// show
+			//$('#upload_picture').fadeIn(200);
+			$('#upload_picture').removeAttr('disabled');
+		}
+		else
+		{
+			// hide 
+			//$('#upload_picture').fadeOut(200);
+			$('#upload_picture').attr('disabled','');
+		}
+	});
+	
+
+
+});

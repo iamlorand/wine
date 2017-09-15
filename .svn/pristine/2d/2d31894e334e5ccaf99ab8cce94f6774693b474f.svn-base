@@ -1,0 +1,133 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @platformCategory   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: Admin.php 6 2015-06-25 13:55:51Z andreic $
+ */
+
+/**
+ * platformCategory Model
+ * Here are all the actions related to the admin users
+ * @platformCategory   DotKernel
+ * @package    Admin 
+ * @author     Lajos <lajos@dotboost.com>
+*/
+
+class PlatformCategory extends Dot_Model
+{
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+	
+	/**
+	 * Get platformCategory by field
+	 * @access public
+	 * @param string $field
+	 * @param string $value
+	 * @return array
+	 */
+	public function getPlatformCategoryBy($field = '', $value = '')
+	{
+		$select = $this->db->select()
+							->from('platformCategory')
+							->where($field . ' = ?', $value)
+							->limit(1);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+
+	/**
+	 * Get platformCategory list
+	 * @access public 
+	 * @param int $page [optional]
+	 * @return array
+	 */
+	public function getplatformCategoryList($page = 1)
+	{
+		$select = $this->db->select()->from(array('a' => 'platformCategory'))
+									 ->joinLeft(array('b' => 'platformCategory'), 'a.parentId = b.categoryId', array('parent' => 'categoryName'));
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	/**
+	 * Get all platformCategory
+	 * @access public 
+	 * @param int $page [optional]
+	 * @return array
+	 */
+	public function getAllPlatformCategory()
+	{
+		$select = $this->db->select()->from('platformCategory');
+		$allCategories =  $this->db->fetchAll($select);
+		$groupCategory = array();
+		foreach($allCategories as $key=>$category)
+		{
+			if($category['parentId'] == 0)
+			{
+				$category['level'] = 0;
+				$groupCategory[] = $category;
+				$this->groupCategory($category,$allCategories, $groupCategory, 1);
+				unset($allCategories[$key]);
+			}
+		}
+		return $groupCategory;
+	}
+
+	public function groupCategory($category, $allCategories, &$groupCategory, $level)
+	{
+		foreach($allCategories as $k=>$v)
+		{
+			if($v['parentId'] == $category['categoryId'])
+			{
+				$v['level'] = $level;
+				$groupCategory[] = $v;
+				unset($allCategories[$k]);
+				$this->groupCategory($v,$allCategories, $groupCategory, $level+1);
+			}
+		}
+	}
+
+	/**
+	 * Add new platformCategory
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function addplatformCategory($data)
+	{
+		//Adding platformCategory to DB
+		$this->db->insert('platformCategory', $data);
+	}
+
+	/**
+	 * Update platformCategory
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function updatePlatformCategory($data, $id)
+	{
+		$this->db->update('platformCategory', $data, 'categoryId = ' . $id);
+	}
+
+	/**
+	 * Delete platformCategory
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function deletePlatformCategory($id)
+	{
+		$this->db->delete('platformCategory', 'categoryId = ' . $id);
+	}
+}

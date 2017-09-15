@@ -1,0 +1,28 @@
+<div class="home_content clearfix">
+	<div class="articleShow">
+		<!-- BEGIN article_list_row -->
+			<div class="row home_articles">
+				<!-- BEGIN article_list_col -->
+					<div class="col-md-4">
+						<img src="{SITE_URL}/" />
+						<h3><a href="{SITE_URL}/page/read/id/{ARTICLE_ID}" title="{ARTICLE_TITLE}">{ARTICLE_TITLE}</a></h3>
+						<p>{ARTICLE_CONTENT}</p>
+						<a href="{SITE_URL}/page/read/id/{ARTICLE_ID}" title="More" class="seeMore">More</a>
+					</div>
+				<!-- END article_list_col -->
+			</div>
+		<!-- END article_list_row --> 	
+	</div>
+</div>
+
+<script type="text/javascript">
+	var siteUrl = "{SITE_URL}";
+	
+	$(document).ready(function(){
+		$('select.styledBigSel').customSelect();
+		/*$(".js-example-basic-single").select2({
+			placeholder: "Select a state",
+			minimumResultsForSearch: -1
+		});*/
+	});
+</script>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+		</variable>
+		<variable option="admin">
+		</variable>
+		<variable option="frontend">
+			<pageTitle>
+				<action>
+					<home>Home Page</home>
+					<about>About Us</about>
+					<who-we-are>Who We Are</who-we-are>
+					<coding-standard>Coding Standard</coding-standard>
+					<image>Image Structure</image>
+					<outbound-links>Outbound Links</outbound-links>
+				</action>
+			</pageTitle>
+			<errorMessage>
+				<size>		
+					<max>Image size is to big. Max size = 3Mb </max>
+				</size>
+				<noImage>
+					<empty>You did not choose any picture for upload</empty>
+				</noImage>
+				<supportedImage>
+					<not>The file you chose is either not an Image or the extension doesn't corespod. Please select an Image with one of the following extensions: JPG, JPEG, PNG.</not>
+				</supportedImage>
+			</errorMessage>
+			<infoMessage>
+				<accountUpdate>Account updated ! </accountUpdate>
+			</infoMessage>
+			<validate>
+				<details>
+					<lengthMin>0</lengthMin>
+					<lengthMax>255</lengthMax>
+				</details>
+				<password>
+					<lengthMin>3</lengthMin>
+					<lengthMax>20</lengthMax>
+				</password>
+				<username>
+					<lengthMin>3</lengthMin>
+					<lengthMax>255</lengthMax>
+				</username>
+			</validate>		
+		</variable>
+	</dots>
+</config>

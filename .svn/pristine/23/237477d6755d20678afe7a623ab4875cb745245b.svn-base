@@ -1,0 +1,19 @@
+<?php
+
+class ConfigData
+{
+	public $configArray = array(
+	    'facebook' => array(
+	        'key' => '637698156370020',
+	        'secret' => 'fcf2fcc6c7a70451596f4089b759a485',
+	        'redirect_URI' => 'http://MicroRecruiting.com/user/login'
+	    ),
+	    'linkedin' => array(
+	        'key' => '77349hxj2g9xn2',
+	        'secret' => '5A9ycczuv1efY9CR',
+	        'redirect_URI' => 'http://dev.crowded.com/user/login',
+	        'base_URL' => 'http://dev.crowded.com/user/login'
+	    )
+	);
+	
+}

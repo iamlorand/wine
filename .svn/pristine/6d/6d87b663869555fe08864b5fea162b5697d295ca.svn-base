@@ -1,0 +1,109 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @package    Frontend
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: PageController.php 867 2015-01-03 22:52:05Z julian $
+*/
+
+/**
+ * Page Controller
+ * @author     DotKernel Team <team@dotkernel.com>
+ * @version    $Id: PageController.php 867 2015-01-03 22:52:05Z julian $
+ */
+class frontend_PageController extends frontend_BaseController
+{
+	private $cityStateModel;
+	private $pageView;
+	private $pageModel;
+
+	public function doIt()
+	{
+		$this->pageView = new Page_View($this->tpl);
+		$this->pageModel = new Page();
+		$this->cityStateModel = new CityState();
+
+		// all actions MUST set  the variable  $pageTitle
+		$this->session = Zend_Registry::get('session');
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		switch ($this->registry->requestAction)
+		{
+			default:
+			case 'home';
+				$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+				$this->pageTitle = $this->option->pageTitle->action->home;
+				// call showPage method to view the home page
+				// call CityState Model to get cityState list
+				$city=$this->cityStateModel->cityMenu();
+				$this->pageView->ShowMenu('home-special', $city);
+				$articleList=$this->pageModel->getActiveArticles($page);
+				$this->pageView->showPage('home', $articleList,$page);
+			break;
+			case 'read':
+				// read a certain article from the list, by Id
+				$id = isset($this->registry->request['id'])?$this->registry->request['id']:'';
+				$articleData=$this->pageModel->getArticleById($id);
+				$this->pageTitle = $articleData['title'];
+				$this->pageView->showArticleById('read-article',$articleData);
+			break;
+			case 'contact':
+                if ($_SERVER['REQUEST_METHOD'] == "POST")
+                {
+                    $sent = $this->pageModel->sendContact($_POST);
+                    if($sent)
+                    {
+                        $this->session->message['txt'] = 'We received your email';
+                        $this->session->message['type'] = 'info';
+                    }
+                    else
+                    {
+                        $this->session->message['txt'] = 'There was an error. Please try again later';
+                        $this->session->message['type'] = 'error';
+                    }
+                    header('Location: '.$this->registry->configuration->website->params->url);
+                    exit;
+                }
+                $this->pageView->showHardPages($this->registry->requestAction);
+                break;
+             case 'affiliate':
+                if(isset($this->registry->request['referal']) && $this->registry->request['referal'])
+                {
+                    $data=$this->pageModel->getFlowById($this->registry->request['referal']);//get flow # for redirect]
+        		    if(empty($data))
+        		    {
+                        header('Location: '.$this->registry->configuration->website->params->url);
+                        exit;
+        		    }
+
+                    $this->session->affiliateData=$data;
+                    if(isset($this->registry->request['subId']))
+                    {
+                        $this->session->affiliateTrackingSubId = $this->registry->request['subId'];
+                        $data['subId'] = $this->registry->request['subId'];
+                    }
+                    $this->pageModel->saveAffiliateClick($data);
+                    header('Location: '.$this->registry->configuration->website->params->url.'/'.$data['flow']);//1
+                    exit;
+                }
+                else
+                {
+                    header('Location: '.$this->registry->configuration->website->params->url);
+                    exit;
+                }
+            	break;
+            case 'terms':
+                $this->pageView->showHardPages($this->registry->requestAction);
+                break;
+            case 'privacy':
+                $this->pageView->showHardPages($this->registry->requestAction);
+                break;
+            case 'about':
+            	$this->pageView->showHardPages($this->registry->requestAction);
+                break;
+		}
+	}
+}

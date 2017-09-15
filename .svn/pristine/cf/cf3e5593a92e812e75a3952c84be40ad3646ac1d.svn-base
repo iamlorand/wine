@@ -1,0 +1,118 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: Page.php 981 2015-06-11 13:51:41Z gabi $
+*/
+
+/**
+* Page Model
+* Dummy class, doesn't do anything yet
+* @category   DotKernel
+* @package    Frontend 
+* @author     DotKernel Team <team@dotkernel.com>
+*/
+
+class Page extends Dot_Model
+{
+	
+	/**
+	 * Constructor
+	 * @access public
+	 * @return Frontend_Page 
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+
+	
+	/**
+     * get all the articles that are Active
+     * 
+     * @param $page
+     * @access public
+     */
+	public function getActiveArticles($page,$isActive="1")
+	{
+		$select=$this->db->select()
+						->from('article')
+						->where('article.isActive =?',$isActive)
+						->order(array('dateCreated DESC'));
+
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	/**
+	 * get a certain article (on click)
+	 * @param unknown $id
+	 * @access public
+	 */
+	public function getArticleById($id)
+	{
+		$select = $this->db->select()
+				->from('article')
+				->where('article.id=?', $id);
+		
+		$result = $this->db->fetchRow($select);
+
+		return $result;
+	}
+
+	public function sendContact($data)
+	{
+		$validator = new Zend_Validate_EmailAddress();
+		if ($validator->isValid($data['email'])) 
+		{
+    		$dotEmail = new Dot_Email();
+			$dotEmail->setFrom($data['email'], $data['name']);
+			$dotEmail->addTo('support@gigprofits.com');
+
+			$dotEmail->setSubject($data['subject']);
+
+			$msg = $data['message'];
+			$dotEmail->setBodyText($msg);
+			$success = $dotEmail->send();
+			return $success ;
+		} 
+		else 
+		{
+			return true;
+	    	// email is invalid; print the reasons
+	    		foreach ($validator->getMessages() as $message) 
+	    		{
+	       			 echo "$message\n";
+	    		}
+		}
+	}
+	public function getFlowById($id)
+	{
+			$select = $this->db->select()
+				->from('microRecruitingAffiliateUser')
+				->where('id=?', $id);
+		
+			$result = $this->db->fetchRow($select);
+
+			return $result;
+	}
+
+	public function saveAffiliateClick($data)
+	{
+		$dotGeoip = new Dot_Geoip();
+		$userIp = Dot_Kernel::getUserIp();
+		// $userCountry = $dotGeoip->getCountryByIp($userIp);
+		$dataToBeAdded = array( 'ip' => $userIp, 
+					'referalId' => $data['id']
+					);
+		if(isset($data['subId']))
+		{
+			$dataToBeAdded['subId'] = $data['subId'];
+		}
+		$this->db->insert('microRecruitingAffiliate', $dataToBeAdded);
+	}
+}

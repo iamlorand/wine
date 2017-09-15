@@ -1,0 +1,42 @@
+<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="{SITE_URL}/templates/js/admin/datePicker.js"></script>
+
+<table style="width: 1000px">
+	<tr>
+	<td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				Export Csv Data (Total Clicks, Reg1, Reg2, Reg3)<br> 
+				for each city and category
+			</div>
+			<form name="form" action="{SITE_URL}/admin/export/export-csv-category" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+				<!-- BEGIN date_block -->
+					<td><input type="text" class="datepicker" name="dateFrom"></td>
+					<td><input type="text" class="datepicker" name="dateUntil"></td>
+				<!-- END date_block -->
+				</tr>
+				<ul class="form">
+				<li class="clearfix">
+					<label>Platform<span class="required">*</span></label>
+					<select name = "platform">
+					  <option value="default">Default</option>
+					<!-- BEGIN platform_list -->
+					  <option value="{PLATFORM_NAME}">{PLATFORM_NAME}</option>
+					<!-- END platform_list -->
+					</select>
+				</li>
+				<tr>
+					<td></td>
+					<td>
+						<input type="submit" value="Export" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+	</td>
+</table>

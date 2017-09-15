@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+		<validate>
+				<shortText>
+					<stringLength>
+						<min>3</min>
+						<max>120</max>
+					</stringLength>
+				</shortText>
+				<longText>
+					<stringLength>
+						<min>3</min>
+						<max>65535</max>
+					</stringLength>
+				</longText>
+			</validate>
+		</variable>
+		<variable option="admin">
+			<pageTitle>
+				<action>
+					<list>Articles</list>
+					<add>Add article</add>
+				</action>
+			</pageTitle>
+			<validate>
+				<shortText>
+					<stringLength>
+						<min>3</min>
+						<max>120</max>
+					</stringLength>
+				</shortText>
+				<longText>
+					<stringLength>
+						<min>3</min>
+						<max>65535</max>
+					</stringLength>
+				</longText>
+			</validate>
+			<infoMessage>
+				<articleAdd>Article was succesfully added</articleAdd>
+				<articleUpdate>Article was succesfully updated</articleUpdate>
+				<articleDelete>Article was succesfully deleted</articleDelete>
+			</infoMessage>
+			<warningMessage>
+				
+			</warningMessage>
+			<errorMessage>
+				<articleAdd>Article was not succesfully added</articleAdd>
+				<articleUpdate>Article was not succesfully updated</articleUpdate>
+				<articleDelete>Article was not succesfully deleted</articleDelete>
+			</errorMessage>
+		</variable>
+		<variable option="frontend">
+			<pageTitle>
+				<action>
+					<list>Articles</list>
+					<read>Article</read>
+				</action>
+			</pageTitle>
+			<infoMessage>
+				<articleAdd>Article was succesfully added</articleAdd>
+				<articleUpdate>Article was succesfully updated</articleUpdate>
+				<articleDelete>Article was succesfully deleted</articleDelete>
+			</infoMessage>
+			
+			<errorMessage>
+				<articleAdd>Article was not succesfully added</articleAdd>
+				<articleUpdate>Article was not succesfully updated</articleUpdate>
+				<articleDelete>Article was not succesfully deleted</articleDelete>
+			</errorMessage>
+		</variable>
+		<variable option="mobile"></variable>
+		<variable option="rss"></variable>
+	</dots>
+</config>

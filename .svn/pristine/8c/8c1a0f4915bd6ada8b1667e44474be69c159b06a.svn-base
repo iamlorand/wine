@@ -1,0 +1,29 @@
+{PAGINATION}
+<div>
+	<div id="adminList" class="box-shadow">
+		<table class="big_table" frame="box" rules="all">
+			<thead>
+				<tr>
+					<th>User ID</th>
+					<th>Email</th>
+					<th>Unique ID</th>
+					<th>Date</th>
+					<th>Flow</th>
+					<th>Redirect</th>
+				</tr>
+			</thead>
+			<tbody>
+			<!-- BEGIN user_appliance -->
+				<tr class="row{ROW}">
+					<td>{USER_ID}</td>
+					<td>{EMAIL}</td>
+					<td>{UNIQUE_ID}</td>
+					<td>{DATE}</td>
+					<td>{FLOW}</td>
+					<td>{REDIRECT}</td>
+				</tr>
+			<!-- END user_appliance -->	
+			</tbody>
+		</table>
+	</div>
+</div>

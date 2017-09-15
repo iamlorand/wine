@@ -1,0 +1,23 @@
+ <form action="{SITE_URL}/admin/export/export-xml/" method="post" >
+	<div class="box-shadow" style="width: 500px">
+		<div class="box_header">
+			Export XML per platform
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Platform<span class="required">*</span></label>
+				<select name = "platform">
+				  <option value="VHM">VHM</option>
+				  <option value="Jobs2Career">Jobs2Career</option>
+				  <option value="Juju">Juju</option>
+				  <option value="TopJobsUSA">TopJobsUSA</option>
+				  <option value="Job.com">Job.com</option>
+				</select>
+			</li>
+			<li class="clearfix">
+				<label>&nbsp;</label>
+				<input type="submit" class="button" value="Export">
+			</li>
+		</ul>
+	</div>
+</form>

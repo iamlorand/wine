@@ -1,0 +1,32 @@
+<style>
+	header { display: none; }
+	#body { padding: 0px; }
+	.container { padding: 0px; }
+	footer { display: none; }
+	#push { height: 0px; }
+</style>
+
+<div id="home" class="home clearfix">
+	<div class="home_content">
+		<div class="logo">
+			<img id="homelogo" src="{SITE_URL}/images/frontend/logo_home.png" title="MicroRecruiting" />
+		</div>
+		<div class="login_links">
+			<!-- <form  id="login" method="POST" class="facebook_login" action="{SITE_URL}/user/login">
+				<button type="submit" name="socialNetwork" value="facebook">Log in with facebook</button><br><br>
+				<button type="submit" name="socialNetwork" value="linkedin">Log in with linkedin</button>
+			</form> -->
+			<form method="POST" class="facebook_login" action="{SITE_URL}/user/login">
+				<button type="submit" name="socialNetwork" value="facebook"><img src="{SITE_URL}/images/frontend/socialNetworks/facebookButton.png" alt="Login with Facebook" height="40" width="180"></button>
+				</br></br>
+				<button type="submit" name="socialNetwork" value="linkedin"><img src="{SITE_URL}/images/frontend/socialNetworks/linkedinButton.png" alt="Login with Linkedin" height="40" width="180"></button>
+			</form>
+				<!-- <a href="{SITE_URL}/user/login-facebook" class="facebook" title="Login with Facebook">Login with Facebook</a>
+				<a href="{SITE_URL}/user/login-linkedin" class="linkedin" title="Login with LinkedIn">Login with LinkedIn</a> -->
+				<a href="{SITE_URL}/user/login" class="email" title="Login with Email">Login with Email</a>
+				<a href="{SITE_URL}/user/register-first-step" class="account" title="Create Account">Create Account</a>
+				<a href="{SITE_URL}/user/forgot-password" class="lost" title="Lost Password?">Lost Password?</a>
+			
+		</div>
+	</div>
+</div>

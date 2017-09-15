@@ -1,0 +1,60 @@
+<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="{SITE_URL}/templates/js/admin/datePicker.js"></script>
+
+<table style="width: 1000px">
+	<tr>
+	<td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				Export Sub Id Stats Per Visit without Ad BOt Clicks
+			</div>
+			<form name="form" action="{SITE_URL}/admin/export/export-subid-stats-per-visit" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+				<!-- BEGIN date_block -->
+					<td><input type="text" class="datepicker" name="dateFrom"></td>
+					<td><input type="text" class="datepicker" name="dateUntil"></td>
+				<!-- END date_block -->
+				</tr>
+				<tr>
+					<td></td>
+					<td>
+						<input type="submit" value="Export" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+	</td>
+</table>
+<br>
+<br>
+<br>
+<table style="width: 1000px">
+	<tr>
+	<td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				Export Sub Id Stats Per Visit with Ad BOt Clicks
+			</div>
+			<form name="form" action="{SITE_URL}/admin/export/export-subid-stats-per-visit" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+				<!-- BEGIN date_block -->
+					<td><input type="text" class="datepicker" name="dateFromBot"></td>
+					<td><input type="text" class="datepicker" name="dateUntilBot"></td>
+				<!-- END date_block -->
+				</tr>
+				<tr>
+					<td></td>
+					<td>
+						<input type="submit" value="Export" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+	</td>
+</table>

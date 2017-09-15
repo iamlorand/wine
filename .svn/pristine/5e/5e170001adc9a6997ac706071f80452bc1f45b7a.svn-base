@@ -1,0 +1,17 @@
+@CHARSET "ISO-8859-1";
+
+th.header { 
+    background-image: url('images/bg.gif'); 
+    cursor: pointer; 
+    background-repeat: no-repeat; 
+    background-position: center right; 
+    margin-left: -1px;
+} 
+
+th.headerSortUp { 
+    background-image: url('images/asc.gif'); 
+} 
+
+th.headerSortDown { 
+    background-image: url('images/desc.gif'); 
+} 

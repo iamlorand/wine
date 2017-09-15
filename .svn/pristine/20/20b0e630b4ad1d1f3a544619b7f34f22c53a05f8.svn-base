@@ -1,0 +1,231 @@
+<?php
+
+class Micromail_Micromail
+{
+
+	private $mc;
+	private $wistiaList;
+	
+
+	public function __construct(/*$publicKey =''*/)
+	{
+
+		$this->initMailchimp(/*$publicKey =''*/);
+	}
+
+	public function initMailchimp(/*$publicKey =''*/)
+	{
+		$publicKey = 'df189cd1451d2407e3521b20afa37f42-us11';
+	    // Mailchimp object and public key
+
+		require_once 'library/Mailchimp/Mailchimp.php';
+	    $this->mc = new Mailchimp($publicKey);
+
+	    // The cleaning flow list ID
+	    $this->wistiaList = 'b7f37d1fca';
+	}
+
+	/**
+	 * $email - the user email
+	 */
+	public function sendUserToMailChimp($email,$step)
+	{
+		$data = $this->_verifyLastStepInFlowForTheUser($email);
+
+		if($data == false)
+		{
+			// $step = _updateStep($step);
+		
+			$mergeVars = array('STEP' => $step);
+			try
+		    {
+		        $result = $this->mc->lists->subscribe($this->wistiaList, array('email' => $email), $mergeVars, 'html', false, false, false, false);
+		        return true;
+		    }
+		    catch(Exception $e)
+		    {
+				return false;
+		    }
+		}
+		else
+		{
+			return false;
+		}
+		
+	}
+
+	/**
+	 * $email - the user email
+	 * $step - the step the user has completed
+	 */
+	public function updateUserOptions($email, $step)
+	{
+		$result = $this->_verifyLastStepInFlowForTheUser($email);
+		$ok = $this->_updateUserOptions($email, $step, $result);
+		if(!$ok)
+		{
+			$this->_updateUserOptions($email, $step, $result);
+		}
+	}
+
+	/**
+	 * $email - the user email
+	 * $step - the step the user has completed
+	 */
+	private function _updateUserOptions($email, $step, $result)
+	{
+		if($result != false)
+		{
+			$step = $this->_updateStep($step,$result);
+		}
+		try
+	    {
+	    	$mergeVars = array('STEP' => $step);
+	    	$result = $this->mc->lists->updateMember($this->wistiaList, array('email' => $email), $mergeVars);
+
+	    	return true;
+	    }
+		catch(Exception $e)
+	    {
+	    	if(strpos($e->getMessage(), 'is not subscribed to list'))
+			{
+			    $this->sendUserToMailChimp($email);
+			}
+
+			return false;
+	    }
+	}
+
+	private function _verifyLastStepInFlowForTheUser($email)
+	{
+		$result = $this->mc->lists->memberInfo($this->wistiaList, array(array('email' => $email)));
+		// Verify if array is empty before trying to get the step data
+		if(empty($result) || (!empty($result) && empty($result['data'])))
+		{
+			return false;
+		}
+
+		$data = $result['data'][0]['merges']['STEP'];
+
+		if(!empty($data))
+		{
+			return $data;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	private function _updateStep($step, $result)
+	{
+		$data = explode(";", $result);
+
+		$registerSteps = array('REG1','REG2');
+		$newStepData = $this->_newStepData($step);
+
+		if(count($data)==1)
+		{
+			$oldStepData = $this->_oldStepData($data[0]);
+			$step = $this->_verifyOldUserDataInOrderToModifyOnlyNewStepForUpdate($data, $oldStepData, $newStepData, $result);
+		}
+		elseif(count($data) == 2)
+		{
+			if(in_array($step, $registerSteps))
+			{
+				return $result;
+			}
+			$step = $this->_verifyNewFlowAgainstLastFlowForTheUser($data, $newStepData, $result);
+		}
+
+		return $step;
+	}
+
+	private function _newStepData($newStep)
+	{
+		$newStepData = array();
+		$newStepDataParts = explode('_', $newStep);
+		$newStepData['step'] = $newStep;
+		// Initialize all the array fields
+		$newStepData['newStepDataFlowNumber'] = '';
+		$newStepData['newVideoOrSurveyNumber'] = '';
+		if(!isset($newStepDataParts[1]) || !isset($newStepDataParts[2]))
+		{
+			return $newStepData;
+		}
+		$newStepData['newStepDataFlowNumber'] = substr($newStepDataParts[1], -1);
+		$newStepData['newVideoOrSurveyNumber'] = substr($newStepDataParts[2], -1);
+
+		return $newStepData;
+	}
+
+	private function _oldStepData($oldStep)
+	{
+		$oldStepData = array();
+		$oldStepDataParts = explode('_', $oldStep);
+		$oldStepData['step'] = $oldStep;
+		if(!isset($oldStepDataParts[1]) || !isset($oldStepDataParts[2]))
+		{
+			$oldStepData['oldStepDataFlowNumber'] = NULL ;
+			$oldStepData['oldVideoOrSurveyNumber'] = NULL;
+			return $oldStepData;
+		}
+		$oldStepData['oldStepDataFlowNumber'] = substr($oldStepDataParts[1], -1) ;
+		$oldStepData['oldVideoOrSurveyNumber'] = substr($oldStepDataParts[2], -1);
+
+		return $oldStepData;
+	}
+
+	private function _verifyOldUserDataInOrderToModifyOnlyNewStepForUpdate($data, $oldStepData, $newStepData, $result)
+	{
+		if($oldStepData['step'] == $newStepData['step'])
+		{
+			return $newStepData['step'];
+		}
+		elseif($oldStepData['step'] == 'REG1' && $newStepData['step'] == 'REG2')
+		{
+			return $newStepData['step'];
+		}
+		elseif($oldStepData['step'] == 'REG2' && ($newStepData['step'] != 'REG1' || $newStepData['step'] != 'REG2'))
+		{
+			return $newStepData['step'];
+		}
+		else
+		{
+			$finalResult = $this->_verifyNewFlowAgainstLastFlowForTheUser($data, $newStepData, $result);
+
+			if($finalResult == false)
+			{
+				$step = $oldStepData['step'].';'.$newStepData['step'];
+				return $step;
+			}
+			return $finalResult;
+		}
+	}
+
+	private function _verifyNewFlowAgainstLastFlowForTheUser($data, $newStepData, $result)
+	{
+		foreach ($data as $oldStep) 
+		{
+			$oldStepData = $this->_oldStepData($oldStep);
+			if($oldStep == $newStepData['step'])
+			{
+				return $result;
+			}
+
+			//verify on which flow are we, Flow1 or Flow2
+			if($newStepData['newStepDataFlowNumber'] == $oldStepData['oldStepDataFlowNumber'] && $newStepData['newStepDataFlowNumber'] != NULL)
+			{
+				if($newStepData['newVideoOrSurveyNumber'] < $oldStepData['oldVideoOrSurveyNumber'])
+				{
+					return $result;
+				}
+				$result = str_replace($oldStepData['step'], $newStepData['step'], $result);	
+				return $result;
+			}
+
+		}
+		return false;
+	}
+
+}

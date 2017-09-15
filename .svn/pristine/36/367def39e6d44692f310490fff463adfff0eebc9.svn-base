@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+ <validate>
+ 	<file>
+ 		<image>
+ 			<allowExtension>
+ 				<extension>jpg</extension>
+ 				<extension>jpeg</extension>
+ 				<extension>png</extension>
+ 			</allowExtension>
+ 			<allowType>
+ 				<type>image/jpeg</type>
+ 				<type>image/jpg</type>
+ 				<type>image/png</type>
+ 			</allowType>
+ 			<size> <!-- Size in KB -->
+ 				<min>20</min>
+ 				<max>3072</max>
+ 			</size>
+ 		</image>
+ 	</file>
+ </validate>

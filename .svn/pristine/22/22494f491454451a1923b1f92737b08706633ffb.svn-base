@@ -1,0 +1,683 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @package    Admin
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: AdminController.php 2 2015-05-26 11:01:32Z andreic $
+*/
+
+/**
+* Affiliate Controller
+* @author     Gellert
+*/
+
+class admin_AffiliateController extends admin_BaseController
+{
+	
+	private $affiliateView;
+	private $affiliateModel;
+	
+	
+	public function doIt()
+	{
+		$this->affiliateView = new Affiliate_View($this->tpl);
+		$this->affiliateModel = new Affiliate();
+		// switch based on the action, NO default action here
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		switch ($this->registry->requestAction)
+		{
+			case 'list':
+			{
+				$this->listAffiliate();			
+				break;
+			}
+			case 'new':
+				$this->addAffiliate();
+				break;
+			case 'update': 
+				$this->updateAfiiliate();
+				break;
+			case 'import':
+				$this->importFile();
+				break;
+			case 'update-csv':
+			    $this->updateCsv();
+				break;
+			case 'bulk-update':
+				$this->bulkUpdate();
+				break;
+			case 'list-sub-id':
+				$this->listSubId();
+				break;
+			case 'referal-details' :
+				$this->listSubIdBy();
+				break;
+			case 'list-platform-stats':
+				$this->getVisitsGroupedByPlatform();
+				break;
+			case 'subids-logs':
+				$this->subIdsLogs();
+				break;
+			case 'uid-raw-clicks':
+				$this->subIdRawClicks();
+				break;
+			case 'wistia-apply-for-job':
+				$this->applyForJob();
+				break;
+			/*case 'update-job' :
+				{
+					$this->updateAndAddAffiliateJob();
+					break;
+				} */
+		}	
+	}
+
+	private function listAffiliate()
+	{
+		//save the fillter options
+		$filterData = [];
+		//display affiliate users and filter them
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$filters = [];
+		
+		//verify if the first ID is bigger than 0 and show all the possible ids that are bigger than idFirst
+		if(isset($this->registry->request['idFirst']) && !empty(isset($this->registry->request['idFirst'])) )
+		{
+			$idFirst = $this->registry->request['idFirst'];
+			if(is_numeric( $idFirst ) && $idFirst > 0)
+			{
+				$filterData['idFirst'] = $idFirst;
+				$filters[] = ['field'=>'id', 'operator'=>'>=', 'value' => $idFirst ];
+			}
+		}
+		
+		//verify if the last ID is bigger than 0 and show all the possible ids that are smaller than idFirst
+		if(isset($this->registry->request['idLast']) && !empty(isset($this->registry->request['idLast'])) )
+		{
+			$idLast = $this->registry->request['idLast'];
+			if(is_numeric( $idLast ) && $idLast > 0)
+			{
+				$filterData['idLast'] = $idLast;
+				$filters[] = ['field'=>'id', 'operator'=>'<=', 'value' => $idLast ];
+			}
+		}
+		
+		if(isset($this->registry->request['nameSearch']) && !empty(isset($this->registry->request['nameSearch'])) )
+		{
+			$name = $this->registry->request['nameSearch'];
+			$filterData['nameSearch'] = $name;
+			//verify if the name has spaces or underscor and give all the names hat contain what the users put in
+			$name = str_replace(['_'.' '], '%', $name);
+		
+			$filters[] = ['field'=>'name', 'operator'=>'LIKE', 'value' => '%'.$name.'%' ];
+		}
+		
+		$users = $this->affiliateModel->getAffiliateByFilter($page, $filters);
+		$this->affiliateView->listAffiliateFilter('filter-affiliates', $users, $filterData, $page);
+	}
+	
+	private function addAffiliate()
+	{
+		// display form and add new affiliate
+		$data = $_POST;
+		$error = array();
+		$existingAffiliateId = [];
+		
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			if(!empty($data['flow_city'] && !empty($data['flow_category'])))
+			{
+				$data['flow'] = $data['flow_city'] . '/' . $data['flow_category'];
+				unset($data['flow_city']);
+				unset($data['flow_category']);
+			}
+		
+			if(!empty($data['flow_city']))
+			{
+				$data['flow'] = $data['flow_city'];
+				unset($data['flow_city']);
+			}
+				
+			if(!empty($data['flow_category']))
+			{
+				$data['flow'] = $data['flow_category'];
+				unset($data['flow_category']);
+			}
+			// POST values that will be validated
+			if(!empty($data['name'])&&!empty($data['id']))
+			{
+				$last=$data['id_last'];
+				$actualyId=$data['id'];
+				$data2 = $data;
+				$nrAffiliateNotAdded=0;
+				$nrAffiliateAdded=0;
+		
+				if(empty($last))
+				{
+					if($this->affiliateModel->chechId($data['id'])==false)
+					{
+						$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateIdExists;
+						$this->registry->session->message['type'] = 'error';
+						header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/new/');
+						exit;
+					}
+					unset($data2['id_last']);
+					$this->affiliateModel->addAffiliate($data2);
+					$this->registry->session->message['txt'] = $this->option->infoMessage->affiliateAdded;
+					$this->registry->session->message['type'] = 'info';
+					header('Location: '.$this->registry->configuration->website->params->url
+							. '/' . $this->registry->requestModule . '/'
+							. $this->registry->requestController
+							. '/list/'
+							);
+					exit;
+				}
+				else
+				{
+					if($last<=$actualyId)
+					{
+						$this->registry->session->message['txt'] = $this->option->errorMessage->creativeIdSmaller;
+						$this->registry->session->message['type'] = 'error';
+						header('Location: '.$this->registry->configuration->website->params->url
+								. '/' . $this->registry->requestModule
+								. '/' . $this->registry->requestController
+								. '/new/'
+								);
+						exit;
+					}
+					else
+					{
+						while($actualyId<=$last)
+						{
+							$usersAffiliateId = $this->affiliateModel->searchId($actualyId);
+							if(!empty($usersAffiliateId))
+							{
+								$existingAffiliateId=$actualyId;
+								$nrAffiliateNotAdded++;
+								$actualyId++;
+							}
+							else
+							{
+								unset($data2['id_last']);
+								$data2['id'] = $actualyId;
+								$this->affiliateModel->addAffiliate($data2);
+								$nrAffiliateAdded++;
+								$actualyId++;
+							}
+						}
+						if($nrAffiliateAdded==$last-$actualyId)
+						{
+							$this->registry->session->message['txt'] = $this->option->infoMessage->allAffiliateAdded;
+							$this->registry->session->message['type'] = 'info';
+							header('Location: '. $this->registry->configuration->website->params->url
+									. '/' . $this->registry->requestModule
+									. '/' . $this->registry->requestController
+									. '/list/'
+									);
+							exit;
+						}
+						else
+						{
+							$this->registry->session->message['txt'] = str_replace('$affiliateNotAdded', $nrAffiliateNotAdded , str_replace('$affiliateAdded', $nrAffiliateAdded , $this->option->warningMessage->numberOfAffiliateAdded));
+							$this->registry->session->message['type'] = 'warning';
+							header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+							exit;
+						}
+					}
+				}
+			}
+				
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateName;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		
+		$category = $this->affiliateModel->getCategories();
+		$cities = $this->affiliateModel->getCities();
+		
+		$this->affiliateView->details('add', $data, $cities, $category);
+	}
+	
+	private function updateAfiiliate()
+	{
+		// display form and update affiliate user
+		
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			$data = $_POST;
+			if(!empty($data['flow_city'] && !empty($data['flow_category'])))
+			{
+				$data['flow'] = $data['flow_city'] . '/' . $data['flow_category'];
+				unset($data['flow_city']);
+				unset($data['flow_category']);
+			}
+				
+			if(!empty($data['flow_city']))
+			{
+				$data['flow'] = $data['flow_city'];
+				unset($data['flow_city']);
+			}
+		
+			if(!empty($data['flow_category']))
+			{
+				$data['flow'] = $data['flow_category'];
+				unset($data['flow_category']);
+			}
+		
+			if(!empty($data['name']))
+			{
+				$this->affiliateModel->updateAffiliate($data, $this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->affiliateUpdated;
+				$this->registry->session->message['type'] = 'info';
+					
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateName;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		
+		$category = $this->affiliateModel->getCategories();
+		$cities = $this->affiliateModel->getCities();
+		$data = $this->affiliateModel->getAffiliateBy('id', $this->registry->request['id']);
+		$this->affiliateView->setExtraBreadcrumb($data['name']);
+		//$pageTitle .= ' "' . $data['name'] . '"';
+		
+		$this->affiliateView->details('update', $data, $cities, $category);
+	}
+	
+	private function importFile()
+	{
+		if (!empty($_FILES))
+		{
+			//,'application/xls','application/x-xls','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'  -- NOT XLS
+			$types = array('application/vnd.ms-excel','text/csv');
+			if(!(in_array($_FILES['csv']['type'],$types)))
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateImportFile;
+				$this->registry->session->message['type'] = 'error';
+		
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/import/');
+				exit;
+			}
+			$data = $this->affiliateModel->importFile($_FILES);
+				
+			$checkHeader = $this->affiliateModel->checkHeader(current($data));
+			if ($checkHeader == false)
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateIncorrectHeader;
+				$this->registry->session->message['type'] = 'error';
+		
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/import/');
+				exit;
+			}
+			else
+			{
+				$data = $this->affiliateModel->setHeader($data);
+			}
+				
+			$dataDB = $this->affiliateModel->prepareImportedData($data);
+				
+			$this->registry->session->message['txt'] = $this->option->infoMessage->affiliateImportCost;
+			$this->registry->session->message['type'] = 'info';
+		}
+		
+		$this->affiliateView->importFile('import');
+	}
+	
+	private function updateCsv()
+	{
+		if (!empty($_FILES))
+		{
+			$name=explode('.',$_FILES['csv']['name']);
+			$extension=end($name);
+			if(strcmp($extension,'csv')!=0)
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateImportFile;
+				$this->registry->session->message['type'] = 'error';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/update-csv/');
+				exit;
+			}
+		
+			$data = $this->affiliateModel->importFile($_FILES);
+			$checkHeader = $this->affiliateModel->checkHeaderUpdate(current($data));
+			if ($checkHeader == false)
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateIncorrectHeader;
+				$this->registry->session->message['type'] = 'error';
+				 
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/update-csv/');
+				exit;
+			}
+			else
+			{
+				$data = $this->affiliateModel->setHeaderUpdate($data);
+			}
+		
+			$dataDB = $this->affiliateModel->prepareImportedData($data);
+			$this->affiliateModel->updateAffiliateCsv($dataDB);
+		
+			$this->registry->session->message['txt'] = $this->option->infoMessage->affiliateImportCost;
+			$this->registry->session->message['type'] = 'info';
+		}
+		$this->affiliateView->importFile('update-csv');
+	}
+	
+	private function bulkUpdate()
+	{
+		//save the fillter options
+		$filterData = [];
+		//display affiliate users and filter them
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$filters = [];
+			
+		//verify if the first ID is bigger than 0 and show all the possible ids that are bigger than idFirst
+		if(isset($this->registry->request['idFirst']) && !empty(isset($this->registry->request['idFirst'])) )
+		{
+			$idFirst = $this->registry->request['idFirst'];
+			if(is_numeric( $idFirst ) && $idFirst > 0)
+			{
+				$filterData['idFirst'] = $idFirst;
+				$filters[] = ['field'=>'id',
+						'operator'=>'>=',
+						'value' => $idFirst
+				];
+			}
+		}
+			
+		//verify if the last ID is bigger than 0 and show all the possible ids that are smaller than idFirst
+		if(isset($this->registry->request['idLast']) && !empty(isset($this->registry->request['idLast'])) )
+		{
+			$idLast = $this->registry->request['idLast'];
+			if(is_numeric( $idLast ) && $idLast > 0)
+			{
+				$filterData['idLast'] = $idLast;
+				$filters[] = ['field'=>'id',
+						'operator'=>'<=',
+						'value' => $idLast
+				];
+			}
+		}
+			
+		if(isset($this->registry->request['nameSearch']) && !empty(isset($this->registry->request['nameSearch'])) )
+		{
+			$name = $this->registry->request['nameSearch'];
+			$filterData['nameSearch'] = $name;
+			//verify if the name has spaces or underscor and give all the names hat contain what the users put in
+			$name = str_replace(['_'.' '], '%', $name);
+				
+			$filters[] = ['field'=>'name',
+					'operator'=>'LIKE',
+					'value' => '%'.$name.'%'
+			];
+		}
+		$category = $this->affiliateModel->getCategories();
+		$cities = $this->affiliateModel->getCities();
+		$data = $_POST;
+			
+		$this->affiliateView->affiliateBulkUpdate('bulk-update', $data, $cities, $category);
+		
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			$data=$_POST;
+			$this->affiliateModel->affiliateBulkUpdate($filters, $data, $cities, $category);
+				
+			$this->registry->session->message['txt'] = $this->option->infoMessage->affiliateBulkUpdate;
+			$this->registry->session->message['type'] = 'info';
+			header('Location: '. $this->registry->configuration->website->params->url
+					. '/' . $this->registry->requestModule
+					. '/' . $this->registry->requestController
+					. '/list/'
+					);
+			exit;
+		}
+	}
+	
+	/**
+	 * List the SubId's
+	 *
+	 * @access private
+	 * 
+	 * @author Nicu
+	*/
+	private function listSubId()
+	{
+		//save the fillter options
+		$filterData = [];
+		//display worker list and filter them
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+
+		$filters = [];
+		if(isset($this->registry->request['platformSearch']) && !empty(isset($this->registry->request['platformSearch'])) )
+		{
+			$name = $this->registry->request['platformSearch'];
+			$filterData['platformSearch'] = $name;
+			//verify if the name has spaces or underscor and give all the names hat contain what the users put in
+			$name = str_replace(['_'.' '], '%', $name);
+			
+			$filters[] = ['field'=>'mrjp.name', 'operator'=>'LIKE', 'value' => '%'.$name.'%' ];
+		}
+		
+		if(isset($this->registry->request['citySearch']) && !empty(isset($this->registry->request['citySearch'])) )
+		{
+			$name = $this->registry->request['citySearch'];
+			$filterData['citySearch'] = $name;
+			//verify if the name has spaces or underscor and give all the names hat contain what the users put in
+			$name = str_replace(['_'.' '], '%', $name);
+		
+			$filters[] = ['field'=>'mc.name', 'operator'=>'LIKE', 'value' => '%'.$name.'%' ];
+		}
+		
+		if(isset($this->registry->request['categorySearch']) && !empty(isset($this->registry->request['categorySearch'])) )
+		{
+			$name = $this->registry->request['categorySearch'];
+			$filterData['categorySearch'] = $name;
+			//verify if the name has spaces or underscor and give all the names hat contain what the users put in
+			$name = str_replace(['_'.' '], '%', $name);
+		
+			$filters[] = ['field'=>'categoryName', 'operator'=>'LIKE', 'value' => '%'.$name.'%' ];
+		}
+		$data = $this->affiliateModel->getAllSubIdByFilter($page, $filters, $this->registry->request);
+		$this->affiliateView->listAffiliateSubId('list-sub-id', $data, $filterData, $page);
+	}
+
+	/**
+	 * List the SubId's Details
+	 *
+	 * @access private
+	 * 
+	 * @author Nicu
+	*/
+	private function listSubIdBy()
+	{
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+
+		$total=array();
+	
+		$total['visits'] = $this->affiliateModel->getTotalVisitsById($this->registry->request['id']);
+		$total['reg1'] = $this->affiliateModel->getVisitsStep1($this->registry->request['id']);
+		$total['reg2'] = $this->affiliateModel->getVisitsStep2($this->registry->request['id']);
+		
+		$subSubIds = $this->affiliateModel->addSubIdsToUniqueId($this->registry->request['id']);
+
+		$uniqueVisits = $this->affiliateModel->getUniqueVisitsById($this->registry->request['id']);
+
+		$uniqueRefererVisits = $this->affiliateModel->getUniqueVisitsByIdByReferer($this->registry->request['id']);
+
+		$visitsByReferer = $this->affiliateModel->getTotalVisitsByIdGroupedByReferer($this->registry->request['id']);
+		$subIdsPerReferer = $this->affiliateModel->getSubIdsPerReferer($this->registry->request['id']);
+		$stepByRefererReg1 = $this->affiliateModel->getStep1VisitsByReferer($this->registry->request['id']);
+		$stepByRefererReg2 = $this->affiliateModel->getStep2VisitsByReferer($this->registry->request['id']);
+		$dataByReferer =  $this->affiliateModel->setDataPerReferer($visitsByReferer, $stepByRefererReg1, $stepByRefererReg2, $uniqueRefererVisits);
+	
+		$users = $this->affiliateModel->getRegisteredUsersByPlatformId($this->registry->request['id']);
+		$subSubIdsValues = $this->setValuesPerSubId($subSubIds);
+		
+		$data = $this->affiliateModel->getAllSubIdById($this->registry->request['id']);
+		$this->affiliateView->listAffiliateSubIdDetails('view', $data, $total, $dataByReferer, $uniqueVisits, $users, $subSubIdsValues, $subIdsPerReferer,$page);
+	}
+
+
+	/**
+	*/
+	private function updateAndAddAffiliateJob()
+	{
+
+		$affiliateJobDetails['affiliateJobCities']= $this->affiliateModel->getAffiliateJobCities();
+		$affiliateJobDetails['affiliateJobCategory']= $this->affiliateModel->getAffiliateJobCategories();
+		$affiliateJobDetails['affiliateJobType']= $this->affiliateModel->getJobType();
+		$affiliateJobDetails['affiliateJobPlatform']=$this->affiliateModel->getAffiliateJobPlatform();
+
+		$data = $this->affiliateModel->getAllSubIdById($this->registry->request['id']);
+
+		$dataToBeInserted = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+
+			$city = $this->affiliateModel->getSpecificCity($_POST['cityId']);
+			
+			$category = $this->affiliateModel->getSpecificCategory($_POST['categoryId']);
+
+			$platform = $this->affiliateModel->getSpecificPlatform($_POST['platformId']);
+
+			$dataPost = $_POST;
+			
+			if(!empty($dataPost['descriptionId']) && !empty($dataPost['titleId']))
+			{
+				if($data['jobTypeId']==$dataPost['jobTypeId'] && $data['cityState']==$city['cityName'] && $data['category'] == $category && $data['title'] == $dataPost['title'] && $data['description'] == $dataPost['description'] && $data['platformName'] == $platform['platformName'])
+					{
+						//To DO messages , nothing has changed
+
+						echo "1 ";
+						header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/update-job/id/'.$this->registry->request['id']);
+						exit;
+					}
+					else
+					{
+
+
+						/// For Razvan and Nicu
+						// trebuie sa stiu cumva care date venite au fost modificate in POST
+						// cele modificate in POST le adaug in baza lor de date ( gen title la microrecruitingJobTitle , apoi iau ultimul id inserat si il salvez
+						// idul ala salvat il voi adauga in microrecrutingJob 
+						// la fel fac cu toate datele care au fost schimbate pentru a obtine numai idul deoarece in microrecruiting Job avem doar iduri ....
+						// inserare pentru fiecare data modificata si apoi inserarea tuturor idurilor care au fost modificate si a celor care nu au fost modificate
+						echo "2";
+						$dataToBeInserted = $this->affiliateModel->$insertAffiliateJob($dataPost);
+						header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-sub-id/');
+						exit;
+					}
+			}
+		}
+		$this->affiliateView->listAffiliateSubIdDetailsForEditAndAdd('edit-add-job', $data, $affiliateJobDetails);
+	}
+	
+	private function getVisitsGroupedByPlatform()
+	{
+		$totalVisits = $this->affiliateModel->getVisitsGroupedByPlatform();
+		$uniqueVisits = $this->affiliateModel->getUniqueVisitsGroupedByPlatform();
+		$reg1Visits = $this->affiliateModel->getReg1VisitsGroupedByPlatform();
+		$reg2Visits = $this->affiliateModel->getReg2VisitsGroupedByPlatform();
+		
+		$visitsData = array();
+		foreach($totalVisits as $key=>$value)
+		{
+			$visitsData[$value['platformName']]['totalVisits'] = $value['count'];
+			$visitsData[$value['platformName']]['platformName'] = $value['platformName'];
+			$visitsData[$value['platformName']]['cost'] = $value['cost'];
+		}
+		foreach($uniqueVisits as $key=>$value)
+		{
+			$visitsData[$value['platformName']]['uniqueVisits'] = $value['count'];
+			$visitsData[$value['platformName']]['platformName'] = $value['platformName'];
+		}
+		foreach($reg1Visits as $key=>$value)
+		{
+			$visitsData[$value['platformName']]['reg1'] = $value['count'];
+			$visitsData[$value['platformName']]['platformName'] = $value['platformName'];
+		}
+		foreach($reg2Visits as $key=>$value)
+		{
+			$visitsData[$value['platformName']]['reg2'] = $value['count'];
+			$visitsData[$value['platformName']]['platformName'] = $value['platformName'];
+		}
+		
+		$this->affiliateView->listAffiliateStats('list-stats', $visitsData);
+	}
+	
+	private function subIdsLogs()
+	{
+		if (isset($_POST) && !empty($_POST))
+		{
+			if (!isset($_POST['subIds']) || empty($_POST['subIds']))
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->affiliateSubIds;
+				$this->registry->session->message['type'] = 'error';
+			}
+			else
+			{
+				$data = $this->affiliateModel->listSubIdsLogs($_POST);
+				$date = $_POST['dateFrom'] . ' - ' . $_POST['dateUntil'];
+				$subIdsWithNoData = $this->affiliateModel->getSubIdsWithNoData($_POST['subIds'], $data);
+				$this->affiliateView->displaySubIdsLogs('subids-logs', $data, $date, $subIdsWithNoData);
+			}
+		}
+		else
+		{
+			$this->affiliateView->showPage('subids-logs');
+		}
+	}
+	
+	private function subIdRawClicks()
+	{
+		$subId = (isset($this->registry->request['id'])) ? $this->registry->request['id'] : '';
+		$data = $this->affiliateModel->getAllSubIdById($subId);
+		$visits = $this->affiliateModel->getAllVisitsForSubId($subId);
+		
+		$visitIds = array_keys($visits);
+		$step1 = $this->affiliateModel->getAllStep1ForSubId($visitIds);
+		$step2 = $this->affiliateModel->getAllStep2ForSubId($visitIds);
+		$subSubIds = $this->affiliateModel->addSubIdsToUniqueId($subId);
+		
+		$subSubIdsValues = $this->setValuesPerSubId($subSubIds);
+		$this->affiliateView->listSubIdRawClicks('raw-clicks-id', $data, $visits, $step1, $step2, $subSubIdsValues);
+	}
+	
+	/**
+	 * Set values per subId
+	 * @param array $subSubIds
+	 * @return array
+	 */
+	
+	private function setValuesPerSubId($subSubIds)
+	{
+		$subSubIdsValues = array();
+		
+		foreach ($subSubIds as $subSubId)
+		{
+			if (!array_key_exists($subSubId['subSubIdName'], $subSubIdsValues))
+			{
+				$subSubIdsValues[$subSubId['subSubIdName']] = array();
+			}
+			array_push($subSubIdsValues[$subSubId['subSubIdName']], $subSubId['subSubIdValue']);
+		}
+		
+		return $subSubIdsValues;
+	}
+	
+	private function applyForJob()
+	{
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$data = $this->affiliateModel->getAllWistiaAppliances($page);
+		$this->affiliateView->displayWistiaAppliances('wistia-apply-for-job', $data, $page);
+	}
+}

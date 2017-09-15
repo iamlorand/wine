@@ -1,0 +1,9 @@
+/**
+ *  sort data table by header columns
+ */
+
+$(document).ready(function() 
+    { 
+        $("#myTable").tablesorter(); 
+    } 
+); 

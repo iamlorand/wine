@@ -1,0 +1,86 @@
+<?php
+
+require_once 'Mailchimp.php';
+
+$publicKey = 'df189cd1451d2407e3521b20afa37f42-us11';
+    // Mailchimp object and public key
+$mc = new Mailchimp($publicKey);
+
+// this is the list of the users who have NOT answered the survey from step 2
+$listNotAnsweredId = 'f6e2588e8c';
+// this is the list of the users who have answered the survey from step 2
+$listAnsweredId = 'bd28e8a62a';
+
+// $testList1 = '358c7edc83';
+// $testList2 = '4201ec2009';
+
+// $email = 'andronic_bogdan@yahoo.com';
+// $fname = 'Bogdan';
+// $merge_vars = array('FNAME' => $fname);
+// var_dump('sending to ' . $testList1 . ' email: ' . $email);
+//     try
+//     {
+//         // $result = $mc->lists->subscribe($testList1, array('email' => $email), $merge_vars, 'html', false, false, false, false);
+//         $result = $mc->lists->unsubscribe($testList1, array('email' => $email));
+
+//         $result = $mc->lists->subscribe($testList2, array('email' => $email), $merge_vars, 'html', false, true, true, false);
+//     }
+//     catch(Exception $e)
+//     {
+//         var_dump($e->getMessage(), $email, $testList1);
+//     }
+
+    exit;
+
+// TEST ONE EMAIL
+// $email = 'florinn_15@yahoo.com';
+// $emails = array(0 => array('email' => $email));
+// var_dump($mc->lists->memberInfo($listAnsweredId, $emails));
+// exit;
+// END TEST ONE EMAIL
+
+//TEST CSV FILE FULL OF EMAILS
+
+$file = fopen('userDataStep1.csv', 'r');
+$i = 0;
+while (($line = fgetcsv($file)) !== FALSE) {
+  //$line is an array of the csv elements
+	if($line[0] !== null && $line[0] != '')
+	{
+	  $emails[$i] = array('email' => $line[0]);
+	  $i++;
+	  if($i == 49)
+	  {
+	  	$arr = $mc->lists->memberInfo($listNotAnsweredId, $emails);
+	 	$data = $arr['data'];
+
+	  	foreach($data as $user)
+	  	{
+			echo $user['email']. ' status: ', $user['status'] . "\n";
+		}
+
+	  	for($count = 0; $count <= $i; $count ++)
+	  	{
+	  		unset($emails[$count]);
+	  	}
+	  	$i = 0;
+	  }
+	}
+}
+fclose($file);
+
+$size = sizeof($emails);
+
+if($size > 0)
+{
+	$arr = $mc->lists->memberInfo($listNotAnsweredId, $emails);
+ 	$data = $arr['data'];
+  	foreach($data as $user)
+  	{
+		echo $user['email']. ' status: ', $user['status'] . "\n";
+	}
+}
+
+echo 'DONE';
+
+exit;

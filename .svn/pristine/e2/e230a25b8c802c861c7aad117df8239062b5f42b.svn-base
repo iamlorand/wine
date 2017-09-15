@@ -1,0 +1,309 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: View.php 981 2015-06-11 13:51:41Z gabi $
+*/
+
+/**
+* View Model
+* abstract over the Dot_Template class
+* @category   DotKernel
+* @package    Frontend
+* @author     DotKernel Team <team@dotkernel.com>
+*/
+
+class View extends Dot_Template
+{
+	/**
+	 * Singleton instance
+	 * @access protected
+	 * @static
+	 * @var Dot_Template
+	 */
+	protected static $_instance = null;
+	/**
+	 * Returns an instance of Dot_View
+	 * Singleton pattern implementation
+	 * @access public
+	 * @param string $root     Template root directory
+	 * @param string $unknowns How to handle unknown variables
+	 * @param array  $fallback Fallback paths
+	 * @return Dot_Template
+	 */
+	public static function getInstance($root = '.', $unknowns = 'remove', $fallback='')
+	{
+		if (null === self::$_instance) 
+		{
+			self::$_instance = new self($root, $unknowns, $fallback);
+		}
+		return self::$_instance;
+	}	
+	/**
+	 * Initalize some parameter
+	 * @access public
+	 * @return void
+	 */	
+	public function init()
+	{
+		$this->requestModule = Zend_Registry::get('requestModule');
+		$this->requestController = Zend_Registry::get('requestController');
+		$this->requestAction = Zend_Registry::get('requestAction');
+		$this->config = Zend_Registry::get('configuration');
+		$this->seo = Zend_Registry::get('seo');
+		$this->session = Zend_Registry::get('session');;
+	}
+	/**
+	 * Set the template file
+	 * @access public 
+	 * @return void
+	 */
+	public function setViewFile()
+	{
+		$this->setFile('tpl_index', 'index.tpl');
+		$registry = Zend_Registry::getInstance();
+		
+		if((strtolower($registry->requestController) == 'page') && (($registry->requestAction == 'home') || empty(trim($registry->requestAction)) || is_numeric($registry->requestAction)))
+		{
+		    $this->setVar('HOME_SPECIAL_CLASS', 'specialHomePage');
+		    $this->setFile('tpl_home', 'page/home-special.tpl');
+		    $this->parse('HOME_SPECIAL', 'tpl_home');
+		}
+	}
+	/**
+	 * Set different paths url(site, templates, images)
+	 * @access public
+	 * @return void
+	 */
+	public function setViewPaths()
+	{
+		$this->setVar('TEMPLATES_URL', $this->config->website->params->url . TEMPLATES_DIR);
+		$this->setVar('IMAGES_URL', $this->config->website->params->url . IMAGES_DIR . '/' .$this->requestModule);
+		$this->setVar('SITE_URL', $this->config->website->params->url);
+	}
+	/**
+	 * Set SEO values
+	 * @access public
+	 * @param string $pageTitle [optional]
+	 * @return void
+	 */
+	public function setSeoValues($pageTitle = '')
+	{
+		$this->setVar('PAGE_KEYWORDS', $this->seo->defaultMetaKeywords);
+		$this->setVar('PAGE_DESCRIPTION', $this->seo->defaultMetaDescription);
+		$this->setVar('PAGE_TITLE', $this->seo->defaultPageTitle .  ' | ' . $pageTitle);
+		$this->setVar('PAGE_CONTENT_TITLE', $pageTitle);
+		$this->setVar('SITE_NAME', $this->seo->siteName);
+		$this->setVar('CANONICAL_URL', $this->seo->canonicalUrl);
+	}
+	/**
+	 * Display the menus
+	 * @access public 
+	 * @return void
+	 */
+	public function setMenu()
+	{
+
+		$dotAuth = Dot_Auth::getInstance();
+		$registry = Zend_Registry::getInstance();
+		$this->setFile('tpl_menu_top', 'blocks/menu_top.tpl');
+		$this->setBlock('tpl_menu_top', 'top_menu_not_logged', 'top_menu_not_logged_block');
+		$this->parse('top_menu_not_logged_block', 'top_menu_not_logged', true);
+		$this->parse('MENU_TOP', 'tpl_menu_top');
+
+		$this->setBlock('tpl_index', 'twitter_reg2', 'twitter_reg2_block');
+		$this->setBlock('tpl_index', 'google_conversion', 'google_conversion_block');
+		$this->setBlock('tpl_index', 'twitter_reg1', 'twitter_reg1_block');
+		$this->setBlock('tpl_index', 'twitter_visitor', 'twitter_visitor_block');
+		$this->setBlock('tpl_index', 'flow_1b', 'flow_1b_block');
+		$this->setBlock('tpl_index', 'flow_1c', 'flow_1c_block');
+		$this->setBlock('tpl_index', 'flow_1e', 'flow_1e_block');
+		$this->setBlock('tpl_index', 'juju_conversion_tracking', 'juju_conversion_tracking_block');
+		$this->setBlock('tpl_index', 'jobs2Careers', 'jobs2Careers_block');
+		
+		if (isset($this->session->email))
+		{
+			$this->setVar('EMAIL', $this->session->email);
+		}
+		else 
+		{
+			$this->setVar('EMAIL', '');
+		}
+		
+		if($registry->requestAction == 'thank-you')
+		{
+			if (isset($this->session->userId))
+			{
+				$this->setVar('JOBS2CAREERS_CONVERSION', '<img src="//www.jobs2careers.com/conversion.php?p=1981" width="1" height="1" />');
+				$this->parse('jobs2Careers_block', 'jobs2Careers', true);
+				$this->parse('juju_conversion_tracking_block', 'juju_conversion_tracking', true);
+
+			}
+			$this->parse('twitter_reg2_block', 'twitter_reg2', true);
+			$this->parse('google_conversion_block', 'google_conversion', true);
+			$this->parse('twitter_visitor', '');
+			$this->parse('twitter_reg1', '');
+		}
+		elseif($registry->requestAction == 'register')
+		{
+			$this->parse('twitter_reg2_block','');
+			$this->parse('twitter_visitor', '');
+			$this->parse('twitter_reg1_block', 'twitter_reg1', true);
+		}
+		else
+		{
+			$this->parse('twitter_reg2_block','');
+			$this->parse('twitter_visitor_block', 'twitter_visitor', true);
+			$this->parse('twitter_reg1_block', '');
+		}
+
+		if (isset($this->session->conversionTag))
+		{
+			if ($this->session->wistiaFlow == '1')
+			{
+				$this->parse('flow_1b_block', 'flow_1b', true);
+			}
+			elseif ($this->session->wistiaFlow == '2')
+			{
+				$this->parse('flow_1c_block', 'flow_1c', true);
+			}
+			elseif ($this->session->wistiaFlow == '3')
+			{
+				$this->parse('flow_1e_block', 'flow_1e', true);
+			}
+		}
+
+		// footer menu
+		$this->setFile('tpl_menu_footer', 'blocks/menu_footer.tpl');
+		$this->setBlock('tpl_menu_footer', 'member', 'member_block');
+
+
+		// add selected to the correct menu item
+		$this->parse('member_block', 'member', true);
+		$this->parse('MENU_FOOTER', 'tpl_menu_footer');
+	}
+
+
+	/**
+	 * Display message - error, warning, info
+	 * @access public
+	 * @return void
+	 */
+	public function displayMessage()
+	{
+		$session = Zend_Registry::get('session');
+		if(isset($session->message))
+		{
+			$this->setFile('tpl_msg', 'blocks/message.tpl');
+			$this->setBlock('tpl_msg', 'msg_array', 'msg_array_row');
+			$this->setVar('MESSAGE_TYPE', $session->message['type']);
+			if(is_array($session->message['txt']))
+			{
+				foreach ($session->message['txt'] as $k => $msg)
+				{
+					$this->setVar('MESSAGE_ARRAY', is_string($k) ? $msg = ucfirst($k) . ' - ' . $msg : $msg);
+					$this->parse('msg_array_row', 'msg_array', true);
+				}
+			}
+			else
+			{
+				$this->parse('msg_array_row', '');
+				$this->setVar('MESSAGE_STRING', $session->message['txt']);
+			}
+			$this->parse('MESSAGE_BLOCK', 'tpl_msg');
+			unset($session->message);
+		}		
+	}
+	/**
+	 * Add the user's token to the template
+	 * @access public
+	 * @return array
+	 */
+	public function addUserToken()
+	{
+		$dotAuth = Dot_Auth::getInstance();
+		$user = $dotAuth->getIdentity('user');
+		$this->setVar('USERTOKEN', Dot_Auth::generateUserToken($user->password));
+	}	
+	/**
+	 * Get captcha display box using Zend_Service_ReCaptcha api
+	 * @access public
+	 * @return Zend_Service_ReCaptcha
+	 */
+	public function getRecaptcha()
+	{
+		$option = Zend_Registry::get('option');
+		// add secure image using ReCaptcha
+		$recaptcha = new Zend_Service_ReCaptcha($option->captchaOptions->recaptchaPublicKey, $option->captchaOptions->recaptchaPrivateKey);
+		$recaptcha->setOptions($option->captchaOptions->toArray());
+		return $recaptcha;
+	}
+	
+	/**
+	 * Create the pagination, based on how many data
+	 * @access public
+	 * @param array $page
+	 * @return string
+	 */
+	protected function paginator($page)
+	{			
+		// get route again here, because ajax may have change it
+		//$route = Zend_Registry::get('route');
+		$request = Zend_Registry::get('request');
+		$this->setFile('page_file', 'paginator.tpl');
+		$this->setVar('TOTAL_RECORDS', $page->totalItemCount);
+		$this->setVar('TOTAL_PAGES', $page->pageCount );
+		$this->setBlock('page_file', 'first', 'first_row');
+		$this->setBlock('page_file', 'last', 'last_row');
+		$this->setBlock('page_file', 'current_page', 'current_row');
+		$this->setBlock('page_file', 'other_page', 'other_row');		
+		$this->setBlock('page_file', 'pages', 'pages_row');
+	
+		if(array_key_exists('page', $request))
+		{
+			unset($request['page']);
+		}
+
+		$link = Dot_Route::createCanonicalUrl() .'page/';
+		// $link = Dot_Route::createCanonicalUrl();
+		if ($page->current != 1)
+		{
+			$this->setVar('FIRST_LINK',$link."1");
+			$this->parse('first_row', 'first', true);
+		}
+		else
+		{
+			$this->parse('first_row', '');
+		}
+		if ($page->current != $page->last && $page->last > $page->current)
+		{
+			$this->setVar('LAST_LINK',$link.$page->last);
+			$this->parse('last_row', 'last', true);
+		}
+		else
+		{
+			$this->parse('last_row', '');
+		}
+		foreach ($page->pagesInRange as $val)
+		{
+			$this->setVar('PAGE_NUMBER', $val);
+			$this->parse('other_row','');
+			$this->parse('current_row','');
+			if($val == $page->current)
+			{
+				$this->parse('current_row','current_page', true);
+			}
+			else
+			{
+				$this->setVar('PAGE_LINK', $link.$val);
+				$this->parse('other_row','other_page', true);
+			}
+			$this->parse('pages_row', 'pages', true);
+		}
+		$this->parse('PAGINATION', 'page_file');
+	}
+}

@@ -1,0 +1,14 @@
+<div class="thank-you">
+	<!-- BEGIN thankyou_company_logo -->
+    	<div>
+    		<img style = "width:100px; height:100px;" src="data:image/jpeg;base64,{COMPANY_LOGO}"/>
+    		<p>{COMPANY_NAME}</p>
+    	</div>
+    <!-- END thankyou_company_logo -->
+    <!-- BEGIN thankyou_page_text -->
+        <h2>{THANKYOU_TITLE}</h2>
+        <h3>{THANKYOU_SUBTITLE}</h3>
+	<!-- END thankyou_page_text -->	
+	
+	<p> {PAGE_TEXT}</p>
+</div>	

@@ -1,0 +1,23 @@
+<?php
+class admin_BaseController implements admin_ControllerInterface
+{
+    public $tpl;
+    public $registry;
+    public $option;
+    public $pageTitle;
+    public $userToken;
+
+    public function doIt() {
+    }
+
+    public function refreshStage()
+    {
+    }
+
+    public function redirect() {
+    }
+
+    public static function redirectToRequest($request)
+    {
+    }
+}

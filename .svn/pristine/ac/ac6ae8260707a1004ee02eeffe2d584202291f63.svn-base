@@ -1,0 +1,91 @@
+<style type="text/css">
+	th a{ color: #fff !important; }
+	th a:hover{ text-decoration: none !important; }
+</style>
+
+<script src="http://code.jquery.com/jquery-1.9.0.js"></script>
+<script src="http://code.jquery.com/jquery-migrate-1.0.0.js"></script>
+<script>
+
+	var SITE_URL = "{SITE_URL}";
+	var USERTOKEN = "{USERTOKEN}";
+
+	var platform;
+	var city;
+	var category;
+
+$(document).ready(function() {
+	var filterLink = SITE_URL + '/admin/affiliate/list-sub-id/';
+	
+	$(".filterFormButton").click(function(event){
+		// event the form submission 
+		event.preventDefault();
+
+		// get the values from the form 
+		// prop is the actual value, attr means value from initial html
+		platform = $("#filter_platform").prop('value');
+		city = $("#filter_city").prop('value');
+		category = $("#filter_category").prop('value');
+
+		// only populate link if values are not empty 
+		if(platform != "") filterLink = filterLink +"platformSearch"+"/"+platform+"/";
+		if(city != "") filterLink = filterLink +"citySearch"+"/"+city+"/";
+		if(category != "") filterLink = filterLink +"categorySearch"+"/"+category+"/";
+
+		// redirect 
+		 window.location.assign(filterLink);
+	})
+});
+</script>
+
+<form>
+	<table class="g_box">
+		<tr>
+			<td class="g_box_head" width="55px">
+				Filters
+			</td>
+			<td>
+				Platform:&nbsp;
+					<input class="filterFormField" type="text" name="platformSearch" id="filter_platform" value="{PLATFORM_NAME}">
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+				City:&nbsp;
+					<input class="filterFormField" type="text" name="citySearch"  id="filter_city" value="{CITY_NAME}">
+					&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+				Category:&nbsp;
+					<input class="filterFormField" type="text" name="categorySearch" id="filter_category" value="{CATEGORY_SEARCH}">	
+					&nbsp;
+					<input type="submit" class="button filterFormButton" value="search">
+ 			</td>
+		</tr>
+	</table>
+</form>
+
+{PAGINATION}
+<div id="adminList" class="box-shadow">
+	<table class="big_table" frame="box" rules="all">
+		<thead>
+			<tr>
+				<th>
+					Sub Id
+					<a href="{CURRENT_URL}order-by/id/dir/asc/">&#8593;</a>
+					<a href="{CURRENT_URL}order-by/id/dir/desc/">&#8595;</a>
+				</th>
+				<th>
+					Affiliate Link
+					<a href="{CURRENT_URL}order-by/category/dir/asc/">&#8593;</a>
+					<a href="{CURRENT_URL}order-by/category/dir/desc/">&#8595;</a>
+				</th>
+				<th width="230px">Edit Sub Id</th>
+			</tr>
+		</thead>
+		<tbody>
+		<!-- BEGIN list_subId -->
+			<tr class="row{ROW}">
+				<td><a href="{SITE_URL}/admin/affiliate/referal-details/id/{SUB_ID}">{SUB_ID}</a></td>
+				<td><a href="{SITE_URL}/admin/affiliate/referal-details/id/{SUB_ID}">{SITE_URL}/{CITY}/{CATEGORY}?id={SUB_ID}</a></td>			
+				<td width="25%"><a href="{SITE_URL}/admin/affiliate/update-job/id/{SUB_ID}/" title="Edit/Update" class="edit_state">Edit</a></td>
+			</tr>
+		<!-- END list_subId -->
+		</tbody>
+	</table>
+</div>

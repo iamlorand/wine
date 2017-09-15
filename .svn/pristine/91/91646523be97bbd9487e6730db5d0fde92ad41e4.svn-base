@@ -1,0 +1,49 @@
+<?php
+
+define("LIBRARY_DIR", APPLICATION_PATH  . "/library/SocialAuth/");
+define("CONTROLLER_DIR", APPLICATION_PATH . "/controllers/frontend/Social");
+define('ROOT_DIR',  APPLICATION_PATH);
+require_once "configs/socialAuth/config.php";
+
+$paths = array(get_include_path() . PATH_SEPARATOR, 
+    LIBRARY_DIR, 
+    LIBRARY_DIR . "Facebook", 
+    LIBRARY_DIR . "Facebook/Entities", 
+    LIBRARY_DIR . "Facebook/HttpClients",
+    LIBRARY_DIR . "GooglePlus",
+    LIBRARY_DIR . "GooglePlus/auth",
+    LIBRARY_DIR . "GooglePlus/cache",
+    LIBRARY_DIR . "GooglePlus/contrib",
+    LIBRARY_DIR . "GooglePlus/external",
+    LIBRARY_DIR . "GooglePlus/io",
+    LIBRARY_DIR . "GooglePlus/service",
+    LIBRARY_DIR . "Linkedin/",
+    LIBRARY_DIR . "Twitter/",
+    CONTROLLER_DIR, 
+    CONTROLLER_DIR . "/interface");
+set_include_path(implode(PATH_SEPARATOR, $paths));
+spl_autoload_extensions(".php");
+spl_autoload_register(function($class)
+{
+$className = explode('\\', $class);
+    $size = sizeof($className);
+    if ($size > 1) {
+        require_once (LIBRARY_DIR . '/' . str_replace('\\', '/', $class) . '.php');
+    }
+    else {
+        if ($class == "LinkedinController")
+        {
+            require_once ("LinkedInController" . '.php');
+        }
+        elseif ($class == "LinkedIn") {
+            require_once ("linkedin" . '.php');
+        }
+        elseif ($class == "TwitterOAuth") {
+            require_once ("twitteroauth" . '.php');
+        }
+        else
+        {
+            require_once ($class . '.php');
+        }
+    }
+});

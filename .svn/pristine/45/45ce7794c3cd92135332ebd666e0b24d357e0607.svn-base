@@ -1,0 +1,122 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: AdminView.php 6 2015-06-25 13:55:51Z andreic $
+*/
+
+/**
+* Category View Class
+* class that prepare output related to User controller 
+* @category   DotKernel
+* @package    Admin 
+* @author     Gellert
+*/
+
+class Article_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->settings = Zend_Registry::get('settings');
+		$this->session = Zend_Registry::get('session');
+	}
+
+
+	/**
+	 * List the articles in admin and filter them
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $list
+	 * @param int $page
+	 * @param array $filterData
+	 * @param bool $ajax - Using ajax, parse only the list content
+	 * @return void
+	 */
+	public function listArticleFilter($templateFile, $list, $filterData, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'blog/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->addUserToken();
+		$this->tpl->setVar('PAGE', $page);
+		
+		$this->tpl->setVar('ID_FIRST', (isset($filterData['idFirst']))? $filterData['idFirst'] :'');
+		$this->tpl->setVar('ID_LAST', (isset($filterData['idLast']))? $filterData['idLast'] :'');
+		$this->tpl->setVar('NAME_SEARCH', (isset($filterData['nameSearch']))? $filterData['nameSearch'] :'');
+
+		foreach ($list['data'] as $k => $v)
+		{
+
+		    $this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('TITLE', $v['title']);
+		    $this->tpl->setVar('ID', $v['id']);
+		    $this->tpl->setVar('SHORT_TEXT', $v['content']=substr($v['content'], 0, 100));
+		    
+		    $this->tpl->setVar('ACTIVE_IMG', $v['isActive'] == 1 ? 'active' : 'inactive');
+			    		
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+
+	/**
+	 * Add Article in Admin
+	 * 
+	 * @param unknown $templateFile
+	 * @param unknown $article
+	 * @param unknown $categoryList
+	 * @access public
+	 */
+	public function addArticleData($templateFile, $article)
+	{
+		$this->tpl->setFile('tpl_main', 'blog/'.$templateFile. '.tpl');
+		
+		foreach($article as $key => $value)
+		{
+			$this->tpl->setVar('ARTICLE_'.strtoupper($key), $value);
+		}
+	}
+
+	/**
+	 * Edit an article only in Admin
+	 * 
+	 * @param unknown $templateFile
+	 * @param unknown $article
+	 * @access public
+	 */
+	public function updateArticle($templateFile, $article)
+	{
+		$this->tpl->setFile('tpl_main', 'blog/'.$templateFile. '.tpl');	
+		
+		foreach($article as $key => $value)
+		{
+			$this->tpl->setVar('ARTICLE_'.strtoupper($key), $value);
+		}
+	}
+
+	/**
+	 * Delet an article only in Admin
+	 * @param unknown $templateFile
+	 * @param unknown $article
+	 * @access public
+	 */
+	public function deleteArticle($templateFile, $article)
+	{
+		$this->tpl->setFile('tpl_main', 'blog/'.$templateFile. '.tpl');
+
+		foreach($article as $key => $value)
+		{
+			$this->tpl->setVar('ARTICLE_'.strtoupper($key), $value);
+		}
+	}
+
+}

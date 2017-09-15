@@ -1,0 +1,89 @@
+$(document).ready(function()
+		{
+			$("#serviceAreaLocation_0").autocomplete(SITE_URL+"/admin/platform/servicearea-auto-complete", { selectFirst: true});
+			
+	
+			$("#investorName_0").autocomplete(SITE_URL+"/admin/platform/investor-auto-complete", { selectFirst: true});
+			
+		});
+
+$(function(){
+	totalServiceArea = totalServiceArea + 1;
+  $('#serviceAreaLocation').live('keydown', function(){
+    $(this).autocomplete(SITE_URL+"/admin/platform/servicearea-auto-complete", { selectFirst:true });
+    
+  });
+});
+
+$(function(){
+	totalInvestor = totalInvestor + 1;
+  $('#investorName').live('keydown', function(){
+    $(this).autocomplete(SITE_URL+"/admin/platform/investor-auto-complete", { selectFirst:true });
+  });
+});
+
+function appendServiceAreaBox(){
+	totalServiceArea = totalServiceArea + 1;
+    var txt1 = "<li class='clearfix serviceAreaClearfix' id='"+totalServiceArea+"'><label id='serviceArea'>Location:</label><input  name='serviceAreaLocation_"+totalServiceArea+"' id='serviceAreaLocation' ></input><a href='#' class='button'  onclick='deleteServiceArea("+totalServiceArea+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1)'>Move Up</a></li>";
+    $("#serviceAreaForms").append(txt1);     // Append new elements
+};
+
+function appendInvestorBox() {
+	totalInvestor = totalInvestor + 1;
+	var txt2 ="<li class='cleafix investorClearfix' id='invId"+totalInvestor+"'><label id='investor'>Investor:</label><input type='text' name='investorName_"+totalInvestor+"' id='investorName'><label>CBURL</label><label></label><a href='#' class='button'  onclick='deleteElement("+totalInvestor+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1)'>Move Up</a></li>";
+	$("#investorForms").append(txt2);     // Append new elements
+};
+
+function deleteServiceArea(id)
+{
+	$( "#"+id ).remove(  );
+}
+
+function deleteElement(invId)
+{
+	console.log("#invId"+invId);
+	$( "#invId"+invId ).remove(  );
+}
+
+function MoveItem(item, direction) {
+
+    var counter = 0;
+    var previousItem = null;
+    var moveNextItemUp = false;
+
+    if (direction == 1) {
+        moveNextItemUp = true;
+    } else if ((direction == -1) || (moveNextItemUp == true)) {
+
+           // get the previous <li> element
+        var prev = item.previousSibling
+        while( prev && prev.nodeType != 1 && (prev = prev.previousSibling));
+
+        item.parentNode.insertBefore(item, prev);
+    }
+    previousItem = item;
+    counter = counter + 1;
+}
+
+$('[data-toggle="platformName"]').tooltip();
+$('[data-toggle="platformUrl"]').tooltip();
+$('[data-toggle="platformCategory"]').tooltip();
+$('[data-toggle="mailStreet"]').tooltip();
+$('[data-toggle="mailtCity"]').tooltip();
+$('[data-toggle="mailState"]').tooltip();
+$('[data-toggle="mailZip"]').tooltip();
+$('[data-toggle="phone"]').tooltip();
+$('[data-toggle="hqCity"]').tooltip();
+$('[data-toggle="fundsRaised"]').tooltip();
+$('[data-toggle="ceoName"]').tooltip();
+$('[data-toggle="ceoEmail"]').tooltip();
+$('[data-toggle="bizDevName"]').tooltip();
+$('[data-toggle="bizDevEmail"]').tooltip();
+$('[data-toggle="twitter"]').tooltip();
+$('[data-toggle="fb"]').tooltip();
+$('[data-toggle="linkedIn"]').tooltip();
+$('[data-toggle="blog"]').tooltip();
+$('[data-toggle="crunchbase"]').tooltip();
+$('[data-toggle="crunchbaseCategory"]').tooltip();
+$('[data-toggle="singUpURL"]').tooltip();
+

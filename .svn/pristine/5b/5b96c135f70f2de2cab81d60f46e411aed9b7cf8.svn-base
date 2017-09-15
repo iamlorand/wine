@@ -1,0 +1,345 @@
+<?php
+error_reporting(E_ERROR | E_PARSE);
+class LinkedinController extends SocialBase
+{
+
+	public function login($configArray)
+	{
+		$session = Zend_Registry::get('session');
+		$config['base_url'] = $configArray['linkedin']['base_URL'];
+		$config['callback_url'] = $configArray['linkedin']['redirect_URI'];
+		$config['linkedin_access'] = $configArray['linkedin']['key'];
+		$config['linkedin_secret'] = $configArray['linkedin']['secret'];
+		
+		// First step is to initialize with your consumer key and secret. We'll use an out-of-band oauth_callback
+		$linkedin = new LinkedIn($config['linkedin_access'], $config['linkedin_secret'], $config['callback_url']);
+
+		header('Location: '.$this->registry->configuration->website->params->url);
+		if(isset($_REQUEST['oauth_verifier']))
+		{
+				$_SESSION['oauth_verifier'] = $_REQUEST['oauth_verifier'];
+				$linkedin->request_token = unserialize($_SESSION['requestToken']);
+				$linkedin->oauth_verifier = $_SESSION['oauth_verifier'];
+				$linkedin->getAccessToken($_REQUEST['oauth_verifier']);
+				$_SESSION['oauth_access_token'] = serialize($linkedin->access_token);
+				$_SESSION['oauth_acces_token_expire_in'] = $linkedin->acces_token_expire_in;
+				
+				parent::setClient($linkedin);
+				unset($session->linkedin_flag);
+		}
+		else
+		{
+			if(! parent::getIsLoggedIn())
+			{
+				if (isset($session->linkedin_flag))
+				{
+					unset($session->linkedin_flag);
+					unset($session->socialNetwork);
+					header('Location: '.$this->registry->configuration->website->params->url . '/user/register-first-step');
+					exit;
+				}
+				$linkedin->debug = true;
+				$linkedin->getRequestToken();
+				$_SESSION['requestToken'] = serialize($linkedin->request_token);
+				$session->linkedin_flag = 1;
+				$this->redirect($linkedin->generateAuthorizeUrl());
+				exit;
+			}
+			else
+			{
+				$linkedin->request_token = unserialize($_SESSION['requestToken']);
+				$linkedin->oauth_verifier = $_SESSION['oauth_verifier'];
+				$linkedin->access_token = unserialize($_SESSION['oauth_access_token']);
+			}
+		}
+	}
+
+	public function _getData()
+	{
+		$linkedin = parent::getClient();
+		
+		$response = $linkedin->getProfile(
+								"~:(id,first-name,last-name,formatted-name,headline,location,industry,num-connections,num-connections-capped,summary,skills,positions,picture-url,picture-urls::(original),site-standard-profile-request,api-standard-profile-request,public-profile-url,email-address)");
+		$data_response = simplexml_load_string($response);
+		$data_array = $this->objectToArray($data_response);
+		
+		$data = $this->getLinkedinData($data_array);
+		
+		return $this->setData($data);
+	}
+
+	private function getLinkedinData($data_array)
+	{
+		$array_keys = array('id', 'first-name', 'last-name', 'formatted-name',
+						'email-address', 'headline', 'location', 'industry', 'num-connections',
+						'num-connections-capped', 'summary', 'picture-url', 
+						'picture-urls', 'site-standard-profile-request',
+						'api-standard-profile-request', 'public-profile-url',
+						'positions'
+		);
+	
+		$values = array();
+	
+		foreach ($array_keys as $key)
+		{
+			if (isset($key)){
+				if($key == 'location')
+				{
+					$values['user_details']['location-name'] = $data_array[$key]['name'];
+					$values['user_details']['location-country-code'] = $data_array[$key]['country']['code'];
+				}
+				elseif($key == 'picture-urls')
+				{
+					$values['user_details']['picture-url-original'] = $data_array[$key]['picture-url'];
+				}
+				elseif ($key == 'site-standard-profile-request' || $key == 'api-standard-profile-request')
+				{
+					$values['user_details'][$key] = $data_array[$key]['url'];
+				}
+				elseif ($key == 'num-connections-capped')
+				{
+		    		$values['user_details']['num-connections-capped'] == 'true' ? $values['user_details']['num-connections-capped'] = '1' : $values['user_details']['num-connections-capped'] = '0';
+				}
+				elseif ($key == 'positions')
+				{
+					if (array_key_exists('position', $data_array[$key]))
+					{
+						$values[$key] = $this->getPositions($data_array[$key]);
+						$values['companies'] = $this->getCompanies($data_array[$key]);
+					}
+				}
+				else 
+				{
+					$values['user_details'][$key] = $data_array[$key];
+				}
+			}
+		}
+	
+			return $values;
+	}
+
+	private function setData($data)
+	{
+		$keys = array('user_details', 'positions', 'companies');
+		
+		foreach ($keys as $key)
+		{
+			if($key == 'user_details')
+			{
+				$data[$key] = array(
+								'linkedinId' => $data[$key]['id'],
+								'firstName' => $data[$key]['first-name'],
+								'lastName' => $data[$key]['last-name'],
+								'formattedName' => $data[$key]['formatted-name'],
+								'email' => $data[$key]['email-address'],
+								'headline' => $data[$key]['headline'],
+								'locationName' => $data[$key]['location-name'],
+								'locationCountryCode' => $data[$key]['location-country-code'],
+								'industry' => $data[$key]['industry'],
+								'numberOfConnections' => $data[$key]['num-connections'],
+								'numberOfConnectionsCapped' => $data[$key]['num-connections-capped'],
+								'publicProfileUrl' => $data[$key]['public-profile-url'],
+								'summary' => $data[$key]['summary'],
+								'pictureUrl' => $data[$key]['picture-url'],
+								'pictureUrlOriginal' => $data[$key]['picture-url-original'],
+								'profileUrlRequest' => $data[$key]['site-standard-profile-request'],
+								'apiUrlRequest' => $data[$key]['api-standard-profile-request']
+				);
+			}
+			
+			if ($key == 'positions')
+			{
+				foreach ($data[$key] as &$position)
+				{
+					$position = array(
+									'positionId' => $position['id'],
+									'companyId' => $position['company-id'],
+									'title' => $position['title'],
+									'summary' => $position['summary'],
+									'startDate' => $position['start-date'],
+									'endDate' => $position['end-date'],
+									'isCurrent' => $position['is-current'],
+					);
+				}
+				unset($position);
+				
+			}
+			
+			if ($key == 'companies')
+			{
+				foreach ($data[$key] as &$company)
+				{
+					$company = array(
+								'companyId' => $company['id'],
+								'name' => $company['name'],
+								'size' => $company['size'],
+								'type' => $company['type'],
+								'industry' => $company['industry'],
+					);
+				}
+				unset($company);
+			}
+		}
+		
+		return $data;
+	}
+	
+	
+	private function getPositions($data_array) 
+	{
+		$position_keys = array('id', 'company', 'title', 'summary', 'start-date',
+						'end-date', 'is-current');
+		
+		$data = $data_array['position'];
+		
+		$values = array();
+		$position_data = array();
+		
+		if ($data_array["@attributes"]['total'] > 1)
+		{
+			foreach ($data as $position)
+			{
+				foreach ($position_keys as $key)
+				{
+					if ($key == 'start-date' || $key == 'end-date')
+					{
+						if(array_key_exists('year', $position[$key]) && array_key_exists('month', $position[$key]))
+						{
+							$position_data[$key] = $position[$key]['month'] . '/' . $position[$key]['year'];
+						}
+						else
+						{
+							$position_data[$key] = $position[$key]['year'];
+						}
+					}
+					elseif ($key == 'company')
+					{
+						$position_data['company-id'] = $position[$key]['id'];
+					}
+					elseif ($key == 'is-current')
+					{
+						$position['is-current'] == true ? $position_data['is-current'] = '1' : $position_data['is-current'] = '0';
+					}
+					else
+					{
+						$position_data[$key] = $position[$key];
+					}
+				}
+				array_push($values, $position_data);
+			}
+		}
+		else
+		{
+			foreach ($position_keys as $key)
+			{
+				if ($key == 'start-date' || $key == 'end-date')
+				{
+					if(array_key_exists('year', $data[$key]) && array_key_exists('month', $data[$key]))
+					{
+						$position_data[$key] = $data[$key]['month'] . '/' . $data[$key]['year'];
+					}
+					else
+					{
+						$position_data[$key] = $data[$key]['year'];
+					}
+				}
+				elseif ($key == 'company')
+				{
+					$position_data['company-id'] = $data[$key]['id'];
+				}
+				elseif ($key == 'is-current')
+				{
+					$data['is-current'] == true ? $position_data['is-current'] = '1' : $position_data['is-current'] = '0';
+				}
+				else
+				{
+					$position_data[$key] = $data[$key];
+				}
+			}
+			array_push($values, $position_data);
+		}
+		
+		return $values;
+	}
+	
+	private function getCompanies($data_array)
+	{
+		$companies_keys = array('id', 'name', 'size', 'type', 'industry');
+		
+		$data = $data_array['position'];
+		
+		$values = array();
+		$company_data = array();
+		if ($data_array["@attributes"]['total'] > 1)
+		{
+			foreach ($data as $position)
+			{
+				if (array_key_exists('company', $position))
+				{
+					foreach ($companies_keys as $key)
+					{
+						$company_data[$key] = $position['company'][$key];
+					}
+				}
+					
+				array_push($values, $company_data);
+					
+			}
+		}
+		else
+		{
+			if (array_key_exists('company', $data))
+			{
+				foreach ($companies_keys as $key)
+				{
+					$company_data[$key] = $data['company'][$key];
+				}
+			}
+				
+			array_push($values, $company_data);
+		}
+		
+		return $values;
+	}
+	
+	public function logout()
+	{
+	}
+	
+	private function getArrayData($values, $name = '')
+	{
+		$arrayValue = array();
+		foreach($values as $key => $value)
+		{
+			if(is_array($value))
+			{
+				$arrayValue = array_merge($arrayValue, $this->getArrayData($value, $key));
+			}
+			else 
+			{
+				if($name != '')
+				{
+					$arrayValue[$name . '-' . $key] = $value;
+				}
+				else 
+				{
+					$arrayValue[$key] = $value;
+				}
+			}
+		}
+		
+		return $arrayValue;
+	}
+	
+	private function objectToArray($obj) {
+		if(is_object($obj)) $obj = (array) $obj;
+		if(is_array($obj)) {
+			$new = array();
+			foreach($obj as $key => $val) {
+				$new[$key] = $this->objectToArray($val);
+			}
+		}
+		else $new = $obj;
+		return $new;
+	}
+}

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+	<dots>
+		<variable option="global">
+		</variable>
+		<variable option="admin">
+			<pageTitle>
+				<action>
+					<export-xml>Export XML</export-xml>
+					<user-info-export>Export User Info</user-info-export>
+					<export-subid>Export Affiliate Sub Id Info</export-subid>
+					<export-step1>Export Users Registration Step 1</export-step1>
+					<export-step2>Export Users Registration Step 2</export-step2>
+					<export-stats>Export stats by subId</export-stats>
+					<export-clicks>Export Clicks</export-clicks>
+					<export-email>Export Email Tld</export-email>
+					<export-category>Export Category Data</export-category>
+					<export-zero-clicks-subids>Export SubId Clicks</export-zero-clicks-subids>
+					<export-regtype-category>Export Regtype Category</export-regtype-category>
+					<export-browser-type>Export BrowserType</export-browser-type>
+					<export-android-ios-type>Export Android-Ios Type</export-android-ios-type>
+					<export-50q-survey>Export Survey Data for 50 Questions</export-50q-survey>
+					<export-subid-stats-per-visit>Export SubId Stats per Visit</export-subid-stats-per-visit>
+				</action>
+			</pageTitle>
+			<errorMessage>		
+			</errorMessage>
+			<infoMessage>
+			</infoMessage>
+			<warningMessage>
+			</warningMessage>
+			<validate>
+			</validate>					
+		</variable>
+		<variable option="frontend">
+		</variable>		
+	</dots>
+</config>

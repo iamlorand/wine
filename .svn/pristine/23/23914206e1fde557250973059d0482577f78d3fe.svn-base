@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menus>
+	<config>
+		<menu>
+			<id>1</id>
+			<type>horizontal</type>
+			<display>1</display>
+			<item>
+				<title>Dashboard</title>
+				<link>system/dashboard/</link>
+				<description>Dashboard admin</description>
+				<subItems>
+					<subItem>
+						<title>Home</title>
+						<link>system/dashboard/</link>
+						<description>Dashboard admin</description>
+						<highlight>
+							<link>system/phpinfo/</link>
+						</highlight>
+					</subItem>
+					<subItem>
+						<title>Settings</title>
+						<link>system/settings/</link>
+						<description>Admin settings</description>
+					</subItem>
+					<subItem>
+						<title>APC Info</title>
+						<link>system/apc-info/</link>
+						<description>APC Control Panel</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>Admin</title>
+				<link>admin/list/</link>
+				<description>Admin user details</description>
+				<subItems>
+					<subItem>
+						<title>List</title>
+						<link>admin/list/</link>
+						<description>List admin users</description>
+						<highlight>
+							<link>admin/update/</link>
+							<link>admin/delete/</link>
+						</highlight>
+					</subItem>
+					<subItem>
+						<title>Add new</title>
+						<link>admin/add/</link>
+						<description>Add admin user</description>
+					</subItem>
+					<subItem>
+						<title>My Account</title>
+						<link>admin/account/</link>
+						<description>Admin user account</description>
+					</subItem>
+					<subItem>
+						<title>Logins</title>
+						<link>admin/logins/</link>
+						<description>Admin logins</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>User</title>
+				<link>user/list/</link>
+				<description>User details</description>
+				<subItems>
+					<subItem>
+						<title>List</title>
+						<link>user/list/</link>
+						<description>List admin users</description>
+						<highlight>
+							<link>user/update/</link>
+							<link>user/delete/</link>
+						</highlight>
+					</subItem>
+					<subItem>
+						<title>List Step 1</title>
+						<link>user/list-step1/</link>
+						<description>Step 1 Users</description>
+					</subItem>
+					<subItem>
+						<title>Add new</title>
+						<link>user/add/</link>
+						<description>Add admin user</description>
+					</subItem>
+					<subItem>
+						<title>Logins</title>
+						<link>user/logins/</link>
+						<description>User logins</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>Platform</title>
+				<link>platform/list</link>
+				<description>Platform</description>
+				<subItems>
+					<subItem>
+						<title>List Platforms</title>
+						<link>platform/list</link>
+						<description>List platforms</description>
+					</subItem>
+					<!-- <subItem> <title>Add Platform</title> <link>platform/add</link> 
+						<description>Add Platform</description> </subItem> -->
+					<subItem>
+						<title>List Categories</title>
+						<link>platform-category/list</link>
+						<description>List categories</description>
+					</subItem>
+					<subItem>
+						<title>Add Category</title>
+						<link>platform-category/add</link>
+						<description>Add Category</description>
+					</subItem>
+					<subItem>
+						<title>Add Platform Zip</title>
+						<link>platform/add-zip</link>
+						<description>Add Platform Zip</description>
+					</subItem>
+					<!-- <subItem> <title>List Platform Zip</title> <link>platform/list-zip</link> 
+						<description>Add Platform Zip</description> </subItem> -->
+					<subItem>
+						<title>Add Investor</title>
+						<link>platform/add-investor</link>
+						<description>Add Investor</description>
+					</subItem>
+					<subItem>
+						<title>List Investor</title>
+						<link>platform/list-investor</link>
+						<description>List Investor</description>
+					</subItem>
+					<subItem>
+						<title>Add User</title>
+						<link>platform/add-user</link>
+						<description>Add User</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>Blog</title>
+				<link>article/blog/</link>
+				<description>Blog admin</description>
+				<subItems>
+					<subItem>
+						<title>List Articles</title>
+						<link>article/list/</link>
+						<description>Admin Article List</description>
+					</subItem>
+					<subItem>
+						<title>Add Article</title>
+						<link>article/add/</link>
+						<description>Admin Add Article</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>Affiliate</title>
+				<link>affiliate/list</link>
+				<description>Affiliate admin</description>
+				<subItems>
+				<!-- 
+					<subItem>
+						<title>List Affiliate</title>
+						<link>affiliate/list/</link>
+						<description>Admin Affiliate List</description>
+					</subItem>
+					<subItem>
+						<title>Add Affiliate</title>
+						<link>affiliate/new/</link>
+						<description>Admin Add Affiliate</description>
+					</subItem>
+				 -->
+					<subItem>
+						<title>List Sub Id</title>
+						<link>affiliate/list-sub-id</link>
+						<description>Admin Affiliate Sub Id's List</description>
+					</subItem>
+					<subItem>
+						<title>List Sub Id Stats</title>
+						<link>affiliate/list-platform-stats</link>
+						<description>Admin Affiliate Sub Id's Platform Stats</description>
+					</subItem>
+					<!-- <subItem> <title>Import Cost</title> <link>affiliate/import</link> 
+						<description>Import file</description> </subItem> -->
+					<subItem>
+						<title>Update/Import</title>
+						<link>affiliate/update-csv</link>
+						<description>Update/Import Affiliates</description>
+					</subItem>
+					<subItem>
+						<title>SubIds Logs</title>
+						<link>affiliate/subids-logs</link>
+						<description>Update/Import Affiliates</description>
+					</subItem>
+					<subItem>
+						<title>Wistia Apply</title>
+						<link>affiliate/wistia-apply-for-job</link>
+						<description>Wistia apply users</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>Export</title>
+				<link>export/export-xml</link>
+				<description>Export admin</description>
+				<subItems>
+					<subItem>
+						<title>Export XML</title>
+						<link>export/export-xml/</link>
+						<description>Admin Export XML</description>
+					</subItem>
+					<subItem>
+						<title>User Info Export</title>
+						<link>export/user-info-export/</link>
+						<description>Export user info</description>
+					</subItem>
+					<!-- <subItem>
+						<title>Export SubId</title>
+						<link>export/export-subid/</link>
+						<description>Admin Export XML</description>
+					</subItem> -->
+					<subItem>
+						<title>Export Step1</title>
+						<link>export/export-step1/</link>
+						<description>Admin step1</description>
+					</subItem>
+					<subItem>
+						<title>Export Step2</title>
+						<link>export/export-step2/</link>
+						<description>Admin step2</description>
+					</subItem>
+					<subItem>
+						<title>Export Stats</title>
+						<link>export/export-stats/</link>
+						<description>Admin stats</description>
+					</subItem>
+					<subItem>
+						<title>Export SubId Stats</title>
+						<link>export/export-subid-stats/</link>
+						<description>Test stats</description>
+					</subItem>
+					<subItem>
+						<title>Export Clicks</title>
+						<link>export/export-clicks/</link>
+						<description>Export clicks</description>
+					</subItem>
+					<subItem>
+						<title>Export Email tld</title>
+						<link>export/export-email/</link>
+						<description>Admin email</description>
+					</subItem>
+					<subItem>
+						<title>Export cat/city data</title>
+						<link>export/export-category/</link>
+						<description>Export data for each city by category</description>
+					</subItem>
+					<subItem>
+						<title>Export SubIds 0 Clicks</title>
+						<link>export/export-zero-clicks-subids/</link>
+						<description>Export Zero Clicks SubIds</description>
+					</subItem>
+					<subItem>
+						<title>Export Reg Type / Cat</title>
+						<link>export/export-regtype-category/</link>
+						<description>Export Registration Type Per Category</description>
+					</subItem>
+					<subItem>
+						<title>Export Cost/Platform</title>
+						<link>export/export-cost-per-platform/</link>
+						<description>Export Cost Per Platform Per Day</description>
+					</subItem>
+					<subItem>
+						<title>Export Browser/Type</title>
+						<link>export/export-browser-type/</link>
+						<description>Export Browser Type Percentage</description>
+					</subItem>
+					<subItem>
+						<title>Export Android/Ios</title>
+						<link>export/export-android-ios-type/</link>
+						<description>Export Android/Ios Type Percentage</description>
+					</subItem>
+					<subItem>
+						<title>Export Answers SubId</title>
+						<link>export/export-subids-answers/</link>
+						<description>Export SubIds Answers</description>
+					</subItem>
+					<subItem>
+						<title>Export Questions</title>
+						<link>export/export-category-questions/</link>
+						<description>Export Questions by category</description>
+					</subItem>
+					<subItem>
+						<title>Export Browsers</title>
+						<link>export/export-browsers/</link>
+						<description>Export Browsers</description>
+					</subItem>
+					<subItem>
+						<title>Export To Email</title>
+						<link>export/export-reg-email/</link>
+						<description>Export Reg1/Reg2 to email</description>
+					</subItem>
+					<subItem>
+						<title>export all userAgents</title>
+						<link>export/export-all-user-agents/</link>
+						<description>Export userAgents</description>
+					</subItem>
+					<subItem>
+						<title>Export Step3 Stats</title>
+						<link>export/export-step3-url-stats/</link>
+						<description>Export Step3 Urls Stats</description>
+					</subItem>
+					<subItem>
+						<title>Export 50Q Survey</title>
+						<link>export/export-50q-survey/</link>
+						<description>Export Survey Data for 50 Questions</description>
+					</subItem>
+					<subItem>
+						<title>Export Stats per Visit</title>
+						<link>export/export-subid-stats-per-visit/</link>
+						<description>Export SubId Stats per Visit</description>
+					</subItem>
+					<subItem>
+						<title>Export Cleaning</title>
+						<link>export/export-cleaning-assessment/</link>
+						<description>Export Cleaning Assessment</description>
+					</subItem>
+					<subItem>
+						<title>Exp Cleaning Apply</title>
+						<link>export/export-wistia-apply/</link>
+						<description>Export Cleaning Appliances</description>
+					</subItem>
+				</subItems>
+			</item>
+			<item>
+				<title>Survey</title>
+				<link>survey/list/</link>
+				<description>Survey</description>
+				<subItems>
+					<subItem>
+						<title>List</title>
+						<link>survey/list/</link>
+						<description>List survey</description>
+					</subItem>
+					<subItem>
+						<title>Add</title>
+						<link>survey/</link>
+						<description>Add survey</description>
+					</subItem>
+				</subItems>
+			</item>
+		</menu>
+	</config>
+</menus>

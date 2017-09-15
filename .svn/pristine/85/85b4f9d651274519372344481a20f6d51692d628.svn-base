@@ -1,0 +1,86 @@
+<form action="{SITE_URL}/admin/platform/{BUTTON_TYPE}-zip/id/{PLATFORMLOCATIONID}" method="post" >
+	<div class="box-shadow" style="width: 500px">
+		<div class="box_header">
+			Add New Category
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Platform</label>
+				<select id="platform_select" name="platformId">
+						<!-- BEGIN allplatforms -->
+							<option value="{PLATFORM_ID}" {SELECTED_PLATFORM}>{PLATFORM}</option>
+						<!-- END allplatforms -->
+				</select>
+			</li>
+			<li class="clearfix">
+				<label>ZIP Code</label>
+				<input type="number" name="zipCode" maxlength="5" value="{ZIPCODE}">
+				<input type="hidden" name="platformLocationId"  value="{PLATFORMLOCATIONID}">
+			</li>
+			<li class="clearfix">
+				<label>City</label>
+				<input type="text" name="city" value="{CITY}">
+			</li>
+			<li class="clearfix">
+				<label>State</label>
+				<select name="state">
+	<option value="AL" {AL_SELECTED}>Alabama</option>
+	<option value="AK" {AK_SELECTED}>Alaska</option>
+	<option value="AZ" {AZ_SELECTED}>Arizona</option>
+	<option value="AR" {AR_SELECTED}>Arkansas</option>
+	<option value="CA" {CA_SELECTED}>California</option>
+	<option value="CO" {CO_SELECTED}>Colorado</option>
+	<option value="CT" {CT_SELECTED}>Connecticut</option>
+	<option value="DE" {DE_SELECTED}>Delaware</option>
+	<option value="DC" {DC_SELECTED}>District Of Columbia</option>
+	<option value="FL" {FL_SELECTED}>Florida</option>
+	<option value="GA" {GA_SELECTED}>Georgia</option>
+	<option value="HI" {HI_SELECTED}>Hawaii</option>
+	<option value="ID" {ID_SELECTED}>Idaho</option>
+	<option value="IL" {IL_SELECTED}>Illinois</option>
+	<option value="IN" {IN_SELECTED}>Indiana</option>
+	<option value="IA" {IA_SELECTED}>Iowa</option>
+	<option value="KS" {KS_SELECTED}>Kansas</option>
+	<option value="KY" {KY_SELECTED}>Kentucky</option>
+	<option value="LA" {LA_SELECTED}>Louisiana</option>
+	<option value="ME" {ME_SELECTED}>Maine</option>
+	<option value="MD" {MD_SELECTED}>Maryland</option>
+	<option value="MA" {MA_SELECTED}>Massachusetts</option>
+	<option value="MI" {MI_SELECTED}>Michigan</option>
+	<option value="MN" {MN_SELECTED}>Minnesota</option>
+	<option value="MS" {MS_SELECTED}>Mississippi</option>
+	<option value="MO" {MO_SELECTED}>Missouri</option>
+	<option value="MT" {MT_SELECTED}>Montana</option>
+	<option value="NE" {NE_SELECTED}>Nebraska</option>
+	<option value="NV" {NV_SELECTED}>Nevada</option>
+	<option value="NH" {NH_SELECTED}>New Hampshire</option>
+	<option value="NJ" {NJ_SELECTED}>New Jersey</option>
+	<option value="NM" {NM_SELECTED}>New Mexico</option>
+	<option value="NY" {NY_SELECTED}>New York</option>
+	<option value="NC" {NC_SELECTED}>North Carolina</option>
+	<option value="ND" {ND_SELECTED}>North Dakota</option>
+	<option value="OH" {OH_SELECTED}>Ohio</option>
+	<option value="OK" {OK_SELECTED}>Oklahoma</option>
+	<option value="OR" {OR_SELECTED}>Oregon</option>
+	<option value="PA" {PA_SELECTED}>Pennsylvania</option>
+	<option value="RI" {RI_SELECTED}>Rhode Island</option>
+	<option value="SC" {SC_SELECTED}>South Carolina</option>
+	<option value="SD" {SD_SELECTED}>South Dakota</option>
+	<option value="TN" {TN_SELECTED}>Tennessee</option>
+	<option value="TX" {TX_SELECTED}>Texas</option>
+	<option value="UT" {UT_SELECTED}>Utah</option>
+	<option value="VT" {VT_SELECTED}>Vermont</option>
+	<option value="VA" {VA_SELECTED}>Virginia</option>
+	<option value="WA" {WA_SELECTED}>Washington</option>
+	<option value="WV" {WV_SELECTED}>West Virginia</option>
+	<option value="WI" {WI_SELECTED}>Wisconsin</option>
+	<option value="WY" {WY_SELECTED}>Wyoming</option>
+</select>
+			</li>
+			<li class="clearfix">
+				<label>&nbsp;</label>
+				<input type="submit" class="button" value="{BUTTON_TYPE}">
+			</li>
+		</ul>
+	</div>
+</form>

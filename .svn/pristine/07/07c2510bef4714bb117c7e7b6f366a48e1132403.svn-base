@@ -1,0 +1,5 @@
+<?php
+interface frontend_ControllerInterface
+{
+	public function doIt();
+}

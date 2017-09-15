@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+			<defaultPageTitle>MicroRecruiting</defaultPageTitle>
+			<defaultMetaDescription>MicroRecruiting - Blog</defaultMetaDescription>
+			<defaultMetaKeywords>MicroRecruiting, blog</defaultMetaKeywords>
+			<siteName>MicroRecruiting</siteName>
+		</variable>
+		<variable option="admin">
+		</variable>
+		<variable option="frontend">
+			<canonicalUrl></canonicalUrl>
+		</variable>	
+		<variable option="mobile">
+		</variable>	
+	</dots>
+</config>

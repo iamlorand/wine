@@ -1,0 +1,30 @@
+<div>
+	<div id="adminList" class="box-shadow">
+		<table class="big_table" frame="box" rules="all">
+			<thead>
+				<tr>
+					<th>Platform</th>
+					<th>Visits</th>
+					<th>Unique Visits</th>
+					<th>CPA</th>
+					<th>CPC</th>
+					<th>Reg 1</th>
+					<th>Reg 2</th>
+				</tr>
+			</thead>
+			<tbody>
+			<!-- BEGIN platform_list -->
+				<tr class="row{ROW}">
+					<td>{PLATFORM_NAME}</td>
+					<td>{PLATFORM_VISITS}</td>
+					<td>{PLATFORM_UNIQUE_VISITS}</td>
+					<td>{PLATFORM_CPA}</td>
+					<td>{PLATFORM_CPC}</td>
+					<td>{PLATFORM_REG1}</td>
+					<td>{PLATFORM_REG2}</td>
+				</tr>
+			<!-- END platform_list -->	
+			</tbody>
+		</table>
+	</div>
+</div>

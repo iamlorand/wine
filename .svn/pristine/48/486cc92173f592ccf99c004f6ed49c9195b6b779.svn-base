@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+		</variable>
+		<variable option="admin">
+		</variable>
+		<variable option="frontend">
+			<pageTitle>
+				<action>
+					<home>Home Page</home>
+					<about>About Us</about>
+					<terms>Terms and Conditions</terms>
+					<privacy>Privacy Policy</privacy>
+					<contact>Contact</contact>
+				</action>
+			</pageTitle>
+		</variable>
+		<variable option="mobile">
+			<pageTitle>
+				<action>
+					<home>Mobile Version</home>
+				</action>
+			</pageTitle>
+			<validate>
+				<details>
+					<lengthMin>3</lengthMin>
+				</details>
+			</validate>	
+			<contactForm>
+				<subject>Mobile Contact Form</subject>
+				<message>
+From: %EMAIL%
+Phone: %PHONE%
+
+%MESSAGE%
+
+---
+Date: %DATE%
+IP: %IP%
+User Agent: %USERAGENT%
+				</message>
+				<mailSent>Your message was sent!</mailSent>
+			</contactForm>
+		</variable>			
+	</dots>
+</config>

@@ -1,0 +1,198 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @package    Admin
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: AdminController.php 2 2015-05-26 11:01:32Z andreic $
+*/
+
+/**
+* Affiliate Controller
+* @author     Gellert
+*/
+
+class admin_ArticleController extends admin_BaseController
+{
+	
+	private $articleView;
+	private $articleModel;
+	
+	
+	public function doIt()
+	{
+		$this->articleView = new Article_View($this->tpl);
+		$this->articleModel = new Article();
+		// switch based on the action, NO default action here
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		switch ($this->registry->requestAction)
+		{
+			case 'list':
+				$this->listArticle();
+			break;
+			case 'add':
+				$this->addArticle();
+			break;
+			case 'update':
+				$this->updateArticle();
+			break;
+			case 'delete':
+				$this->deleteArticle();
+			break;
+		
+			case 'activate':
+				$this->activateArticle();
+			break;
+		}
+	}
+
+	private function listArticle()
+	{
+		//save the fillter options
+		$filterData = [];
+		//display articles and filter them
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$filters = [];
+
+		//verify if the first ID is bigger than 0 and show all the possible ids that are bigger than idFirst
+		if(isset($this->registry->request['idFirst']) && !empty(isset($this->registry->request['idFirst'])) )
+		{
+			$idFirst = $this->registry->request['idFirst'];
+			if(is_numeric( $idFirst ) && $idFirst > 0)
+			{
+				$filterData['idFirst'] = $idFirst;
+				$filters[] = ['field'=>'id', 'operator'=>'>=', 'value' => $idFirst ];
+			}
+		}
+
+		//verify if the last ID is bigger than 0 and show all the possible ids that are smaller than idFirst
+		if(isset($this->registry->request['idLast']) && !empty(isset($this->registry->request['idLast'])) )
+		{
+			$idLast = $this->registry->request['idLast'];
+			if(is_numeric( $idLast ) && $idLast > 0)
+			{
+				$filterData['idLast'] = $idLast;
+				$filters[] = ['field'=>'id', 'operator'=>'<=', 'value' => $idLast ];
+			}
+		}
+
+		if(isset($this->registry->request['nameSearch']) && !empty(isset($this->registry->request['nameSearch'])) )
+		{
+			$name = $rthis->egistry->request['nameSearch'];
+			$filterData['nameSearch'] = $name;
+			//verify if the name has spaces or underscor and give all the names hat contain what the users put in
+			$name = str_replace(['_'.' '], '%', $name);
+
+			$filters[] = ['field'=>'name', 'operator'=>'LIKE', 'value' => '%'.$name.'%' ];
+		}
+
+		 $data = $this->articleModel->getArticleByFilter($page, $filters);
+		 $this->articleView->listArticleFilter('filter-articles', $data, $filterData, $page);
+	}
+
+	private function addArticle()
+	{
+		$data=['title'=>'', 'content'=>'','isActive'=>'','dateCreated'=>''];
+				
+				//verify if you have something in  $data before you submit
+				if($_SERVER['REQUEST_METHOD'] === "POST")
+				{   
+
+					$data=$_POST;
+					unset($data['userToken']);
+				
+				    if(!empty($data['title'])&&!empty($data['content']))
+					{
+						$data['title']=(isset($_POST['title']))?$_POST['title']:'';
+						$data['content']=(isset($_POST['content']))?$_POST['content']:'';
+						$data['isActive']=(isset($_POST['isActive']))?$_POST['isActive']:'';
+	
+							$this->articleModel->addArticleData($data);
+
+			
+							$this->registry->session->message['txt']= $this->option->infoMessage->articleAdd;
+							$this->registry->session->message['type']='info';
+					
+							header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+					exit;
+					}
+				}
+				$this->articleView->addArticleData('add', $data);
+	}
+
+
+	private function updateArticle()
+	{
+		$data=['title'=>'', 'content'=>'','isActive'=>''];
+				
+				$id = isset($this->registry->request['id'])?$this->registry->request['id']:'';
+				$data = $this->articleModel->getArticleById($id);
+
+
+				$data['id']=$id;
+				if(!empty($_POST))
+				{
+					$data['title']=(isset($_POST['title']))?$_POST['title']:'';
+					$data['content']=(isset($_POST['content']))?$_POST['content']:'';
+					$data['isActive']=(isset($_POST['isActive']))?$_POST['isActive']:'';
+
+				
+						$this->articleModel->updateArticle($id, $data);
+						$this->registry->session->message['txt']= $this->option->infoMessage->articleUpdate;
+						$this->registry->session->message['type']='info';
+						header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+					exit;
+				}
+				$this->articleView->updateArticle('update', $data);;
+	}
+
+	private function deleteArticle()
+	{
+		$id = isset($this->registry->request['id'])?$this->registry->request['id']:'';
+		$data = $this->articleModel->getArticleById($id);
+		
+		
+		if(isset($_POST['confirm']))
+		{
+			if($_POST['confirm'] == "on")
+			{
+				$this->articleModel->deleteArticle($id);
+				$this->registry->session->message['txt']= $this->option->infoMessage->articleDelete;
+				$this->registry->session->message['type']='info';
+		
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+					exit;
+			}
+			else
+			{
+		
+				$error[] = $this->option->errorMessage->articleDelete;
+				$this->registry->session->message['txt']= $error;
+				$this->registry->session->message['type']='error';
+		
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+					exit;
+			}
+		}
+		$this->articleView->deleteArticle('delete', $data);
+	}
+	
+	private function activateArticle()
+	{
+		// activate/deactivate Products
+		// this action is called via Ajax
+		
+		$id = (isset($_POST['id'])) ? (int)$_POST['id'] : 0;
+		$isActive = $articleModel->activateArticle($id);
+		$result = array(
+				"success" => true,
+				"id" => $id,
+				"isActive" => $isActive
+			);
+		echo Zend_Json::encode($result);
+		exit;
+	}
+}

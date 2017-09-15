@@ -1,0 +1,63 @@
+<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="{SITE_URL}/templates/js/admin/datePicker.js"></script>
+
+<table style="width: 1000px">
+<tr>
+	<!--  <td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				Export Questions by Main Category
+			</div>
+			<form name="form" action="" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+					<td>Export Questions with Answers by main categories</td>
+					<td>
+						<input type="submit" value="Export" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+	</td>-->
+	<td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				Export Questions by Orphan Categories
+			</div>
+			<form name="form" action="{SITE_URL}/admin/export/export-category-questions-csv" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+					<td>Export Questions with Answers by orphan categories</td>
+					<td>
+						<input type="text" name="category" value="orphan" hidden>
+						<input type="submit" value="Export" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+		
+		<br><br>
+		
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				Export Questions for 4 Main Categories
+			</div>
+			<form name="form" action="{SITE_URL}/admin/export/export-category-questions-csv" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+					<td>Export Questions with Answers for 4 Main Categories</td>
+					<td>
+						<input type="text" name="category" value="main" hidden>
+						<input type="submit" value="Export" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+	</td>
+</tr>
+</table>

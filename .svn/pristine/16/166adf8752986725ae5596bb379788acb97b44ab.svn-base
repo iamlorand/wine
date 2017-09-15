@@ -1,0 +1,108 @@
+<link rel="stylesheet" href ="{TEMPLATES_URL}/css/admin/tablesorter/tablesorter.css" type="text/css" >
+<script src="{SITE_URL}/templates/js/admin/tablesorter/jquery-latest.js"></script>
+<script src="{SITE_URL}/templates/js/admin/tablesorter/jquery.tablesorter.js"></script>
+<script src="{SITE_URL}/templates/js/admin/tablesorter/tablesorter.js"></script>
+
+<div>
+	<div id="adminList" class="box-shadow">
+		<table class="big_table" frame="box" rules="all">
+			<thead>
+				<tr>
+					<th style="text-align: center; width: 20px;">#</th>
+					<th>Platform</th>
+					<th>City-State</th>
+					<th>Category</th>
+					<th>Job Type</th>
+					<th>Title</th>
+					<th>Description</th>
+		
+				</tr>
+			</thead>
+			<tbody>
+				<tr class="row{ROW}">
+					<td>{ID}</td>
+					<td>{PLATFORM_NAME}</td>
+					<td>{CITY_STATE}</td>
+					<td>{CATEGORY}</td>
+					<td>{JOB_TYPE}</td>
+					<td>{TITLE}</td>
+					<td>{DESCRIPTION}</td>
+				</tr>	
+			</tbody>
+		</table>
+	</div>
+	<br/>
+	
+	<!-- BEGIN subIdsBlock -->
+	<div id="adminList" class="box-shadow">
+		<table class="big_table" frame="box" rules="all">
+			<thead>
+				<tr>
+					<th style="text-align: center; width: 20px;">SubSubId</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+				<td></td>
+				<!-- BEGIN subId_name -->
+					<td style="text-align: center; width: 20px; font-weight:bold;">{SUBID_NAME}</td>
+				<!-- END subId_name -->
+				</tr>
+				<!-- BEGIN subIdRowValue -->
+				<tr>
+				<td></td>
+				<!-- BEGIN subId_value -->
+					<td style="text-align: center; width: 20px;">{SUBID_VALUE}</td>
+				<!-- END subId_value -->
+				</tr>
+				<!-- END subIdRowValue -->
+			</tbody>
+		</table>
+	</div>
+	<!-- END subIdsBlock -->
+	
+	<br/>
+	<div>
+		<div id="adminList" class="box-shadow">
+			<table id="myTable"  class="big_table"  frame="box" rules="all">
+				<thead>
+					<tr>
+						<th>Referrer</th>
+						<th>Tracking Url</th>
+						<!-- BEGIN subIdName -->
+							<th>{SUB_ID_NAME_HEADER}</th>
+						<!-- END subIdName -->
+						<th>Visits</th>
+						<th>Unique Visits</th>
+						<th>CPC</th>
+						<th>Total Cost</th>
+						<th>CPA</th>
+						<th>Reg 1</th>
+						<th>Reg 2</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- BEGIN list_details -->
+					<tr class="row{ROW}">
+					<td>{REFERER}</td>
+						<!-- <td>{CITY_STATE}/{CATEGORY}/?id={ID}&{SUB_IDS}</td> -->
+						<!-- <td>{TRACKING_URL}</td> -->
+						<td>{SUB_IDS}</td>
+						<!-- BEGIN subIdValue -->
+							<td>{SUB_ID_VALUE}</td>
+						<!-- END subIdValue -->
+						<td>{COUNT_VISITS}</td>
+						<td>{UNIQUE_VISITS}</td>
+						<td>{CPC}</td>
+						<td>{TOTAL_COST}</td>
+						<td style = "width: 85px;">{CPA}</td>
+						<td>{COUNT_REG1}</td>
+						<td>{COUNT_REG2}</td>
+					</tr>
+					<!-- END list_details -->	
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<br/>
+</div>

@@ -1,0 +1,19 @@
+<div class="category_det">
+	<h2>Open Positions - Make Money When You Want</h2>
+	&nbsp;
+	<p>{CATEGORY_DETAILS}</p>
+	&nbsp;
+	
+
+	<p>Apply for {CATEGORY} possitions in : {URL_CITY}</p>
+
+	<!-- <form id="applyRegistration" action="{SITE_URL}/user/register" method="post" >
+			<ul class="form">
+				<li class="clearfix">
+					<label class="empty">&nbsp;</label>
+					<input type="submit" class="button" value="Apply">
+				</li>
+			</ul>
+	</form> -->
+	<a href="{SITE_URL}/user/register-first-step" class="button" style="width:200px;">APPLY NOW</a>
+</div>

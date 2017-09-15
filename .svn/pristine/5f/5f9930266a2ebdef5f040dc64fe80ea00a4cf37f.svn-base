@@ -1,0 +1,1081 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: UserView.php 981 2015-06-11 13:51:41Z gabi $
+ */
+
+/**
+ * User View Class
+ * class that prepare output related to User controller 
+ * @category   DotKernel
+ * @package    Frontend
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class User_View extends View
+{
+
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->settings = Zend_Registry::get('settings');
+		$this->session = Zend_Registry::get('session');
+		$this->registry = Zend_Registry::getInstance();
+	}
+
+	/**
+	 * Display the login form
+	 * @access public
+	 * @param string $templateFile
+	 * @return void
+	 */
+	public function loginForm($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'user/' . $templateFile . '.tpl');
+		$session = Zend_Registry::get('session');
+		if(isset($session->validData))
+		{
+			foreach ($session->validData as $k=>$v)
+			{
+				$this->tpl->setVar(strtoupper($k),$v);
+			}
+		}
+		unset($session->validData);
+	}
+
+	/**
+	 * Display the password reset form 
+	 * @access public
+	 * @param string $templateFile
+	 * @param bool $disabled
+	 * @param integer $userId
+	 * @param string $userToken
+	 * @return void
+	 */
+	public function resetPasswordForm($templateFile, $disabled = true, $userId, $userToken)
+	{
+		$this->tpl->setFile('tpl_main', 'user/' . $templateFile . '.tpl');
+		if(false == $disabled)
+		{
+			$this->tpl->setVar('USERTOKEN', $userToken);
+			$this->tpl->setVar('USERID', $userId);
+			$this->tpl->setVar('DISABLED', 'submit');
+		}
+		else 
+		{
+			$this->tpl->setVar('DISABLED', 'hidden');
+		}
+	}
+
+	/**
+	 * Display user's signup form
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data [optional]
+	 * @return void
+	 */
+	public function details($templateFile,$industryPerson, $data=array())
+	{
+		$this->tpl->setFile('tpl_main', 'user/' . $templateFile . '.tpl');
+		$this->tpl->setVar('INDUSTRY_STEP1',$industryPerson);
+
+		foreach ($data as $k=>$v)
+		{
+			$this->tpl->setVar(strtoupper($k), $v);
+		}
+		if('add' == $templateFile)
+		{
+			$this->tpl->setVar('SECUREIMAGE',$this->getRecaptcha()->getHTML());
+		}
+		if('update' == $templateFile)
+		{
+			$this->tpl->addUserToken();
+		}
+		
+		//empty because we don't want to show the password
+		$this->tpl->setVar('PASSWORD', '');
+	}
+	
+    public function showSurvey($templateFile, $survey, $displayFields, $email,$emailExists,$validatedData)
+	{
+		$this->tpl->setFile('tpl_main', 'user/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'field', 'field_block');
+		$this->tpl->setBlock('field', 'value', 'value_block');
+// 		$this->tpl->setBlock('tpl_main', 'textarea', 'textarea_block');
+		$this->tpl->setBlock('tpl_main', 'dropdown', 'dropdown_block');
+		$this->tpl->setBlock('dropdown', 'option', 'option_block');
+		$this->tpl->setBlock('tpl_main', 'instruction', 'instruction_block');
+		$this->tpl->setBlock('tpl_main', 'craiglist', 'craiglist_block');
+		$this->tpl->setBlock('tpl_main', 'boomtrain_reg1', 'boomtrain_reg1_block');
+		
+		$cityStateModel = new CityState();
+		$category = $cityStateModel->returnCategoryName($this->session->categoryData);
+		
+		if(!isset($this->session->referalId))
+		{
+			$this->tpl->setVar('INSTRUCTION', $survey['survey']['instruction']);
+			$this->tpl->setVar('INSTRUCTION_PART2', '');
+			$this->tpl->setVar('INSTRUCTION_PART3', '');
+			$this->tpl->setVar('REG_BUTTON', 'APPLY NOW');
+			$this->tpl->setVar('REGISTER_ACCES', 'register_button');
+			$this->tpl->parse('craiglist_block', '');
+			$this->tpl->parse('instruction_block', 'instruction', true);
+		}
+		else
+		{
+			$this->setInstructionsForDifferentReferals($survey);
+		}
+
+		if ($this->registry->requestAction == 'register' && $this->session->boomtrainReg1 != true)
+		{
+			$flow = Survey_View::setFlowForBoomtrain($this->session);
+			$this->tpl->setVar('BOOMTRAIN_FLOW', $flow);
+			
+			$this->tpl->parse('boomtrain_reg1_block', 'boomtrain_reg1', true);
+			$this->session->boomtrainReg1 = true;
+		}
+
+		$data = $survey['surveyFields'];
+
+
+		if($emailExists != FALSE)
+		{
+			$this->tpl->setVar('HIDE', 'display:none');
+			$this->tpl->setVar('DISABLED', 'disabled');	
+		}
+		
+		if($email != '')
+		{
+			$this->tpl->setVar('REGISTRATION_EMAIL', $email);
+			$this->tpl->setVar('READONLY', 'readonly');
+		}
+		else
+		{
+			$this->tpl->setVar('READONLY', '');
+			$this->tpl->setVar('REQUIRED', 'required');
+		}
+		if($survey['survey']['id'] == 100)
+		{
+			$data = $this->setSurveyFieldsOrder($survey);
+		}
+		if($survey['survey']['id'] == 102)
+		{
+			$data = $this->setSurveyFieldsOrderStep3($survey);
+		}
+		if($survey['survey']['id'] == 103)
+		{
+			$data = $this->setSurveyFieldsOrderOrphanStep2($survey);
+			
+			$categoryArray = array('junior_developer', 'junior_web_developer', 'junior_frontend_developer');
+			if(in_array($category, $categoryArray))
+			{
+			    $question = array('registerstep2question1', 'registerstep2question2', 'registerstep2question3');
+			    
+			    foreach($data as $key => $value)
+			    {
+			        if(in_array($value['name'], $question))
+			        {
+			            $this->session->questionsUset = $question;
+			            unset($data[$key]);
+			        }
+			    }
+			}
+			else 
+			{
+			    $questions = array('registerstep2question4','registerstep2question5', 'registerstep2question6', 'registerstep2question7', 'registerstep2question8', 'registerstep2question9');
+			     
+			    foreach($data as $key => $value)
+			    {
+			        if(in_array($value['name'], $questions))
+			        {
+			            $this->session->questionsUset = $questions;
+			            unset($data[$key]);
+			        }
+			    }
+			}
+		}
+		
+		//check if the survey is for wistia flow (104) and unset the questions for general_cleaner_co1 and for
+		//all the other categories accordingly. For general_cleaner_co1 we are unsetting one question -> actually replacing one,
+		//for all the other categories we are unsetting the questions that we've added only for general_cleaner_co1
+		if ($survey['survey']['id'] == 104)
+		{
+			
+			$categoryArray = array("maids_plainfield","buckets_and_bows_louisville","worldmainclean","themaidsfw", "general_cleaner");
+            
+			if(!in_array($category, $categoryArray))
+			{
+			    $question = array('orphanWistiaFlowquestion8');
+			    $this->session->questionsUset = $question;
+			    unset($data['orphanWistiaFlowquestion8']);
+			}
+
+			//those 2 categories need a different question for the language than the rest
+			if(in_array($category, $categoryArray))
+			{
+				unset($data['orphanWistiaFlowquestion3']);
+			}
+
+			if($this->session->cleaningCloneFlow == true)
+			{
+				$question = array('orphanWistiaFlowquestion3');
+				$this->session->questionsUset = $question;
+				unset($data['orphanWistiaFlowquestion3']);
+			}
+			else 
+			{
+				$questions = array('orphanWistiaFlowquestion5','orphanWistiaFlowquestion6','orphanWistiaFlowquestion7', 'orphanWistiaFlowquestion8');
+				$this->session->questionsUset = $questions;
+
+				// if the categories are the ones from the array - we need a different question about the Language, we use  question 5 insted of question 3
+				if(!in_array($category, $categoryArray))
+				{
+					unset($data['orphanWistiaFlowquestion5']);
+				}			
+				unset($data['orphanWistiaFlowquestion6']);
+				unset($data['orphanWistiaFlowquestion7']);
+			}
+		}
+		
+		foreach($data as $field)
+		{
+			if (in_array($field['name'], $displayFields))
+			{
+				$this->tpl->setVar('QUESTION', $field['question']);
+				if ($field['inputType'] == 'radio' || $field['inputType'] == 'checkbox')
+				{
+					$values = explode(PHP_EOL, $field['value']);
+					foreach ($values as $key => $value)
+					{
+						$this->tpl->setVar('REQUIRED', 'required');
+						$this->tpl->setVar('TYPE', $field['inputType']);
+						$this->tpl->setVar('ID', $field['id']);
+						$this->tpl->setVar('VALUE', $value);
+						$this->tpl->setVar('DETAILS', $value);
+			
+						if($field['inputType'] == 'radio')
+						{
+							$this->tpl->setVar('NAME', $field['name']);
+						}
+						elseif($field['inputType'] == 'checkbox')
+						{
+							$this->tpl->setVar('REQUIRED', '');
+							$this->tpl->setVar('NAME', $field['name'] . '[]');
+						}
+			
+						if($key == key(end($data)))
+						{
+							$this->tpl->parse('value_block', 'value', false);
+						}
+						else
+						{
+							$this->tpl->parse('value_block', 'value', true);
+						}
+					}
+					$this->tpl->parse('field_block', 'field', true);
+				}
+				elseif($field['inputType'] == 'text' || $field['inputType'] == 'number' || $field['inputType'] == 'tel')
+				{
+					
+					$this->tpl->setVar('TYPE', $field['inputType']);
+					$this->tpl->setVar('ID', $field['id']);
+					$this->tpl->setVar('NAME', $field['name']);
+					$this->tpl->setVar('DETAILS','');
+
+					if(!empty($validatedData) && array_key_exists($field['name'], $validatedData))
+					{
+						$this->tpl->setVar('VALUE', $validatedData[$field['name']]);
+					}
+					else
+					{
+						$this->tpl->setVar('VALUE', '');
+					}
+					if(($survey['survey']['id'] == '104' || (substr($this->session->category, -3) == '_1d')) && $field['name'] == 'phoneNumber')
+					{
+						$this->tpl->setVar('REQUIRED', '');
+					}
+					else
+					{
+						$this->tpl->setVar('REQUIRED', 'required');
+					}		
+					$this->tpl->parse('value_block', 'value', false);
+					$this->tpl->parse('field_block', 'field', true);
+				}
+			
+				elseif($field['inputType'] == 'textarea')
+				{
+					$this->tpl->setVar('TEXTAREA', $field['inputType']);
+					$this->tpl->setVar('NAME', $field['name']);
+			
+					$this->tpl->parse('textarea_block', 'textarea', true);
+				}
+			
+				elseif ($field['inputType'] == 'dropdown')
+				{
+
+
+					$values = explode(PHP_EOL, $field['value']);
+					foreach ($values as $key => $value)
+					{    
+					    
+						$value = trim($value);
+						if(isset($validatedData[ $field['name'] ] ) && $value === $validatedData[ $field['name'] ] )
+						{
+							$this->tpl->setVar('SELECTED', 'selected');
+						}
+						else
+						{
+							$this->tpl->setVar('SELECTED', '');
+						}
+						$this->tpl->setVar('NAME', $field['name']);
+						$this->tpl->setVar('VALUE', $value);
+			
+						if($key == key(end($data)))
+						{
+							$this->tpl->parse('option_block', 'option', false);
+						}
+						else
+						{
+							$this->tpl->parse('option_block', 'option', true);
+						}
+					}
+					$this->tpl->parse('dropdown_block', 'dropdown', true);
+				}
+			}
+		}
+		
+	}
+	
+	/**
+	 * Set survey fields order for registration survey
+	 * @param array $survey
+	 * @return array
+	 */
+	
+	private function setSurveyFieldsOrder($survey)
+	{
+		if (strpos($this->session->category, '_1b') !== false)
+		{
+			$cat = explode('_1b', $this->session->category);
+			$category = $cat[0];
+			$surveyOrder[] = $survey['surveyFields']['firstName'];	
+		}
+		else
+		{
+			if (strpos($this->session->category, '_1d') !== false)
+			{
+				$category = str_replace('_1d', "", $this->session->category);
+			}
+			else 
+			{
+				$category = $this->session->category;
+			}
+			
+			$surveyOrder[] = $survey['surveyFields']['firstName'];	
+			$surveyOrder[] = $survey['surveyFields']['lastName'];
+			$surveyOrder[] = $survey['surveyFields']['phoneNumber'];
+
+		}
+			
+			$surveyOrder[] = $survey['surveyFields']['zipcode'];	
+	
+		$nr = 0;
+		foreach ($survey['surveyFields'] as $key => $value) 
+		{
+			if (isset($survey['surveyFields'][$category.'question'.$nr]))
+			{
+				$surveyOrder[] = $survey['surveyFields'][$category.'question'.$nr];
+				$nr++;
+			}
+			else
+			{
+				$nr++;
+			}
+		}
+
+		return $surveyOrder;
+	}
+	
+	private function setSurveyFieldsOrderOrphanStep2($survey)
+	{
+		$category = $this->session->category;
+		$surveyOrder[] = $survey['surveyFields']['firstName'];
+		$surveyOrder[] = $survey['surveyFields']['lastName'];
+		$surveyOrder[] = $survey['surveyFields']['phoneNumber'];
+		
+			
+		$surveyOrder[] = $survey['surveyFields']['zipcode'];
+		
+		$nr = 1;
+		$registerOrphan = 'registerstep2question';
+			
+		foreach ($survey['surveyFields'] as $key => $value)
+		{
+			if (isset($survey['surveyFields'][$registerOrphan.$nr]))
+			{
+				$surveyOrder[] = $survey['surveyFields'][$registerOrphan.$nr];
+				$nr++;
+			}
+			else
+			{
+				$nr++;
+			}
+		}
+		return $surveyOrder;
+	}
+	
+	private function setSurveyFieldsOrderStep3($survey)
+	{
+		$surveyOrder = array();
+		$registerStep = 'registerstep3question';
+		$registerStepPart2 = 'registerstep3questionp2';
+	
+	
+		$nr = 0;
+		foreach ($survey['surveyFields'] as $key => $value)
+		{
+			if (isset($survey['surveyFields'][$registerStep.$nr]))
+			{
+				$surveyOrder[] = $survey['surveyFields'][$registerStep.$nr];
+				$nr++;
+			}
+			else
+			{
+				$nr++;
+			}
+		}
+	
+		$nr2=0;
+		foreach ($survey['surveyFields'] as $key => $value)
+		{
+			if (isset($survey['surveyFields'][$registerStepPart2.$nr2]))
+			{
+				$surveyOrder[] = $survey['surveyFields'][$registerStepPart2.$nr2];
+				$nr2++;
+			}
+			else
+			{
+				$nr2++;
+			}
+		}
+	
+		return $surveyOrder;
+	}
+	
+	/**
+	 * Set different instructions for referals
+	 * @param array $survey
+	 */
+	
+	private function setInstructionsForDifferentReferals($survey)
+	{
+		//!isset($this->session->referalId)||
+		if(('160' != $this->session->referalId)&&('158' != $this->session->referalId)&&('222' != $this->session->referalId)&&(228 > $this->session->referalId)||( $this->session->referalId> 252)&&('501' != $this->session->referalId)&&(600 >= $this->session->referalId && $this->session->referalId >= 674))
+		{
+			$this->tpl->setVar('INSTRUCTION', $survey['survey']['instruction']);
+			$this->tpl->setVar('REG_BUTTON', 'REGISTER FOR INSTANT ACCESS');
+			$this->tpl->setVar('REGISTER_ACCES', 'register_button');
+			$this->tpl->parse('craiglist_block', '');
+			$this->tpl->parse('instruction_block', 'instruction', true);
+		}
+		else
+		{
+			if('231' == $this->session->referalId || '232' == $this->session->referalId || '501' == $this->session->referalId || (600 <= $this->session->referalId && $this->session->referalId <= 674))
+			{
+				$this->tpl->setVar('INSTRUCTION', 'Below you will be guided through the application process. This is standard procedure To Pre-Qualify all applicants.');
+				$this->tpl->setVar('INSTRUCTION_PART2', 'Please make sure you fill out everything correctly, As you will only be able to fill out this application one time.');
+				$this->tpl->setVar('INSTRUCTION_PART3', 'Do not use your browsers Back button or leave the application page before finishing it.');
+			}
+			else
+			{
+				$this->tpl->setVar('INSTRUCTION', 'Please fill in your details below to apply');
+			}
+			$this->tpl->setVar('REG_BUTTON', 'Apply Now');
+			$this->tpl->parse('craiglist_block', 'craiglist', true);
+			$this->tpl->parse('instruction_block', '');
+			unset($this->session->referalId);
+		}
+	}
+
+	public function showPage($templateFile = '',$urlCity,$urlCategory,$userIdData,$possibleStateWithoutCity, $textOnPage = '', $buttonText = '')
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'user/' . $this->templateFile . '.tpl');
+
+		if ($templateFile == 'thankyou')
+		{
+			$this->tpl->setBlock('tpl_main', 'boomtrain_track_user', 'boomtrain_track_user_block');
+			
+			if ($this->session->userReg2 == true)
+			{
+				$flow = Survey_View::setFlowForBoomtrain($this->session);
+				$this->tpl->setVar('BOOMTRAIN_FLOW', $flow);
+	
+				$boomtrainMapper = array(	'firstName'		=>	'first_name',
+											'lastName'		=>	'last_name',
+											'zipcode'		=>	'zipcode',
+											'phoneNumber'	=>	'phone_number');
+				
+				$userData = $this->session->userDataFromReg2;				
+				if (isset($this->session->subId))
+				{
+				    $boomtrainMapper['uniqueId'] = 'uniqueId';
+				    $boomtrainMapper['category'] = 'category';
+				    $boomtrainMapper['city'] = 'city';
+				    $boomtrainMapper['platform'] = 'platform';
+				}
+				
+				$keysNeeded = array_keys($boomtrainMapper);
+				$keysToUnset = array('email', 'firstName', 'lastName', 'phoneNumber', 'zipcode', 'country');
+				
+				if (isset($this->session->subId))
+				{
+				    $keysForSubId = array('uniqueId', 'category', 'city', 'platform');
+				    $keysToUnset = array_merge($keysForSubId, $keysToUnset);
+				}
+				
+				$data = array();
+				foreach ($keysNeeded as $key)
+				{
+					if(array_key_exists($key, $userData))
+					{
+						$data[$boomtrainMapper[$key]] = $userData[$key];
+					}
+				}
+				
+				foreach ($keysToUnset as $key)
+				{
+					if(array_key_exists($key, $userData))
+					{
+						unset($userData[$key]);
+					}
+				}
+				
+				$this->userModel = new User();	
+				$questions = $this->userModel->getQuestionsBaseOnNames(array_keys($userData));
+				
+				foreach ($userData as $questionName => $answer)
+				{
+					$questionFormated = str_replace(' ', '_', $questions[$questionName]);
+					$data[$questionFormated] = $answer;
+				}
+				
+				$dataJson = json_encode($data);
+				$this->tpl->setVar('USER_DATA', $dataJson);
+				$this->session->userReg2 = false;
+			
+				$this->tpl->parse('boomtrain_track_user_block', 'boomtrain_track_user', true);
+			}
+			
+		}
+		if(array_key_exists($urlCity, $possibleStateWithoutCity))
+		{
+			//we have saved all the city-st in db with _ between words in order to use it in the Link
+			//for Display we will have to remove those _ and also to make each word with First Capital Letter and the State with CAPITAL Letters
+			$cityView=ucwords(str_replace('_',' ', substr($possibleStateWithoutCity[$urlCity],0,-2)));
+			$stateView=strtoupper(substr($possibleStateWithoutCity[$urlCity],-2));
+		}
+		else
+		{
+			$cityView=ucwords(str_replace('_',' ', substr($urlCity,0,-2)));
+			$stateView=strtoupper(substr($urlCity,-2));
+		}
+
+		$this->tpl->setVar('PAGE_TEXT', $textOnPage);
+		$this->tpl->setVar('BUTTON_TEXT', $buttonText);
+		$this->tpl->setVar('INDUSTRY_STEP1', ucfirst($urlCategory));
+		$this->tpl->setVar('CATEGORY', ucfirst($urlCategory));
+		$this->tpl->setVar('URL_CITY', $cityView.$stateView);
+		$this->tpl->setVar('USERID', $userIdData);
+		
+		$this->tpl->setBlock('tpl_main', 'vhm_pixel', 'vhm_pixel_block');
+		
+		if (isset($this->session->subId))
+		{
+			$this->userModel = new User();
+			$vhmCheck = $this->userModel->getVhmPlatformId($this->session->subId);
+			if ($vhmCheck == true)
+			{
+				$this->tpl->parse('vhm_pixel_block', 'vhm_pixel', true);
+			}
+		}
+	}
+	
+	public function displayApplyPage($templateFile, $thankYouPageContent)
+	{
+		$this->tpl->setFile('tpl_main', 'user/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'thankyou_page_text', 'thankyou_page_text_block');
+		$this->tpl->setBlock('tpl_main', 'thankyou_company_logo', 'thankyou_company_logo_block');
+		
+		foreach($thankYouPageContent as $key => $value)
+        {
+            if(!empty($value['title']) || $value['subTitle'])
+            {
+                $this->tpl->setVar('THANKYOU_TITLE', nl2br($value['title']));
+                $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+                
+                $this->tpl->parse('thankyou_page_text_block', 'thankyou_page_text', true);
+            }
+            
+            if(isset($value['companyId']) && !empty($value['companyId']))
+            {
+                $this->tpl->setVar('COMPANY_LOGO', base64_encode($value['logo']));
+                $this->tpl->setVar('COMPANY_NAME', nl2br($value['companyName']));
+                $this->tpl->parse('thankyou_company_logo_block', 'thankyou_company_logo', true);
+            }
+            
+		    $this->tpl->setVar('PAGE_TEXT', $value['description']);
+		}
+		
+		$flow = Survey_View::setFlowForBoomtrain($this->session);
+		$this->tpl->setVar('BOOMTRAIN_FLOW', $flow);
+	}
+	
+	public function displayCleaningAuthoritySpecialPage($templateFile, $thankYouPageContent)
+	{
+		$this->tpl->setFile('tpl_main', 'user/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'thankyou_page_text', 'thankyou_page_text_block');
+		$this->tpl->setBlock('tpl_main', 'thankyou_company_logo', 'thankyou_company_logo_block');
+		
+		foreach($thankYouPageContent as $key => $value)
+		{
+		    if(!empty($value['title']) || $value['subTitle'])
+		    {
+		        $this->tpl->setVar('THANKYOU_TITLE', nl2br($value['title']));
+		        $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+		    
+		        $this->tpl->parse('thankyou_page_text_block', 'thankyou_page_text', true);
+		    }
+		    
+		    if(isset($value['companyId']) && !empty($value['companyId']))
+		    {
+		        $this->tpl->setVar('COMPANY_LOGO', base64_encode($value['logo']));
+		        $this->tpl->setVar('COMPANY_NAME', nl2br($value['companyName']));
+		        $this->tpl->parse('thankyou_company_logo_block', 'thankyou_company_logo', true);
+		    }
+		    
+		    $this->tpl->setVar('PAGE_TEXT', nl2br($value['description']));
+		}
+	}
+	
+	
+	/**
+	 * @param string $templateFile
+	 * @param array $thankYouPageContent
+	 * @param string $urlCity
+	 * @param string $urlCategory
+	 * @param string $userIdData
+	 * @param string $possibleStateWithoutCity
+	 * @param string $flowId
+	 */
+	public function displayThankYouPage($templateFile, $thankYouPageContent, $urlCity = '', $urlCategory = '', $userIdData = '', $possibleStateWithoutCity = '', $jobXml = '')
+	{
+	    if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+	    
+	    switch ($templateFile) {
+	        case 'cleaning-job-list':
+	            $this->showCleaningJobList($templateFile, $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity);
+	            break;
+	        case 'SpecialThankYou':
+	            $this->showPageSpecialThankYou($templateFile, $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity);
+	            break;
+	        case 'thankYou':
+	            $this->showThankYouPage($templateFile, $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity, $jobXml);
+	            break;
+            case 'apply_page':
+                $this->displayApplyPage($templateFile, $thankYouPageContent);
+            break;
+            case 'cleaning_authority':
+                $this->displayCleaningAuthoritySpecialPage($templateFile, $thankYouPageContent);
+            break;
+            case 'simple_thank_you_page':
+                $this->displayApplyPage($templateFile, $thankYouPageContent);
+            break;
+	    }
+	}
+	
+    public function showCleaningJobList($templateFile = '',$thankYouPageContent,$urlCity,$urlCategory,$userIdData,$possibleStateWithoutCity, $zipcode = '')
+    {
+        if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+        $this->tpl->setFile('tpl_main', 'user/' . $this->templateFile . '.tpl');
+        
+        $this->tpl->setBlock('tpl_main', 'thankyou_company_logo', 'thankyou_company_logo_block');
+        
+        if(array_key_exists($urlCity, $possibleStateWithoutCity))
+        {
+            $cityView=ucwords(str_replace('_',' ', substr($possibleStateWithoutCity[$urlCity],0,-2)));
+            $stateView=strtoupper(substr($possibleStateWithoutCity[$urlCity],-2));
+        }
+        else
+        {
+            $cityView=ucwords(str_replace('_',' ', substr($urlCity,0,-2)));
+            $stateView=strtoupper(substr($urlCity,-2));
+        }
+    
+        if($zipcode != '')
+        {
+            $this->tpl->setVar('URL_CITY', $zipcode);
+        }
+        else
+        {
+            $this->tpl->setVar('URL_CITY', $cityView.$stateView);
+        }
+    
+        $this->tpl->setVar('CATEGORY', 'Cleaning');
+    
+        	
+        $this->tpl->setVar('USERID', $userIdData);
+    
+        $indeedDescriptionBottom = array();
+        foreach($thankYouPageContent as $key => $value)
+        {
+            $this->tpl->setVar('THANKYOU_TITLE', nl2br($value['title']));
+            $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+            
+            if(isset($value['companyId']) && !empty($value['companyId']))
+            {
+                $this->tpl->setVar('COMPANY_LOGO', base64_encode($value['logo']));
+                $this->tpl->setVar('COMPANY_NAME', nl2br($value['companyName']));
+                $this->tpl->parse('thankyou_company_logo_block', 'thankyou_company_logo', true);
+            }
+            
+            $indeedDescriptionBottom = preg_split('/\r\n|\r|\n/', nl2br($value['description']));
+    
+            if(isset($indeedDescriptionBottom[0]))
+            {
+                $this->tpl->setVar('THANKYOU_DESCRIPTION', $indeedDescriptionBottom[0]);
+            }
+            
+            if(isset($indeedDescriptionBottom[1]))
+            {
+                $this->tpl->setVar('THANKYOU_DESCRIPTION_BOTTOM', $indeedDescriptionBottom[1]);
+            }
+            
+            $this->tpl->setVar('BUTTON_TEXT', $value['button']);
+            
+            $this->tpl->parse('thankyou_page_text_p_block', 'thankyou_page_text_p', true);
+        }
+    }
+	
+	public function showPageSpecialThankYou($templateFile = '',$thankYouPageContent, $urlCity,$urlCategory,$userIdData,$possibleStateWithoutCity)
+	{
+	    if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+	    $this->tpl->setFile('tpl_main', 'user/' . $this->templateFile . '.tpl');
+	    
+	    $this->tpl->setBlock('tpl_main', 'thankyou_company_logo', 'thankyou_company_logo_block');
+	    
+	    if(array_key_exists($urlCity, $possibleStateWithoutCity))
+	    {
+	        $cityView=ucwords(str_replace('_',' ', substr($possibleStateWithoutCity[$urlCity],0,-2)));
+	        $stateView=strtoupper(substr($possibleStateWithoutCity[$urlCity],-2));
+	    }
+	    else
+	    {
+	        $cityView=ucwords(str_replace('_',' ', substr($urlCity,0,-2)));
+	        $stateView=strtoupper(substr($urlCity,-2));
+	    }
+	     
+	    $this->tpl->setVar('CATEGORY', ucfirst($urlCategory));
+	     
+	    $this->tpl->setVar('URL_CITY', $cityView.$stateView);
+	    
+	    $this->tpl->setVar('USER_ID', $userIdData);
+	     
+	     
+	    $indeedDescriptionBottom = array();
+	    
+	    foreach($thankYouPageContent as $key => $value)
+        {
+            $this->tpl->setVar('THANKYOU_TITLE', nl2br($value['title']));
+            $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+            
+            if(isset($value['companyId']) && !empty($value['companyId']))
+            {
+                $this->tpl->setVar('COMPANY_LOGO', base64_encode($value['logo']));
+                $this->tpl->setVar('COMPANY_NAME', nl2br($value['companyName']));
+                $this->tpl->parse('thankyou_company_logo_block', 'thankyou_company_logo', true);
+            }
+            
+            $indeedDescriptionBottom = preg_split('/\r\n|\r|\n/', nl2br($value['description']));
+    
+            if(isset($indeedDescriptionBottom[0]))
+            {
+                $this->tpl->setVar('THANKYOU_DESCRIPTION', $indeedDescriptionBottom[0]);
+            }
+            
+            if(isset($indeedDescriptionBottom[1]))
+            {
+                $this->tpl->setVar('THANKYOU_DESCRIPTION_BOTTOM', $indeedDescriptionBottom[1]);
+            }
+            
+            $this->tpl->setVar('BUTTON_TEXT', $value['button']);
+            
+            $this->tpl->parse('thankyou_page_text_p_block', 'thankyou_page_text_p', true);
+        }
+	}
+	
+	public function showThankYouPage($templateFile, $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity, $jobXml = '')
+	{
+	    if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+	    $this->tpl->setFile('tpl_main', 'user/' . $this->templateFile . '.tpl');
+	    
+	    //set thank-you page blocks
+	    $this->tpl->setBlock('tpl_main', 'thankyou_page_text', 'thankyou_page_text_block');
+	    $this->tpl->setBlock('tpl_main', 'thankyou_company_logo', 'thankyou_company_logo_block');
+	    $this->tpl->setBlock('tpl_main', 'thankyou_page_button', 'thankyou_page_button_block');
+
+	    $this->tpl->setBlock('thankyou_page_text', 'thankyou_page_title', 'thankyou_page_title_block');
+	    $this->tpl->setBlock('thankyou_page_text', 'thankyou_page_text_p', 'thankyou_page_text_p_block');
+	    $this->tpl->setBlock('thankyou_page_text', 'thankyou_page_text_ul', 'thankyou_page_text_ul_block');
+	    $this->tpl->setBlock('thankyou_page_text', 'thankyou_page_text_ul_none', 'thankyou_page_text_ul_none_block');
+	    $this->tpl->setBlock('thankyou_page_text', 'thankyou_page_text_ol', 'thankyou_page_text_ol_block');
+	    $this->tpl->setBlock('thankyou_page_text', 'thankyou_page_text_image', 'thankyou_page_text_image_block');
+	    $this->tpl->setBlock('thankyou_page_text_ul', 'ul_list', 'ul_list_block');
+	    $this->tpl->setBlock('thankyou_page_text_ul_none', 'ul_none_list', 'ul_none_list_block');
+	    $this->tpl->setBlock('thankyou_page_text_ol', 'ol_list', 'ol_list_block');
+	    $this->tpl->setBlock('thankyou_page_text', 'special_flow_content', 'special_flow_content_block');
+	    $this->tpl->setBlock('special_flow_content', 'special_job_list', 'special_job_list_block');
+	    
+	    if ($templateFile == 'thankYou')
+	    {
+	        $this->tpl->setBlock('tpl_main', 'boomtrain_track_user', 'boomtrain_track_user_block');
+	        
+	        if ($this->session->userReg2 == true)
+	        {
+	            $flow = Survey_View::setFlowForBoomtrain($this->session);
+	            $this->tpl->setVar('BOOMTRAIN_FLOW', $flow);
+	            
+	            $boomtrainMapper = array(	'firstName'		=>	'first_name',
+	                'lastName'		=>	'last_name',
+	                'zipcode'		=>	'zipcode',
+	                'phoneNumber'	=>	'phone_number');
+	    
+	            $userData = $this->session->userDataFromReg2;
+	            if (isset($this->session->subId))
+	            {
+	                $boomtrainMapper['uniqueId'] = 'uniqueId';
+	                $boomtrainMapper['category'] = 'category';
+	                $boomtrainMapper['city'] = 'city';
+	                $boomtrainMapper['platform'] = 'platform';
+	            }
+	    
+	            $keysNeeded = array_keys($boomtrainMapper);
+	            $keysToUnset = array('email', 'firstName', 'lastName', 'phoneNumber', 'zipcode', 'country');
+	    
+	            if (isset($this->session->subId))
+	            {
+	                $keysForSubId = array('uniqueId', 'category', 'city', 'platform');
+	                $keysToUnset = array_merge($keysForSubId, $keysToUnset);
+	            }
+	    
+	            $data = array();
+	            foreach ($keysNeeded as $key)
+	            {
+	                if(array_key_exists($key, $userData))
+	                {
+	                    $data[$boomtrainMapper[$key]] = $userData[$key];
+	                }
+	            }
+	    
+	            foreach ($keysToUnset as $key)
+	            {
+	                if(array_key_exists($key, $userData))
+	                {
+	                    unset($userData[$key]);
+	                }
+	            }
+	    
+	            $this->userModel = new User();
+	            $questions = $this->userModel->getQuestionsBaseOnNames(array_keys($userData));
+	    
+	            foreach ($userData as $questionName => $answer)
+	            {
+	                $questionFormated = str_replace(' ', '_', $questions[$questionName]);
+	                $data[$questionFormated] = $answer;
+	            }
+	            
+	            $dataJson = json_encode($data);
+				$dataJson = str_replace(':"', ': "' , $dataJson);
+	            
+	            $this->tpl->setVar('USER_DATA', $dataJson);
+	            $this->session->userReg2 = false;
+	            
+	            $this->tpl->parse('boomtrain_track_user_block', 'boomtrain_track_user', true);
+	        }
+	    }
+	    
+	    $categoryNeeded = array('maids_plainfield_1c', 'themaidsfw_1c', 'worldmainclean_1c');
+	    
+	    if(in_array($urlCategory, $categoryNeeded))
+	    {
+	        if(!empty($jobXml))
+	        {
+	            foreach($jobXml as $key => $value)
+	            {
+	                $value['description'] = str_replace('Job Description:', '', $value['description']);
+	                $this->tpl->setVar('JOB_TITLE', $value['title']);
+	                $this->tpl->setVar('JOB_LOCATION', $value['location']);
+	                $this->tpl->setVar('JOB_COMPANY', $value['company']);
+	                $this->tpl->setVar('JOB_DESCRIPTION', $value['description']);
+	                $this->tpl->setVar('SPECIAL_DESCRIPTION', 'In order to greatly increase your chances 
+	                                   of getting the job, please watch the following free video training 
+	                                   series, by clicking the FREE TRAINING button below: ');
+	                
+	                if(!empty($value['category']))
+	                {
+	                    $this->tpl->setVar('JOB_CATEGORY', $value['category']);
+	                }
+	    
+	                $this->tpl->setVar('JOB_URL', $value['url']);
+	    
+	                $this->tpl->parse('special_job_list_block', 'special_job_list', true);
+	            }
+	            $this->tpl->parse('special_flow_content_block', 'special_flow_content', true);
+	        }
+	    }
+	    
+        foreach($thankYouPageContent as $key => $value)
+        {
+            if(!empty($value['button']))
+            {
+                if(in_array($urlCategory, $categoryNeeded))
+                {
+                    $this->tpl->setVar('BUTTON_TEXT', 'FREE TRAINING');
+                }
+                else 
+                {
+                    $this->tpl->setVar('BUTTON_TEXT', $value['button']);
+                }
+                
+                $this->tpl->parse('thankyou_page_button_block', 'thankyou_page_button', true);
+            }
+            
+            if(isset($value['title']) && !empty($value['title']))
+            {
+                $this->tpl->setVar('THANKYOU_TITLE', nl2br($value['title']));
+                $this->tpl->parse('thankyou_page_title_block', 'thankyou_page_title', true);
+            }
+
+            if(isset($value['companyId']) && !empty($value['companyId']))
+            {
+                $this->tpl->setVar('COMPANY_LOGO', base64_encode($value['logo']));
+                $this->tpl->setVar('COMPANY_NAME', nl2br($value['companyName']));
+                $this->tpl->parse('thankyou_company_logo_block', 'thankyou_company_logo', true);
+            }
+
+            switch ($value['type']) {
+                case 'ul':
+                    $values = explode(PHP_EOL, $value['description']);
+
+                    foreach($values as $k => $description)
+                    {
+                        $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+                        $this->tpl->setVar('THANKYOU_DESCRIPTION', $description);
+
+                        $this->tpl->parse('ul_list_block', 'ul_list', true);
+                    }
+                    $this->tpl->parse('thankyou_page_text_ul_block', 'thankyou_page_text_ul', true);
+                    $this->tpl->parse('ul_list_block', '');
+                    break;
+
+                case 'ol':
+                    $values = explode(PHP_EOL, $value['description']);
+
+                    foreach($values as $k => $description)
+                    {
+                        $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+                        $this->tpl->setVar('THANKYOU_DESCRIPTION', $description);
+
+                        $this->tpl->parse('ol_list_block', 'ol_list', true);
+                    }
+                    $this->tpl->parse('thankyou_page_text_ol_block', 'thankyou_page_text_ol', true);
+                    $this->tpl->parse('ol_list_block', '');
+                    break;
+                case 'p':
+                    if(in_array($urlCategory, $categoryNeeded))
+                    {
+                        $this->tpl->setVar('THANKYOU_DESCRIPTION', 'THANKS! Your application has been received.');
+                    }
+                    else 
+                    {
+                        $this->tpl->setVar('THANKYOU_DESCRIPTION', nl2br($value['description']));
+                    }
+                    $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+                    
+
+                    $this->tpl->parse('thankyou_page_text_p_block', 'thankyou_page_text_p', true);
+                    break;
+                case 'ulNone':
+                    $values = explode(PHP_EOL, $value['description']);
+
+                    foreach($values as $k => $description)
+                    {
+                        $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+                        $this->tpl->setVar('THANKYOU_DESCRIPTION',  $description);
+
+                        $this->tpl->parse('ul_none_list_block', 'ul_none_list', true);
+                    }
+                    $this->tpl->parse('thankyou_page_text_ul_none_block', 'thankyou_page_text_ul_none', true);
+                    $this->tpl->parse('ul_none_list_block', '');
+                    break;
+                case 'img':
+                    $this->tpl->setVar('THANKYOU_SUBTITLE', nl2br($value['subTitle']));
+                    $this->tpl->setVar('THANKYOU_DESCRIPTION', nl2br($value['description']));
+                    $this->tpl->parse('thankyou_page_text_image_block', 'thankyou_page_text_image', true);
+                    break;
+            }
+            
+            $this->tpl->parse('thankyou_page_text_block', 'thankyou_page_text', true);
+
+            $this->tpl->parse('thankyou_page_text_ul_block', '');
+            $this->tpl->parse('thankyou_page_text_ul_none_block', '');
+
+            $this->tpl->parse('thankyou_page_text_ol_block', '');
+            $this->tpl->parse('thankyou_page_text_p_block', '');
+
+            $this->tpl->parse('thankyou_page_text_image_block', '');
+            
+            $this->tpl->parse('special_job_list_block', '');
+            
+            if(array_key_exists($urlCity, $possibleStateWithoutCity))
+            {
+                //we have saved all the city-st in db with _ between words in order to use it in the Link
+                //for Display we will have to remove those _ and also to make each word with First Capital Letter and the State with CAPITAL Letters
+                $cityView=ucwords(str_replace('_',' ', substr($possibleStateWithoutCity[$urlCity],0,-2)));
+                $stateView=strtoupper(substr($possibleStateWithoutCity[$urlCity],-2));
+            }
+            else
+            {
+                $cityView=ucwords(str_replace('_',' ', substr($urlCity,0,-2)));
+                $stateView=strtoupper(substr($urlCity,-2));
+            }
+            
+            $this->tpl->setVar('INDUSTRY_STEP1', ucfirst($urlCategory));
+            $this->tpl->setVar('CATEGORY', ucfirst($urlCategory));
+            $this->tpl->setVar('URL_CITY', $cityView.$stateView);
+            $this->tpl->setVar('USERID', $userIdData);
+            
+            $this->tpl->setBlock('tpl_main', 'vhm_pixel', 'vhm_pixel_block');
+            
+            if (isset($this->session->subId))
+            {
+                $this->userModel = new User();
+                $vhmCheck = $this->userModel->getVhmPlatformId($this->session->subId);
+                if ($vhmCheck == true)
+                {
+                    $this->tpl->parse('vhm_pixel_block', 'vhm_pixel', true);
+                }
+            }
+    	}
+	}
+}

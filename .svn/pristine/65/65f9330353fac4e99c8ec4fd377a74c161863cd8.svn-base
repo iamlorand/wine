@@ -1,0 +1,145 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @package    Admin
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: SystemController.php 973 2015-05-27 13:41:10Z gabi $
+*/
+
+/**
+* System Controller
+* @author     DotKernel Team <team@dotkernel.com>
+*/
+class Admin_SystemController extends Admin_BaseController
+{
+	private $systemView;
+	private $systemModel;
+
+	public function doIt()
+	{
+		$this->systemView = new System_View($this->tpl);
+		$this->systemModel = new System();
+		// switch based on the action, NO default action here
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		switch ($this->registry->requestAction)
+		{
+			case 'dashboard':
+			{
+				$this->dashboard();
+				break;
+			}
+			case 'settings':
+			{
+				$this->settings();
+				break;
+			}
+			case 'settings-update':
+			{
+				$this->settingsUpdate();
+				break;
+			}
+			case 'phpinfo':
+			{
+				// display phpinfo()
+				$this->systemView->showPHPInfo('phpinfo');
+				break;
+			}
+			case 'apc-info':
+			{
+				$this->apcInfo();
+				break;
+			}
+			case 'delete-key':
+			{
+				$this->deleteKey();
+				break;
+			}
+			case 'clear-cache':
+			{
+				$this->clearCache();
+				break;
+			}
+		}
+	}
+
+	private function dashboard()
+	{
+		$mysqlVersion = $this->systemModel->getMysqlVersion();
+		$geoIpVersion = $this->systemModel->getGeoIpVersion();
+		$warnings = $this->systemModel->getWarnings(array());
+		$apcInfo = $this->systemModel->getAPCInfo();
+		//	Ini Values
+		$iniValues = $this->systemModel->getIniValuesWithCorrection();
+		$cacheInfo = Dot_Cache::getCacheInfo();
+		$this->systemView->dashboard('dashboard', $mysqlVersion, $apcInfo, $geoIpVersion, $warnings, $iniValues, $cacheInfo);
+	}
+
+	private function settings()
+	{
+		// list settings values
+		$data = $this->systemModel->getSettings();
+		if(isset($this->registry->request['update']) && $this->registry->request['update'] == 'done')
+		{
+			$this->registry->session->message['txt'] = $this->option->infoMessage->settingsUpdate;
+			$this->registry->session->message['type'] = 'info';
+		}
+		$this->systemView->displaySettings('settings', $data);
+	}
+
+	private function settingsUpdate()
+	{
+		$data = array();
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// changes were made to checkUserToken
+			// see: Dot_Auth::checkUserToken($userToken, $userType='admin')
+			// see: IndexController.php : $userToken
+			if( !Dot_Auth::checkUserToken($this->userToken) )
+			{
+				// remove the identity
+				$dotAuth = Dot_Auth::getInstance();
+				$dotAuth->clearIdentity('admin');
+				// warn the user
+				$this->session->message['txt'] = $this->option->warningMessage->tokenExpired; 
+				$this->session->message['type'] = 'warning';
+				// go to log in 
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestController. '/login');
+				exit;
+			}
+			$this->systemModel->updateSettings($_POST);
+			header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule 
+				. '/' . $this->registry->requestController. '/settings/update/done');
+			exit;
+		}
+	}
+
+	private function apcInfo()
+	{
+		// display APC or APCu
+		$apcu = null;
+		if(phpversion('apcu')) 
+		{
+			$apcu = 'u';
+		}
+		$this->systemView->showAPCInfo($apcu);
+	}
+
+	private function clearCache()
+	{
+		$result = array("success" => false, "message" => "An error occured, please try again.");
+		if(!isset($_POST['key']) || !isset($_POST['userToken']) || !Dot_Auth::checkUserToken($_POST['userToken']))
+		{
+			echo Zend_Json::encode($result);
+			exit;
+		}
+		Dot_Cache::remove($_POST['key']);
+		$result = array('succes'=>'true');
+		echo Zend_Json::encode($result);
+		exit;
+	}
+}

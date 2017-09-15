@@ -1,0 +1,23 @@
+<?php
+class frontend_BaseController implements frontend_ControllerInterface
+{
+    public $stage = - 1;
+    public $tpl;
+    public $registry;
+    public $option;
+    public $pageTitle;
+
+    public function doIt() {
+    }
+
+    public function refreshStage()
+    {
+    }
+
+    public function redirect() {
+    }
+
+    public static function redirectToRequest($request)
+    {
+    }
+}

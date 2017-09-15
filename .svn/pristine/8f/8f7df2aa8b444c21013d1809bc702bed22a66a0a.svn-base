@@ -1,0 +1,1476 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @package    Frontend
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: $
+ */
+
+/**
+ * User Controller
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+class frontend_UserController extends frontend_BaseController
+{
+	private $userModel;
+	private $userView;
+	private $registrationSurvey = '100';
+	private $registrationStep3Survey = '102';
+	private $cityStateModel;
+	private $flows = array(	'survey'	=>	'2',
+							'wistiaFlow1'	=>	'3',
+							'wistiaFlow2'	=>	'4',
+							'wistiaFlow3'	=>	'5',
+							'wistiaFlow4'   =>  '6',
+							'wistiaFlow7'	=> '7'
+	);
+
+	private $thankYouPageText = "Thank you for completing your profile, GREAT NEWS we found match for you!  Click the button below NOW and start working NOW!  (Make sure you add in Crowded.com if it asks 'how you heard about' this great job - as this will help fast track your application!)";
+	private $thankYouPageTextWistiaFlow1 = "Thank you for completing your profile, GREAT NEWS we found a match for you! In order to greatly increase your chances of getting this job, please watch the following video series to learn more about the details of the job. After completing the series, you may finish the job application.";
+	private $thankYouPageTextSurveyFlow = "Thank you for completing your profile, GREAT NEWS we found a match for you! Before you apply, we'd like to ask some quick questions. This will improve the chances of you successfully getting the job. Please click continue below to get started.";
+	
+	private $thankYouPageButtonText = "APPLY FOR JOB NOW!";
+	private $thankYouPageWistiaFlow1ButtonText = 'CONTINUE';
+	
+	private $applyPageText = "Congratulations you've greatly increased your chances of getting this job by completing this training series. Please click one of the buttons below to continue!";
+	private $rotationMatrixCities = array(	'San Francisco, CA' => array('lat' => '37.751934', 'long' => '-122.438653'),
+											'New York, NY' => array('lat' => '40.741840', 'long' => '-73.861758'),
+											'Boston, MA' => array('lat' => '42.308782', 'long' => '-71.089088'),
+											'Dallas, TX' => array('lat' => '32.784226', 'long' => '-96.781473'),
+											'Seattle, WA' => array('lat' => '47.608464', 'long' => '-122.331149'),
+											'Houston, TX' => array('lat' => '29.777555', 'long' => '-95.364245'),
+											'Chicago, IL' => array('lat' => '41.868939', 'long' => '-87.632599'),
+											'Salt Lake City, UT' => array('lat' => '40.765927', 'long' => '-111.919800'),
+											'San Diego, CA' => array('lat' => '32.807277', 'long' => '-117.142175'),
+											'Denver, CO' => array('lat' => '39.731489', 'long' => '-104.964474'),
+											'Philadelphia, PA' => array('lat' => '39.985205', 'long' => '-75.146193'),
+											'Portland, OR' => array('lat' => '45.524721', 'long' => '-122.655158'),
+											'Washington DC' => array('lat' => '38.901717', 'long' => '-77.027278'),
+											'Sacremento, CA' => array('lat' => '38.567100', 'long' => '-121.476495'),
+											'New Jersey' => array('lat' => '40.101132', 'long' => '-74.665154'),
+											'Los Angeles, CA' => array('lat' => '34.063048', 'long' => '-118.253679'),
+											'Austin, TX' => array('lat' => '30.282786', 'long' => '-97.745170'));
+	
+	private $applyPageCleaningFlowCloneTexts = array(	'general_cleaner_co1'	=>	"Thank you for your application. The hiring manager will be in touch with you.",
+														'maids_denver_s1'		=>	"Thank you for your application. The hiring manager from 'The Maids' will be in touch with you.");
+	
+	public function doIt()
+	{
+		require_once "configs/socialAuth/autoload.php";
+		$config = new ConfigData();
+		$this->configArray = $config->configArray;
+
+		$this->session = Zend_Registry::get('session');
+
+		// instantiate classes related to User module: model & view
+		$this->userModel = new User(Dot_Request::getUserAgent(), Dot_Request::getHttpReffer()); 
+		$this->userView = new User_View($this->tpl);
+		//instantiate SocialBase class
+		$this->socialBase = new SocialBase();
+		
+		//instantiate video class
+		$this->videoModel = new Video();
+
+		//instantiate cityState class
+		$this->cityStateModel = new CityState();
+
+		// all actions MUST set  the variable  $pageTitle
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		
+		$boom = new Boomtrain_BoomtrainApi();
+		$boom->registry = $this->registry;
+		$boom->setUserProperty();
+		
+		switch ($this->registry->requestAction)
+		{
+			default:
+			case 'login':
+			{
+				$this->login();
+				break;
+			}
+			case 'authorize':
+			{
+				$this->authorize();
+				break;
+			}
+			case 'account':
+			{
+				$this->account();
+				break;
+			}
+			case 'register-first-step':
+			{
+				$this->registerStepOne();
+				break;
+			}
+			case 'register':
+			{
+				$this->register();
+				break;
+			}
+			case 'forgot-password':
+			{
+				$this->forgotPassword();
+				break;
+			}
+			case 'reset-password':
+			{
+				$this->resetPassword();
+				break;
+			}
+			case 'logout':
+			{
+				$this->logout();
+				break;
+			}
+			case 'thank-you':
+			{
+				$this->thankYou();
+				break;
+			}
+			case 'finish-registration':
+			{
+				$this->registerStep3();
+				break;
+			}
+			case 'wistia-tracking':
+			{
+				$this->trackWistiaClick();
+				break;
+			}
+			case 'apply-page':
+			{
+				$this->applyPage();
+				break;
+			}
+			case 'apply':
+			{
+				$this->apply();
+				break;
+			}
+			case 'apply-not-interested':
+			{
+				$this->applyNotInterested();
+				break;
+			}
+			case 'cleaning-job-list':
+			{
+				$this->cleaningJobList();
+				break;
+			}
+			case 'rotation-matrix':
+			{
+				$this->urlRotationMatrix();
+				break;
+			}
+			case 'thank-you-done':
+				{
+					$this->displaySimpleThankYouPage();
+					break;
+				}
+		}
+	}
+
+	private function login()
+	{
+		if (isset($_POST['socialNetwork']) && !isset($this->session->socialNetwork))
+		{
+			$this->session->socialNetwork = $_POST['socialNetwork'];
+		}
+// 		if(!isset($this->session->userData))
+// 		{
+		if ($this->session->socialNetwork)
+		{
+			switch ($this->session->socialNetwork)
+			{
+				case "facebook":
+					$client = new FacebookController();
+				break;
+				case "linkedin":
+					$client = new LinkedinController();
+				break;
+			}
+			$client->login($this->configArray);
+			$client->registry = $this->registry;
+			$this->socialBase = $client;
+			$data = $this->socialBase->getData();
+
+			if(!isset($data['user_details']['email']))
+			{
+				$data['user_details']['email'] = '';
+			}
+			$this->session->email = $data['user_details']['email'];
+			
+			$this->socialBase->loginProcess($data);
+		}
+		// display Login form
+		$this->userView->loginForm('login');
+// 		}
+// 		else
+// 		{
+// 			header('Location: '.$this->registry->configuration->website->params->url.'/user/account');
+// 			exit;
+// 		}
+	}
+
+	private function authorize()
+	{
+		// authorize user login
+		if ((array_key_exists('email', $_POST) && array_key_exists('password', $_POST)) || isset($this->session->socialNetwork))
+		{
+			// validate the authorization request parameters
+			if (isset($this->session->socialNetwork))
+			{
+				$id = $this->socialBase->getUserId($this->session->socialNetwork, $this->session->socialNetworkId);
+				$userData = $this->socialBase->getSocialNetworkUserData($id);
+				$values = array('email' => array('email' => $userData['email']));
+				unset($this->session->socialNetworkId);
+			}
+			else
+			{
+				$values = array('email' => array('email' => $_POST['email']),
+								'password' => array('password' => $_POST['password'])
+				);
+			}
+			
+			$dotValidateUser = new Dot_Validate_User(array('who' => 'userData', 'action' => 'login', 'values' => $values));
+			if($dotValidateUser->isValid())
+			{
+				$this->userModel->authorizeLogin($dotValidateUser->getData());
+			}
+			else
+			{
+				$error = $dotValidateUser->getError();
+				// login info are NOT VALID
+				$txt = array();
+				$field = array('email', 'password');
+				foreach ($field as $v)
+				{
+					if(array_key_exists($v, $error))
+					{
+						 $txt[] = $error[$v];
+					}
+				}
+				$this->session->validData = $dotValidateUser->getData();
+				$this->session->message['txt'] = $txt;
+				$this->session->message['type'] = 'error';
+			}
+		}
+		else
+		{
+			$this->session->message['txt'] = $this->option->warningMessage->userPermission;
+			$this->session->message['type'] = 'warning';
+		}
+		header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestController. '/login');
+		exit;
+	}
+
+	private function account()
+	{
+		// display My Account page, if user is logged in
+		//Dot_Auth::checkIdentity();
+		$data = array();
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// changes were made to checkUserToken
+			// see: Dot_Auth::checkUserToken($userToken, $userType='admin')
+			// see: IndexController.php : $userToken
+			if( !Dot_Auth::checkUserToken($userToken, 'userData') )
+			{
+				// remove the identity
+				$dotAuth = Dot_Auth::getInstance();
+				$dotAuth->clearIdentity('userData');
+				// warn the user
+				$this->session->message['txt'] = $this->option->warningMessage->tokenExpired; 
+				$this->session->message['type'] = 'warning';
+				// log in
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestController. '/login');
+				exit;
+			}
+			// POST values that will be validated
+			$values = array('email' => array('email' => (isset($_POST['email']) ? $_POST['email'] : '')));
+
+			// Only if a new password is provided we will update the password field
+			if($_POST['password'] != '' || $_POST['password2'] !='' )
+			{
+				$values['password'] = array('password' => $_POST['password'],
+								 										'password2' =>  $_POST['password2']);
+			}
+
+			$dotValidateUser = new Dot_Validate_User(
+									array(
+										'who' => 'userData',
+										'action' => 'update',
+										'values' => $values,
+										'userId' => $this->registry->session->userData->id
+									));
+			if($dotValidateUser->isValid())
+			{
+				// no error - then update user
+				$data = $dotValidateUser->getData();
+				$data['id'] = $this->registry->session->userData->id;
+				$this->userModel->updateUser($data);
+				$this->session->message['txt'] = $this->option->infoMessage->update;
+				$this->session->message['type'] = 'info';
+			}
+			else
+			{
+				$data = $dotValidateUser->getData();
+				$this->session->message['txt'] = $dotValidateUser->getError();
+				$this->session->message['type'] = 'error';
+			}
+		}
+		$data = $this->userModel->getUserInfo($this->registry->session->userData->id);
+		$this->userView->details('update', $data);
+	}
+
+	private function registerStepOne()
+	{
+		unset($this->session->validData);
+		if(!isset($this->session->city) || !isset($this->session->category))
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url);
+			exit();
+		}
+
+		//save city and category datas in different variables for later user in thankyou page
+		// the session for city and category will be unset after registration so the user cant come back unless he goes through the hole proces
+
+		$urlCategory=$this->session->category;
+		$cloneSuffix = substr($this->session->category, -3);
+		
+		if (in_array($cloneSuffix, array("_1b", "_1c", "_1d", "_1e", "_1f")))
+		{	
+			$urlCategory = substr($this->session->category, 0 ,strlen($this->session->category) - 3);
+		}
+		$industryPerson=$this->cityStateModel->industryPersonData($urlCategory);
+
+		$data = array();
+		$error = array();
+		
+		if (isset($this->session->step1Done))
+		{
+			$this->userModel->unsetDataFromStep1Registration();
+		}
+		// add email to step 1 registration if socialNetwork isset and if email is not empty
+		if (isset($this->session->socialNetwork))
+		{
+			if (!empty($this->session->email))
+			{
+				
+				$this->userModel->setAndSaveStepOneRegister($this->session->email);
+
+			}
+			$this->session->step1Done = true;
+			header('Location: ' . $this->registry->configuration->website->params->url . '/user/register');
+			exit;
+		}
+		if ($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			if(isset($_POST['email']))
+			{
+				$email=$this->session->email=$_POST['email'];
+				
+				$userDataExists=$this->userModel->verifyEmailUserData($email);
+
+
+				if($userDataExists == FALSE)
+				{
+					$values = array('email' => array('email' => $_POST['email']));
+					$dotValidateEmail = new Dot_Validate_User(array('who' => 'userData', 'action' => 'add', 'values' => $values));
+					if($dotValidateEmail->isValid())
+					{
+						if (substr($this->session->category, -3) == "_1b" || substr($this->session->category, -3) == "_1c" || substr($this->session->category, -3) == "_1e" || substr($this->session->category, -3) == "_1d" || substr($this->session->category, -3) == "_1f" )
+						{	
+							// Update only after validation because we update the step that the user Has Finished
+							$step = 'REG1';
+							$mc = new Micromail_Micromail();
+							$mc->sendUserToMailChimp($_POST['email'],$step);
+						}
+						//add email to step 1 registration if the registration type is email
+						$this->userModel->setAndSaveStepOneRegister($_POST['email']);
+						
+						header('Location: ' . $this->registry->configuration->website->params->url . '/user/register');
+						exit;
+					}
+					else
+					{
+						$error = $dotValidateEmail->getError();
+						$this->session->validData = $dotValidateEmail->getData();
+						$this->session->message['txt'] = $error['email'];
+						$this->session->message['type'] = 'error';
+							
+						header('Location: ' . $_SERVER['HTTP_REFERER']);
+						exit;
+					}
+				}
+				else
+				{
+					$values = array('email' => array('email' => $_POST['email']));			
+						//add email to step 1 registration if the registration type is email
+						$this->userModel->setAndSaveStepOneRegister($_POST['email']);
+						$this->session->userId=$userDataExists['id'];
+						header('Location: ' . $this->registry->configuration->website->params->url . '/user/register');
+						exit;
+				}
+
+				
+			}
+		}
+		$this->userView->details('register_step1',$industryPerson);
+	}
+	
+	private function register()
+	{
+		if(!isset($this->session->city) || !isset($this->session->category))
+		{
+			unset($this->session->socialNetwork);
+			unset($this->session->linkedin_flag);
+			header('Location: ' . $this->registry->configuration->website->params->url . '/user/register-first-step');
+			exit();
+		}
+		$validatedData=array();
+		$email=$this->session->email;
+		$userDataExists=$this->userModel->verifyEmailUserData($email);
+		$this->session->checkOrphanCategory = $this->userModel->checkIfOrphanCategory($this->session->category);
+		$possibleCategories=$this->cityStateModel->possibleCategories();
+
+		if($this->session->checkOrphanCategory == true)
+		{
+			$this->registrationSurvey = '103';
+				
+			if (isset($this->session->wistiaFlow))
+			{
+				$this->registrationSurvey = '104';
+			}
+		}
+		
+		// display signup form and allow user to register
+		$data = array();
+		$error = array();
+		$urlCategory = $this->session->category;
+		$cloneSuffix = substr($this->session->category, -3);
+
+		
+		if (in_array($cloneSuffix, array("_1b", "_1c", "_1d", "_1e", "_1f")))
+		{	
+			$urlCategory = substr($this->session->category, 0 ,strlen($this->session->category) - 3);
+		}
+			
+			if ($_SERVER['REQUEST_METHOD'] === "POST")
+			{
+				if(empty($userDataExists))
+				{
+					$_POST['country']='United States';
+				}
+
+				// Update only after validation because we update the step that the user Has Finished
+				$mc = new Micromail_Micromail();
+				
+				$questionList = $this->userModel->getOnlyOneCategoryQuestionsData($urlCategory);
+				
+				//if there is no user with the email we get from session
+				if($userDataExists == FALSE)
+				{
+					$this->session->step1UserId = $this->userModel->getUserIdStep1($email);
+					setcookie('email', $email, time()+60*60*24*30, '/');
+
+					if ($this->session->checkOrphanCategory == false)
+					{
+						// POST values that will be validated
+						$values = array(
+										'email' => array(
+														'email' => (isset($_POST['email']['email'])) ? $_POST['email']['email'] : ''
+										),
+										'nameDetails' =>array(
+												'firstName'=>(isset($_POST['firstName'])) ? $_POST['firstName'] : '',
+												// 'lastName'=> (isset($_POST['lastName'])) ? $_POST['lastName'] : ''
+											),
+										'zipcode' =>array(
+														'zipcode'=>(isset($_POST['zipcode'])) ? $_POST['zipcode'] : ''
+										),
+								// 		'phoneNumber' =>array(
+								// 'phoneNumber'=>(isset($_POST['phoneNumber'])) ? $_POST['phoneNumber'] : ''
+								// ),
+						'answer' =>array(
+										// will be dinamically added later --- see three lines below ...
+						)
+						);
+					}
+					else
+					{
+
+						// POST values that will be validated
+						$values = array(
+										'email' => array(
+														'email' => (isset($_POST['email']['email'])) ? $_POST['email']['email'] : ''
+														),
+										'nameDetails' =>array(
+												'firstName'=>(isset($_POST['firstName'])) ? $_POST['firstName'] : '',
+												'lastName'=> (isset($_POST['lastName'])) ? $_POST['lastName'] : ''
+														),
+										'zipcode' =>array(
+														'zipcode'=>(isset($_POST['zipcode'])) ? $_POST['zipcode'] : ''
+														),
+										'phoneNumber' =>array(
+															'phoneNumber'=>(isset($_POST['phoneNumber'])) ? $_POST['phoneNumber'] : ''
+															),
+										'answer' =>array(
+														// will be dinamically added later --- see three lines below ...
+														)
+										);
+						
+						if(($this->registrationSurvey == '104') && (isset($_POST['phoneNumber']) && empty($_POST['phoneNumber'])))
+						{	
+							unset($values['phoneNumber']);
+						}
+					}
+
+					foreach ($questionList as $questionNumber => $questionValue) 
+					{
+						$questionsThatWereUnset = $this->session->questionsUset;
+						if(isset($this->session->questionsUset) && in_array($questionValue['name'], $questionsThatWereUnset))
+						{
+							unset($questionList[$questionNumber]);
+						}
+					}
+
+					// dinamically adding the question-key & answer pairs				
+					foreach ($questionList as $question) 
+					{					
+							$values['answer'][$question['name']] = array();
+							$values['answer'][$question['name']]['answer'] = (isset($_POST[$question['name']])) ? $_POST[$question['name']] : '';
+							$values['answer'][$question['name']]['formId'] = $question['formId'];
+					}
+
+					if(isset($_POST['firstName']) && isset($_POST['lastName']))
+					{
+							$values['nameDetails']=array(
+								'firstName'=>(isset($_POST['firstName'])) ? $_POST['firstName'] : '',
+								'lastName'=> (isset($_POST['lastName'])) ? $_POST['lastName'] : ''			
+							);
+					}
+
+					if (isset($this->session->socialNetwork))
+					{
+						$nameDetails = array('firstName', 'lastName');
+					
+						foreach ($nameDetails as $key)
+						{
+							if (!array_key_exists($key, $this->session->checkedSocialNetworkData))
+							{
+								unset($values['nameDetails'][$key]);
+							}
+							if (empty($values['nameDetails']))
+							{
+								unset($values['nameDetails']);
+							}
+						}
+					}
+					
+					$dotValidateUser = new Dot_Validate_User(array('who' => 'userData', 'action' => 'add', 'values' => $values));
+
+					if($dotValidateUser->isValid())
+					{	
+						// add email to step 1 registration if socialNetwork isset and if email is empty
+						// we could not add the email on register-step-one because no email was returned by social network
+						if (isset($this->session->socialNetwork) && empty($this->session->email))
+						{
+							$this->userModel->setAndSaveStepOneRegister($_POST['email']['email']);
+						}
+						// no error - then add user
+						$validatedData = $dotValidateUser->getData();
+						$data = $this->userModel->setAddUserData($validatedData);
+						if ($this->session->checkOrphanCategory == false)
+						{
+
+						}
+		
+						// Update the mailchimp if the user finished reg2
+						$step = 'REG2';
+						$mc->updateUserOptions($this->session->email,$step);
+
+
+						// $userData = $data; excluding the answer keys !! 
+						$userData=array();
+						$neededKeys = array('email','ip','platform', 'registerType');
+						foreach($neededKeys as $key)
+						{
+							$userData[$key] = $data[$key];
+						}
+						
+						$userId = $this->userModel->addUser($userData);	
+
+						
+						if(isset($this->session->subId))
+						{
+							$this->userModel->setAndSaveMicroRecruitingSubIdTrackingStep2($userId);
+						}	
+					
+						$this->session->userId=$userId;
+						$ids = array('userId'		=>	$userId);
+						if (isset($this->session->socialNetwork))
+						{
+							$ids[$this->session->socialNetwork . 'Id']	= $this->session->socialNetworkId;
+							unset($this->session->socialNetworkId);
+						}	
+						$this->userModel->addUserIds($ids);	
+						
+						
+						if (isset($this->session->socialNetwork))
+						{
+							$this->session->userDataFromReg2 = $_POST;
+							$dataToAppend = $this->userModel->getDataForSocialUser($this->session->socialNetwork, $this->session->email);
+							
+							foreach ($dataToAppend as $key => $value)
+							{
+								$this->session->userDataFromReg2[$key] = $value;
+							}
+						}
+						else 
+						{
+							$this->session->userDataFromReg2 = $_POST;
+						}
+					}
+					else
+					{		
+						$error = $dotValidateUser->getError(); 
+						// login info are NOT VALID 						
+						$txt = array(); 
+						$field = array('firstName','lastName','zipcode', 'phoneNumber', 'phoneNumber1', 'phoneNumber2', 'country'); 
+						foreach ($field as $v) 
+						{ 
+							if(array_key_exists($v, $error))
+							{ 
+								$txt[] = $error[$v]; 
+							} 
+						} 
+							foreach ($questionList as $question) 
+							{
+								$txt['wrong answer'] = $this->option->errorMessage->wrongAnswer;
+							}
+							if(isset($error['answer']) ) $txt[] = $error['answer'];
+
+						$this->session->validData = $dotValidateUser->getData(); 
+
+						// FIRST NAME IS NOT VALIDATED !!!!!!!! so if it is set we save it just in case the user does something wrong so we can repopulate it later
+						// if(isset($_POST['firstName']))
+						// {
+						// 	 $this->session->validData['firstName'] = $_POST['firstName'];
+						// }						
+						
+						$this->session->message['txt'] = $txt; 
+						$this->session->message['type'] = 'error';
+
+						header('Location: ' . $this->registry->configuration->website->params->url . '/user/register/');
+						exit;
+					}
+				}
+				else
+				{
+					$userId=$userDataExists['id'];
+					
+					$this->session->userDataFromReg2 = $_POST;
+				}
+				
+				if(($this->registrationSurvey == '100') && $this->session->dayInTheLifeFlow == '1' && (isset($_POST['phoneNumber']) && empty($_POST['phoneNumber'])))
+				{
+					unset($_POST['phoneNumber']);
+				}
+				$this->userModel->setRegSurvey();
+
+				$this->userModel->saveSurveyData($_POST, $this->registrationSurvey, $userId);
+
+				//store the Category on which an user has taken the Survey
+				$answeredData=array();
+				$answeredData['userId']=$userId;
+				$answeredData['city']=$this->session->cityData;
+				$answeredData['category']=$urlCategory;
+				$categoryAnsweredData=$this->userModel->addCategoryAnswered($answeredData);
+
+				//add the users Data in microRecruitingActionTracking	
+				$this->userModel->addActionTracking($this->session->city,$this->session->category,$userId);	
+
+				unset($this->session->city);
+				unset($this->session->category);
+				unset($this->session->socialNetwork);
+				
+				$this->session->userReg2 = true;
+						
+// 						$this->session->userDataFromReg2 = $_POST;
+						
+				if (isset($this->session->subId))
+				{
+				    $uniqueIdData = $this->userModel->getSubIdData($this->session->subId);
+				    $this->session->userDataFromReg2 = array_merge($this->session->userDataFromReg2, $uniqueIdData);
+				}
+						
+// 						if(in_array($urlCategory, $possibleCategories))
+// 						{
+				header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you/');
+				exit;
+// 						}
+// 						else 
+// 						{
+// 							header('Location: ' . $this->registry->configuration->website->params->url . '/user/finish-registration/');
+// 							exit;
+// 						}
+
+				$errorArray = $dotValidateUser->getError();
+				
+				if($this->session->message['txt'] !== null && $this->session->message['txt'] != $this->option->infoMessage->add)
+				{
+					$errorArray = array_push($errorArray, $this->session->messsage['txt']);
+				}
+			}
+
+			$fieldsData = $this->userModel->getDataForRegistrationSurvey();
+			//$questionsToUnset = $this->userModel->getCategoriesQuestions($urlCategory);
+			//$fieldsData= $this->userModel->unsetQuestions($fieldsData,$questionsToUnset);
+			$displayFields = $this->userModel->getAllSurveyFieldsToDisplay($fieldsData['surveyFields']);
+
+			if (isset($this->session->checkedSocialNetworkData))
+			{
+				$displayFields = $this->session->checkedSocialNetworkData;
+				$displayFields = array_merge($displayFields, $this->userModel->getCategoryQuestions($urlCategory));
+			}
+
+			if(($key = array_search('country', $displayFields)) !== false) 
+			{
+	    		unset($displayFields[$key]);
+			}
+		
+			if(!empty($userDataExists))
+			{
+				$surveyUserIdExists=$this->userModel->verifyUserAnsweredSurvey($userDataExists['id']);
+				$orphanSurvey = $this->userModel->verifyUserAnsweredOrphanSurvey($userDataExists['id']);
+// 				$surveyStep3UserIdExists=$this->userModel->verifyUserAnsweredSurveyStep3($userDataExists['id']);
+
+				if(!empty($surveyUserIdExists))
+				{
+					$categoryUserIdAnswered=$this->userModel->verifyUserAnsweredCategory($userDataExists['id'],$urlCategory);
+
+					if(!empty($categoryUserIdAnswered))
+					{
+						$this->userModel->addActionTracking($this->session->city,$urlCategory,$userDataExists['id']);
+// 						if(in_array($urlCategory, $possibleCategories))
+// 						{
+						header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you/');
+						exit;
+// 						}
+// 						else 
+// 						{
+// 							header('Location: ' . $this->registry->configuration->website->params->url . '/user/finish-registration/');
+// 							exit;
+// 						}
+					}
+					else
+					{
+						if(!empty($surveyStep3UserIdExists))
+						{
+// 							if(in_array($urlCategory, $possibleCategories))
+// 							{
+								$displayFields = $this->userModel->getOnlyOneCategoryQuestions($urlCategory);
+// 							}
+// 							else 
+// 							{
+// 								header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you/');
+// 								exit;
+// 							}
+						}
+						else 
+						{
+// 							if(!empty($surveyUserIdExists))
+// 							{
+// 								if(in_array($urlCategory, $possibleCategories))
+// 								{
+// 									$displayFields = $this->userModel->getOnlyOneCategoryQuestions($urlCategory);
+// 								}
+								if(!empty($orphanSurvey) && !in_array($urlCategory, $possibleCategories))
+								{
+									header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you/');
+									exit;
+								}
+								
+								if (!isset($this->session->wistiaFlow))
+								{
+									$displayFields = $this->userModel->getOnlyOneCategoryQuestions($urlCategory);
+								}
+								else 
+								{
+									$displayFields = $this->userModel->deleteNotNeededFieldsForWistiaFlow($displayFields);
+								}
+// 								}
+// 								else 
+// 								{
+// 									if(!empty($orphanSurvey))
+// 									{
+// 										header('Location: ' . $this->registry->configuration->website->params->url . '/user/finish-registration/');
+// 										exit;
+// 									}
+// 									$displayFields = $this->userModel->getOnlyOneCategoryQuestions($urlCategory);
+// 								}
+// 							}
+// 							else
+// 							{
+// 								header('Location: ' . $this->registry->configuration->website->params->url . '/user/finish-registration/');
+// 								exit;
+// 							}
+						}
+					}
+				}
+			}
+			$validatedData=$this->session->validData;
+
+			ksort($fieldsData['surveyFields']);
+			$this->userView->showSurvey('register', $fieldsData, $displayFields, $this->session->email,$userDataExists, $validatedData);
+	}
+	
+	private function registerStep3()
+	{
+		if(!isset($this->session->email))
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url . '/user/register-first-step');
+			exit();
+		}
+		
+		$userDataExists = array();
+		$validatedData = array();
+		
+		$userHasAnsweredTheSurvey=$this->userModel->userHasAnsweredTheSurveyReg3($this->session->email);
+		
+		$questionList = $this->userModel->getQuestionListForStep3Registration();
+		
+		if($userHasAnsweredTheSurvey != false)
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you/');
+			exit();
+		}
+		
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+		
+			if(!isset($this->session->userId))
+			{
+				$userId = $this->userModel->getUserIdForReg3($this->session->email);
+			}
+			else
+			{
+				$userId = $this->session->userId;
+			}
+			// POST values that will be validated
+			$values = array(
+					'answer' =>array(
+							// will be dinamically added later --- see three lines below ...
+					)
+			);
+		
+			// dinamically adding the question-key & answer pairs
+			foreach ($questionList as $question)
+			{
+				$values['answer'][$question['name']] = array();
+				$values['answer'][$question['name']]['answer'] = (isset($_POST[$question['name']])) ? $_POST[$question['name']] : '';
+				$values['answer'][$question['name']]['formId'] = $question['formId'];
+			}
+				
+			$dotValidateUser = new Dot_Validate_User(array('who' => 'userData', 'action' => 'add', 'values' => $values));
+		
+			if($dotValidateUser->isValid())
+			{
+				if(isset($this->session->subId))
+				{
+					$this->userModel->trackSubIdStep3SurveyDone($userId,$this->session->subId);
+				}
+				$this->userModel->saveSurveyDataStep3($_POST, $this->registrationStep3Survey, $userId);
+			}
+			else
+			{
+				$error = $dotValidateUser->getError();
+					
+				// login info are NOT VALID
+				$txt = array();
+				$field = array('firstName','lastName','zipcode', 'phoneNumber', 'phoneNumber1', 'phoneNumber2');
+				foreach ($field as $v)
+				{
+					if(array_key_exists($v, $error))
+					{
+						$txt[] = $error[$v];
+					}
+				}
+				$txt[] = 'Please Answer all the questions!';
+		
+				if(isset($error['answer']))
+				{
+					$txt[] = $error['answer'];
+				}
+				$this->session->validData = $dotValidateUser->getData();
+					
+		
+				$this->session->message['txt'] = $txt;
+				$this->session->message['type'] = 'error';
+		
+				header('Location: ' . $this->registry->configuration->website->params->url . '/user/finish-registration/');
+				exit();
+			}
+		
+			header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you/');
+			exit();
+		}
+		
+		$registration3Questions = $this->userModel->getDataForRegistrationSurveyForReg3();
+		
+		ksort($registration3Questions['surveyFields']);
+		
+		//name of the key becomes the name of the question
+		foreach ($registration3Questions['surveyFields']  as $key => $value)
+		{
+			$registration3Questions['surveyFields'][$value['name']] = $registration3Questions['surveyFields'][$key];
+			unset($registration3Questions['surveyFields'][$key]);
+		}
+		
+		$displayFields = $this->userModel->getAllSurveyFieldsToDisplayOnReg3($registration3Questions['surveyFields']);
+		
+		$this->userView->showSurvey('register_step3',$registration3Questions, $displayFields, $this->session->email,$userDataExists,$validatedData);
+	}
+
+	private function forgotPassword()
+	{
+		// send an emai with the forgotten password
+		$data = array();
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			$values = array('email' => array('email' => (isset($_POST['email']) ? $_POST['email'] : '' )));
+			$dotValidateUser = new Dot_Validate_User(array('who' => 'userData', 'action' => 'forgot-password', 'values' => $values));
+			if($dotValidateUser->isValid())
+			{
+				// no error - then send password
+				$data = $dotValidateUser->getData();
+				$this->userModel->forgotPassword($data['email']);
+			}
+			else
+			{
+				$this->session->message['txt'] = $dotValidateUser->getError();
+				$this->session->message['type'] = 'error';
+			}
+		}
+		$this->userView->details('forgot_password',$data);
+	}
+
+	private function resetPassword()
+	{
+		// start by considering there are no errors, and we enable the form
+		$disabled = false;
+
+		// not sure if the form was submitted or not yet , either from Request or from POST
+		$userId = array_key_exists('id', $this->registry->request) ? $this->registry->request['id'] : ((isset($_POST['userId'])) ? $_POST['userId'] : '');
+		$userToken = array_key_exists('token', $this->registry->request) ? $this->registry->request['token'] : ((isset($_POST['userToken'])) ? $_POST['userToken'] : '');
+
+		// get user info based on ID , and see if is valid
+		$userInfo = $this->userModel->getUserInfo($userId);
+		if(false == $userInfo)
+		{
+			$disabled = true;
+		}
+		else
+		{
+			// Check if the user's password  match the token
+			$expectedToken = Dot_Auth::generateUserToken($userInfo['password']);
+			if($expectedToken != $userToken)
+			{
+				$disabled = true;
+			}
+		}
+		// we have errors, display the message and disable the form
+		if(true == $disabled)
+		{
+			$this->session->message['txt'] = $this->registry->option->errorMessage->wrongResetPasswordUrl;
+			$this->session->message['type'] = 'error';
+		}
+		// IF the form was submmited and there are NO errors
+		if ($_SERVER['REQUEST_METHOD'] === 'POST' && false == $disabled)
+		{
+			// POST values that will be validated
+			$values['password'] =	array('password' => (isset($_POST['password']) ? $_POST['password'] : ''),
+																	'password2' =>  (isset($_POST['password2']) ? $_POST['password2'] : ''));
+			$dotValidateUser = new Dot_Validate_User(array(
+										'who' => 'user',
+										'action' => 'update',
+										'values' => $values,
+										'userId' => $userId
+									));
+			if($dotValidateUser->isValid())
+			{
+				$data['password'] = $_POST['password'];
+				$data['id'] = $userId;
+				$data['username'] = $userInfo['username'];
+				$this->userModel->updateUser($data);
+				$this->userModel->authorizeLogin($data);
+			}
+			else
+			{
+				$data = $dotValidateUser->getData();
+				$this->session->message['txt'] = $dotValidateUser->getError();
+				$this->session->message['type'] = 'error';
+			}
+		}
+		// show the form, enabled or disabled
+		$this->userView->resetPasswordForm('reset_password', $disabled, $userId, $userToken);
+	}
+
+	private function logout()
+	{
+		$dotAuth = Dot_Auth::getInstance();
+		$dotAuth->clearIdentity('userData');
+		header('location: '.$this->registry->configuration->website->params->url);
+		exit;
+	}
+
+	private function deleteCache()
+	{
+		$result = array("success" => false, "message" => "An error occured, please try again.");
+		if(!isset($_POST['userToken']) || !Dot_Auth::checkUserToken($_POST['userToken']))
+		{
+			echo Zend_Json::encode($result);
+			exit;
+		}
+		Dot_Cache::clean('all');
+		$result = array('succes'=>'true');
+		echo Zend_Json::encode($result);
+		exit;
+	}
+
+	//show a page with JobFeed on certain city-st/category for the user after Reg step2
+
+	
+	private function thankYou()
+	{
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		
+		$urlCategory = $this->session->categoryData; 
+		if (substr($this->session->categoryData, -3) == "_1b")
+		{	
+			$urlCategory = substr($this->session->categoryData, 0 ,strlen($this->session->categoryData) - 3);
+		}
+
+		unset($this->session->validData);
+		if(!isset($this->session->cityData) || !isset($urlCategory) || !isset($this->session->email))
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url);
+			exit();
+		}
+		
+		$zipcode = $this->session->userZipCode;
+		
+		if(!isset($this->session->userZipCode) && empty($this->session->userZipCode))
+		{
+			$zipcode = $this->userModel->getUserZipCodeFOrUserAlreadyRegistered($this->session->email);
+		}
+		$coordinates = $this->userModel->getCoordinatesByZipCode($zipcode);
+		$distance = $this->userModel->calculateDistance($this->rotationMatrixCities, $coordinates);
+
+		$email=$this->session->email;
+		//get data from a certain User->email
+		$userDataExists=$this->userModel->verifyEmailUserData($email);
+		//save the Id for the user that got into this page
+		$userIdData=$userDataExists['id'];
+
+		// if there is a state without city LIKE:  NJ
+		// we will have a certain city to use for the JobFeed search
+		$possibleStateWithoutCity=$this->cityStateModel->stateWithoutCity();
+	
+		$urlCity=$this->session->cityData;
+        
+		$categoryNeeded = array('maids_plainfield_1c', 'themaidsfw_1c', 'worldmainclean_1c');
+		
+		if(in_array($urlCategory, $categoryNeeded))
+		{
+		      $jobXml =  $this->getFromAPI($zipcode);
+		}
+		else 
+		{
+		    $jobXml = '';
+		}
+		
+		
+		//get specific content for thank you page 
+		$thankYouPageContent = $this->userModel->getContentForThankYouPage($this->registry->requestAction, $this->session->flowId, $urlCity, $urlCategory);
+		
+		if (!isset($this->session->userId))
+		{
+			$this->session->userId = $this->userModel->getUserIdForReg3($this->session->email);
+		}
+		
+		if(isset($this->session->wistiaFlow))
+		{
+		    $this->videoModel->setAndSaveUserWistiaActivity($this->registry->requestAction, $this->session->userId, $this->session->wistiaFlow);
+		}
+
+		if(($this->session->cityData == 'new_york_city-ny') && ($this->session->categoryData == 'driving'))
+		{
+		    $this->userView->displayThankYouPage('SpecialThankYou', $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity);
+		    session_destroy();
+		}
+		else
+		{
+			if($_SERVER['REQUEST_METHOD'] === "POST")
+			{
+				if(isset($_POST['submit']))
+				{
+
+					$variableToCompare = min($distance);
+					$subIdData = (isset($this->session->subId)) ? $this->session->subId : '0';
+					
+					if (isset($this->session->wistiaFlow))
+					{
+						if ($this->session->wistiaFlow == '1')
+						{
+							$this->userModel->trackSurveyFlow($this->session->userId, $subIdData, $this->flows['wistiaFlow1']);
+						}
+					
+						elseif ($this->session->wistiaFlow == '2')
+						{
+							$this->userModel->trackSurveyFlow($this->session->userId, $subIdData, $this->flows['wistiaFlow2']);
+						}
+						
+						elseif ($this->session->wistiaFlow == '3')
+						{ 
+							$this->userModel->trackSurveyFlow($this->session->userId, $subIdData, $this->flows['wistiaFlow4']);
+						}
+						
+						$category = $this->userModel->getVideoCategory($this->session->categoryData);
+						header('Location: ' . $this->registry->configuration->website->params->url . '/video/' . $category . '/kitchen');
+						exit;
+					}
+					elseif (isset($this->session->dayInTheLifeFlow))
+					{
+
+						if($this->session->dayInTheLifeFlow == '1')
+						{
+							$this->userModel->trackSurveyFlow($this->session->userId, $subIdData, $this->flows['wistiaFlow3']);
+							
+							header('Location: ' . $this->registry->configuration->website->params->url . '/video/day-in-the-life-nocell');
+							exit;
+						}
+						if($this->session->dayInTheLifeFlow == '2')
+						{
+							$this->userModel->trackSurveyFlow($this->session->userId, $subIdData, $this->flows['wistiaFlow7']);
+							$this->session->stepToBeDone = 1;
+							
+							header('Location: ' . $this->registry->configuration->website->params->url . '/video/day-in-the-life');
+							exit;
+						}
+							
+					}
+					if ($this->session->checkOrphanCategory != false)
+					{
+						$this->userModel->trackSurveyFlow($this->session->userId, $subIdData, $this->flows['survey']);
+						$this->session->stepToBeDone = 1;
+						header('Location: ' . $this->registry->configuration->website->params->url . "/survey/list/id/1");
+						exit();
+					}
+					
+					if($variableToCompare < '75')
+					{
+						foreach ($distance as $key => $value)
+						{
+							if ($value == $variableToCompare)
+							{
+								$city = $key;
+							}
+						}
+							
+						if ($city == "Philadelphia, PA" || $city == "Portland, OR" || $city == "Sacremento, CA" || $city == 'New Jersey')
+						{
+							$urlRedirectDefault = 'http://www.instacart.com/shoppers?utm_source=crowded&utm_medium=jobboard&utm_campaign=ad_bos_supply_all_2015_12';
+							$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$urlRedirectDefault);
+							session_destroy();
+							header('Location: ' . $urlRedirectDefault);
+							exit;
+						}
+							
+						$redirectData=$this->userModel->randomRedirect($city);
+						$urlRedirect=array();
+							
+						foreach ($redirectData as $key => $value)
+						{
+							array_push($urlRedirect, $value['url']);
+						}
+							
+						$redirect=array_rand ($urlRedirect);
+							
+						$redirect=$urlRedirect[$redirect];
+			
+						$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$redirect);
+						session_destroy();
+						header('Location: ' . $redirect);
+						exit;
+					}
+						
+					else
+					{
+						$urlRedirectDefault = 'http://www.instacart.com/shoppers?utm_source=crowded&utm_medium=jobboard&utm_campaign=ad_bos_supply_all_2015_12';
+						$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$urlRedirectDefault);
+						session_destroy();
+						header('Location: ' . $urlRedirectDefault);
+						exit;
+					}
+				}
+			}
+
+			$textOnPage = $this->thankYouPageText;
+			$buttonText = $this->thankYouPageButtonText;
+			
+			if (isset($this->session->wistiaFlow))
+			{
+				$buttonText = $this->thankYouPageWistiaFlow1ButtonText;
+// 				if ($this->session->wistiaFlow == '1')
+// 				{
+				$textOnPage = $this->thankYouPageTextWistiaFlow1;
+// 				}
+			}
+			elseif ($this->session->checkOrphanCategory == true)
+			{
+				$textOnPage = $this->thankYouPageTextSurveyFlow;
+				$buttonText = $this->thankYouPageWistiaFlow1ButtonText;
+			}
+			
+			unset($this->session->socialNetwork);
+			unset($this->session->checkedSocialNetworkData);
+			
+			$this->userView->displayThankYouPage('thankYou', $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity, $jobXml);
+			//$this->userView->showPage('thankyou',$urlCity,$urlCategory,$userIdData,$possibleStateWithoutCity, $textOnPage, $buttonText);
+		}
+	}
+	
+	private function trackWistiaClick()
+	{
+		$urlRedirect = 'https://www.handy.com/apply?utm_source=crowded';
+		$userId = $this->session->userId;
+		$subId = (isset($this->session->subId)) ? $this->session->subId : '0';
+		
+		if ($this->session->wistiaFlow == '1')
+		{
+			$flow = $this->flows['wistiaFlow1'];
+		}
+		elseif ($this->session->wistiaFlow == '2')
+		{
+			$flow = $this->flows['wistiaFlow2'];
+		}
+		elseif ($this->session->wistiaFlow == '3')
+		{
+			$flow = $this->flows['wistiaFlow4'];
+		}
+		$applyAnswer = $this->session->applyTracking;
+		$this->userModel->trackWistiaClick($userId, $subId, $flow, $applyAnswer);
+		if ($applyAnswer == '1')
+		{
+			if (isset($this->session->cleaningCloneFlow))
+			{
+				header('Location: ' . $this->registry->configuration->website->params->url . '/user/thank-you-done');
+				exit;
+			}
+			
+			session_destroy();
+			header('Location: ' . $urlRedirect);
+			exit;
+		}
+		elseif($applyAnswer == '0')
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url.'/user/cleaning-job-list/');
+			exit;
+		}
+	}
+	
+	private function applyPage()
+	{
+		if(!isset($this->session->userId))
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url);
+			exit;
+		}
+		
+		$textOnPage = $this->applyPageText;
+		$cleaningAuthority = (isset($this->session->cleaningAuthority)) ? $this->session->cleaningAuthority : false;
+		
+		$category = 'apply-page';
+		
+		$this->videoModel->setAndSaveUserWistiaActivity($category, $this->session->userId, $this->session->wistiaFlow);
+		
+		$thankYouPageContent = $this->userModel->getContentForThankYouPage($this->registry->requestAction, $this->session->flowId, $this->session->cityData, $this->session->categoryData);
+		
+		if($cleaningAuthority == TRUE)
+		{
+			unset($cleaningAuthority);
+			$this->userView->displayThankYouPage('cleaning_authority', $thankYouPageContent);
+		}
+		else 
+		{
+			$this->userView->displayThankYouPage('apply_page', $thankYouPageContent);
+		}
+	}
+	
+	private function apply()
+	{
+		$this->session->applyTracking = '1';
+		
+		header('Location: ' . $this->registry->configuration->website->params->url . '/user/wistia-tracking');
+		exit;
+	}
+	
+	private function applyNotInterested()
+	{
+		$this->session->applyTracking = '0';
+	
+		header('Location: ' . $this->registry->configuration->website->params->url . '/user/wistia-tracking');
+		exit;
+	}
+
+	private function cleaningJobList()
+	{
+		$this->pageTitle = "Cleaning Job List";
+
+		$urlCategory = $this->session->categoryData;
+		if (substr($this->session->categoryData, -3) == "_1b")
+		{	
+			$urlCategory = substr($this->session->categoryData, 0 ,strlen($this->session->categoryData) - 3);
+		}
+
+		if(!isset($this->session->email))
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url);
+			exit;
+		}
+
+		unset($this->session->validData);
+		
+		$zipcode = $this->session->userZipCode;
+		if(!isset($this->session->userZipCode) && empty($this->session->userZipCode))
+		{
+			$zipcode = $this->userModel->getUserZipCodeFOrUserAlreadyRegistered($this->session->email);
+		}
+
+		$coordinates = $this->userModel->getCoordinatesByZipCode($zipcode);
+		$distance = $this->userModel->calculateDistance($this->rotationMatrixCities, $coordinates);
+
+		$email=$this->session->email;
+		//get data from a certain User->email
+		$userDataExists=$this->userModel->verifyEmailUserData($email);
+		//save the Id for the user that got into this page
+		$userIdData=$userDataExists['id'];
+
+		// if there is a state without city LIKE:  NJ
+		// we will have a certain city to use for the JobFeed search
+		$possibleStateWithoutCity=$this->cityStateModel->stateWithoutCity();
+	
+		$urlCity=$this->session->cityData;
+		
+		//get specific content for thank you page
+		$thankYouPageContent = $this->userModel->getContentForThankYouPage($this->registry->requestAction, $this->session->flowId, $urlCity, $urlCategory);
+
+		$this->userView->displayThankYouPage('cleaning-job-list', $thankYouPageContent, $urlCity, $urlCategory, $userIdData, $possibleStateWithoutCity);
+
+		session_destroy();
+	}
+	
+	private function urlRotationMatrix()
+	{
+		$zipcode = $this->session->userZipCode;
+		if(!isset($this->session->userZipCode) && empty($this->session->userZipCode))
+		{
+			$zipcode = $this->userModel->getUserZipCodeFOrUserAlreadyRegistered($this->session->email);
+		}
+		$coordinates = $this->userModel->getCoordinatesByZipCode($zipcode);
+		$distance = $this->userModel->calculateDistance($this->rotationMatrixCities, $coordinates);
+		
+		$email=$this->session->email;
+		//get data from a certain User->email
+		$userDataExists=$this->userModel->verifyEmailUserData($email);
+		//save the Id for the user that got into this page
+		$userIdData=$userDataExists['id'];
+		
+		$variableToCompare = min($distance);
+		$subIdData = (isset($this->session->subId)) ? $this->session->subId : '0';
+		
+		if($variableToCompare < '75')
+		{
+			foreach ($distance as $key => $value)
+			{
+				if ($value == $variableToCompare)
+				{
+					$city = $key;
+				}
+			}
+				
+			if ($city == "Philadelphia, PA" || $city == "Portland, OR" || $city == "Sacremento, CA" || $city == 'New Jersey')
+			{
+				$urlRedirectDefault = 'http://www.instacart.com/shoppers?utm_source=crowded&utm_medium=jobboard&utm_campaign=ad_bos_supply_all_2015_12';
+				$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$urlRedirectDefault);
+				session_destroy();
+				header('Location: ' . $urlRedirectDefault);
+				exit;
+			}
+				
+			$redirectData=$this->userModel->randomRedirect($city);
+			$urlRedirect=array();
+				
+			foreach ($redirectData as $key => $value)
+			{
+				array_push($urlRedirect, $value['url']);
+			}
+				
+			$redirect=array_rand ($urlRedirect);
+				
+			$redirect=$urlRedirect[$redirect];
+				
+			$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$redirect);
+			session_destroy();
+			header('Location: ' . $redirect);
+			exit;
+		}
+		
+		else
+		{
+			$urlRedirectDefault = 'http://www.instacart.com/shoppers?utm_source=crowded&utm_medium=jobboard&utm_campaign=ad_bos_supply_all_2015_12';
+			$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$urlRedirectDefault);
+			session_destroy();
+			header('Location: ' . $urlRedirectDefault);
+			exit;
+		}
+	}
+	
+	private function displaySimpleThankYouPage()
+	{
+		if (isset($this->session->cleaningCloneFlow))
+		{
+			$cityStateModel = new CityState();
+			$category = $cityStateModel->returnCategoryName($this->session->categoryData);
+			
+			$textOnPage = $this->applyPageCleaningFlowCloneTexts[$category];
+		}
+		
+		$thankYouPageContent = $this->userModel->getContentForThankYouPage($this->registry->requestAction, $this->session->flowId, $this->session->cityData, $this->session->categoryData);
+		
+		$this->userView->displayThankYouPage('simple_thank_you_page', $thankYouPageContent);
+	}
+	
+	private function getFromAPI($zipCode)
+	{
+	    $ch = curl_init();
+	    curl_setopt($ch,CURLOPT_RETURNTRANSFER, true);
+	    
+	    $link = 'http://www.employmentalert.com/api/result_mailing.php?aff_id=ea_crowded&sub_id=jodapi&keyword=&location='.$zipCode.'&siteid=US';
+	    
+	    $xml = simplexml_load_file($link);
+	    $xml_array = unserialize(serialize(json_decode(json_encode((array) $xml), 1)));
+	   
+	    $xml_array = array_slice($xml_array["JOB"], 0, 5);
+	    return $xml_array;
+	}
+}

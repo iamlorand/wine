@@ -1,0 +1,95 @@
+<?php
+
+class Survey_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+	}
+	
+	public function listSurveys($templateFile, $data)
+	{
+		$this->tpl->setFile('tpl_main', 'survey/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		
+		foreach($data as $k => $v)
+		{
+		    $this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('ID', $v['id']);
+			$this->tpl->setVar('NAME', $v['name']);
+			$this->tpl->setVar('ISACTIVE', $v['isEnabled']);
+			$this->tpl->setVar('ACTIVE_IMG', $v['isEnabled'] == 1 ? 'active' : 'inactive');
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+	public function addSurvey($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'survey/' . $templateFile . '.tpl');
+	}
+
+	public function updateSurvey($templateFile, $surveyData)
+	{
+		$this->tpl->setFile('tpl_main', 'survey/' . $templateFile . '.tpl');
+		$this->tpl->setVar('ID', $surveyData['survey']['id']);
+		$this->tpl->setVar('INSTRUCTIONS', $surveyData['survey']['instruction']);
+		$dataHtml = '';
+
+		if(!empty($surveyData['surveyFields']))
+		foreach($surveyData['surveyFields'] as $key=>$value)
+		{
+
+			if($value['isRequired'] == "1")
+				$checked = "checked";
+			else
+				$checked = "";
+
+			switch($value['inputType'])
+			{
+				case '1':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Input Number, set question</label><textarea rows='4' cols='50'  id='".$key."_q' name='".$value['id']."'' disabled>".$value['question']."</textarea><br><label for='required'>Required</label><input id='".$key."_r' type='checkbox' name='required_".$value['id']."' value='true' ".$checked."><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a><a href='#' class='button button_move'  onclick='grey(".$key."); return false;'>Edit</a><a href='#' class='button button_move' onclick='update(".$key.")'>Update</a></li>";
+				break;
+				case '2':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Input TextBox, set question:</label><textarea rows='4' cols='50' id='".$key."_q' name='".$value['id']."'disabled>".$value['question']."</textarea><br><label for='required'>Required</label><input id='".$key."_r' type='checkbox' name='required_".$value['id']."' value='true' ".$checked."><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a><a href='#' class='button button_move'  onclick='grey(".$key."); return false;'>Edit</a><a href='#' class='button button_move' onclick='update(".$key.")'>Update</a></li>";
+				break;
+				case '3':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Input CheckBox, please set question:</label><textarea rows='4' cols='50' id='".$key."_q' name='".$value['id']."'' disabled>".$value['question']."</textarea><label id='surveyLabel' >CheckBox Values, comma separated</label><textarea rows='4' cols='50' id='".$key."_a' name='answer_".$value['name']."' class='surveyAnswers' disabled>".$value['value']."</textarea><br><label for='required'>Required</label><input id='".$key."_r' type='checkbox' name='required_".$value['id']."' value='true' ".$checked."><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a><a href='#' class='button button_move' onclick='grey(".$key."); return false;'>Edit</a><a href='#' class='button button_move' onclick='update(".$key.")'>Update</a></li>";
+				break;
+				case '4':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Input RadioButton, please set question:</label><textarea rows='4' cols='50' id='".$key."_q' name='".$value['id']."'' disabled>".$value['question']."</textarea><label id='surveyLabel' >Radio Button Values, comma separated</label><textarea rows='4' cols='50' id='".$key."_a' name='answer_".$value['id']."' class='surveyAnswers' disabled>".$value['value']."</textarea><br><label for='required'>Required</label><input id='".$key."_r' type='checkbox' name='required_".$value['id']."' value='true' ".$checked."><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a><a href='#' class='button button_move'  onclick='grey(".$key."); return false;'>Edit</a><a href='#' class='button button_move' onclick='update(".$key.")'>Update</a></li>";
+				break;
+				case '5':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Input DropdownMenu, please set question:</label><textarea rows='4' cols='50' id='".$key."_q'' name='".$value['id']."'' disabled>".$value['question']."</textarea><label id='surveyLabel' >Dropdown Values, comma separated</label><textarea rows='4' cols='50' id='".$key."_a' name='answer_".$value['name']."' class='surveyAnswers' disabled>".$value['value']."</textarea><br><label for='required'>Required</label><input id='".$key."_r' type='checkbox' name='required_".$value['id']."' value='true' ".$checked."><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a><a href='#' class='button button_move'  onclick='grey(".$key."); return false;'>Edit</a><a href='#' class='button button_move' onclick='update(".$key.")'>Update</a></li>";
+				break;
+				case '6':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Input TextArea, set question:</label><textarea rows='4' cols='50' id='".$key."_q' name='".$value['id']."' disabled>".$value['question']."</textarea><br><label for='required'>Required</label><input id='".$key."_r' type='checkbox' name='required_".$value['id']."' value='true' ".$checked."><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a><a href='#' class='button' onclick='grey(".$key."); return false;'>Edit</a><a href='#' class='button button_move' onclick='update(".$key.")'>Update</a></li>";
+				break;
+				case '8':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Facebook Log in button</label><button type='submit' class='facebook_login' name='facebookButton' value='facebook' disabled><img src='{SITE_URL}/library/SocialAuth/Images/facebookButton.png' alt='Log in with Facebook' height='40' width='180'></button><input type='hidden' name ='facebookButton' value='facebook'><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></li>";
+				break;
+				case '9':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Facebook Log in button</label><button type='submit' name='googlePlusButton' value='googleplus' disabled><img src='{SITE_URL}/library/SocialAuth/Images/googlePlusButton.png' alt='Log in with GooglePlus' height='40' width='180'></button><input type='hidden' name ='googlePlusButton' value='googlePlus'><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></li>";
+				break;
+				case '10':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Facebook Log in button</label><button type='submit' name='linkedinButton' value='linkedin' disabled><img src='{SITE_URL}/library/SocialAuth/Images/linkedinButton.png' alt='Log in with Linkedin' height='40' width='180'></button><input type='hidden' name ='linkedinButton' value='linkedin'><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></li>";
+				break;
+				case '11':
+					$dataHtml .= "<li class='cleafix suveryClearfix' id='".$key."'><label id='surveyLabel'>Facebook Log in button</label><button type='submit' name='twitterButton' value='twitter' disabled><img src='{SITE_URL}/library/SocialAuth/Images/twitterButton.png' alt='Log in with Twitter' height='40' width='180'></button><input type='hidden' name ='twitterButton' value='twitter'><a href='#' class='button'  onclick='deleteElement(".$key.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></li>";
+				break;
+			}
+		}
+		$this->tpl->setVar('SELECTED_SURVEYS', $dataHtml);
+		if(isset($key))
+		{
+			$this->tpl->setVar('TOTAL_BOXES', ++$key);
+		}
+		else
+		{
+			$this->tpl->setVar('TOTAL_BOXES', 0);
+		}
+	}
+}

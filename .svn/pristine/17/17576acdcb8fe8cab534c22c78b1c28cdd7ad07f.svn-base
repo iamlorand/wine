@@ -1,0 +1,40 @@
+<div class="about_page" style="padding:40px 50px 30px 50px;">
+	<h3>Microrecruiting is a leading staffing agency helping connect the best candidates with the right employers.</h3>
+
+<h3>We deliver the personnel that fits your requirements and budget. </h3>
+
+<h3>Why work with us?</h3>
+
+<p>Our in-depth network of candidates will help with your placement needs in the following industries.</p>
+<br/>
+
+<ul style="list-style-type:circle; padding-left:100px;">
+  <li>Accounting & Finance Staffing</li>
+  <li>Administrative Health Services</li>
+  <li>Administrative Staffing</li>
+  <li>Aerospace & Defense Staffing</li>
+  <li>Architecture Staffing</li>
+   <li>Aerospace & Defense Staffing</li>
+    <li>Architecture Staffing</li>
+    <li>Automotive Staffing</li>
+   <li>Aviation Staffing</li>
+    <li>Call Center Staffing</li>
+    <br/>
+   <li>Clinical Staffing</li>
+   <li>Construction Staffing</li>
+   <li>Energy Staffing</li>
+   <li>Engineering Staffing</li>
+   <li>Environmental Staffing</li>
+  <li>Labor Staffing</li>
+   <li>Manufacturing Staffing</li>
+  <li>Mortgage Staffing</li>
+  <li>Scientific Staffing</li>
+</ul>
+
+<br/>
+<p>Our industry-centered focus allows us to understand and serve the complexity of your business. Whether it's for permanent or short-term, we can fulfill contract, contract-to-hire, and direct placement.</p>
+
+<h3>Ready to work together? Please <a href="{SITE_URL}/page/contact/">contact us here</a> </h3>
+
+
+</div>

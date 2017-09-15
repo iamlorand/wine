@@ -1,0 +1,4 @@
+function optionChanged(ele) {
+	var val = ele.options[ele.options.selectedIndex].value;
+	window.location=window.location+val;
+}	

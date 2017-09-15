@@ -1,0 +1,73 @@
+<script>
+	var SITE_URL = '{SITE_URL}';
+</script>
+<script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/remove_facebook_hash.js"></script>
+<script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/user.js"></script>
+
+<div class="message_error" style="display:none" id="msgError"></div>
+<br/>
+
+<div class="registration_step_3">
+	<form action="{SITE_URL}/user/finish-registration" id="registerForm" method="post">
+		<!-- BEGIN instruction -->
+			<p class='register_instruction'>{INSTRUCTION}</p><br>
+		<!-- END instruction -->
+
+<!-- 		<h2>Below you will be guided through the application process.<span><br/></span> This is standard procedure To Pre-Qualify all applicants. <span><br/></span> Please make sure you fill out everything correctly, as you will only be able to fill out this application one time. Do not use your browsers Back button or leave the application page before finishing it.</h2> -->
+
+		<!-- BEGIN craiglist -->
+			<p class='craig_instruction'>{INSTRUCTION}</p>
+			<p class='craig_instruction'>{INSTRUCTION_PART2}</p>
+			<p class='craig_instruction'>{INSTRUCTION_PART3}</p><br>
+		<!-- END craiglist -->
+		<br />
+		
+		<div class="survey_field">
+			<!-- BEGIN field --> 
+				<div class="row">
+					<div class="col-sm-6 question">{QUESTION}</div>
+			  		<div class="col-sm-6 answer">
+					  	<!-- BEGIN value -->
+					  	<div class="input_container">
+					  		<input type="{TYPE}" id="{ID}" name="{NAME}" value="{VALUE}" {REQUIRED} /><span>{DETAILS}</span>
+					  	</div>
+					  	<!-- END value -->
+					</div>
+				</div>
+			<!-- END field -->
+			
+			<!-- BEGIN dropdown -->
+				<div class="row"  id = {NAME}>
+					<div class="col-sm-6 question">
+						{QUESTION}
+					</div>
+					<div class="col-sm-6 answer">
+						<div class="selSpecial">
+							<!-- js-example-basic-single -->
+							<select class="styledSel " name="{NAME}" required >
+							<option selected="selected" value="">Please select an option</option>
+							<!-- BEGIN option -->
+								<option value="{VALUE}" {SELECTED}>{VALUE}</option>
+							<!-- END option -->
+							</select>
+						</div>
+					</div>
+				</div>
+			<!-- END dropdown -->
+
+			<input type="submit" class="button {REGISTER_ACCES}" value="{REG_BUTTON}">
+		</div>
+	</form>
+</div>
+
+<script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/disable_select.js"></script>
+
+<script type="text/javascript">
+	var siteUrl = "{SITE_URL}";
+	
+	$(document).ready(function(){
+		$(".js-example-basic-single").select2({
+			minimumResultsForSearch: -1
+		});
+	});
+</script>

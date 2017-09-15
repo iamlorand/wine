@@ -1,0 +1,17 @@
+
+	<div class="row">
+		<div class="col-sm-8">
+			<div class="footer_links">
+				<!-- BEGIN member -->
+				{ACCOUNT}
+				<!-- END member -->
+				<a href="{SITE_URL}/page/contact/" target="_blank">Contact</a> 
+				<a href="{SITE_URL}/page/about/" target="_blank">About</a> 
+			 	<a href="{SITE_URL}/page/terms/" target="_blank">Terms And Conditions</a>
+				<a href="{SITE_URL}/page/privacy/" target="_blank">Privacy Policy</a>
+			</div>
+		</div>
+		<div class="col-sm-4 copyright">
+			<p>&copy; 2016 MicroRecruiting.com</p>
+		</div>
+	</div>

@@ -1,0 +1,154 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @PlatformCategory   DotKernel
+* @package    Admin
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: AdminController.php 2 2015-05-26 11:01:32Z andreic $
+*/
+
+/**
+* Admin Controller
+* @author     Lajos <lajos@dotboost.com>
+*/
+class admin_PlatformCategoryController extends admin_BaseController
+{
+	
+	private $platformCategoryView;
+	private $platformCategoryModel;
+	
+	
+	public function doIt()
+	{
+		$this->platformCategoryView = new PlatformCategory_View($this->tpl);
+		$this->platformCategoryModel = new PlatformCategory();
+		// switch based on the action, NO default action here
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		switch ($this->registry->requestAction)
+		{
+			case 'list':
+				$this->listCategory();
+			break;
+			case 'add':
+				$this->add();
+			break;
+			case 'update':
+				$this->update();
+			break;
+			case 'delete':
+				$this->delete();
+			break;
+		
+			case 'activate':
+				$this->activate();
+			break;
+		}
+	}
+	
+	private function listCategory()
+	{
+		// list admin users
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$category = $this->platformCategoryModel->getPlatformCategoryList($page);
+		$this->platformCategoryView->listPlatformCategory('list', $category, $page);
+	}
+	
+	private function add()
+	{
+	// display form and add new admin
+		$data = $_POST;
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// POST values that will be validated
+			If(!empty($data['categoryName']))
+			{
+				$this->platformCategoryModel->addPlatformCategory($data);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformCategoryAdded; 
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->PlatformCategoryName; 
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$data['categoryList'] = $this->platformCategoryModel->getAllPlatformCategory();
+		$this->platformCategoryView->details('add-update',$data, 'add');
+	}
+	
+	private function update()
+	{
+		// display form and update admin user
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			$data = $_POST;
+			if(!empty($data['categoryName']))
+			{
+				$this->platformCategoryModel->updatePlatformCategory($data, $this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformCategoryUpdated;
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->platformCategoryName;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$data = $this->platformCategoryModel->getPlatformCategoryBy('categoryId', $this->registry->request['id']);
+		$this->pageTitle .= ' "' . $data['categoryName'] . '"';
+		$data['categoryList'] = $this->platformCategoryModel->getAllPlatformCategory();
+		$this->platformCategoryView->details('add-update',$data, 'update');
+	}
+	
+	private function delete()
+	{
+		// display confirmation form and delete admin user
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+				
+			if ('on' == $_POST['confirm'])
+			{
+				// delete PlatformCategory
+				$this->platformCategoryModel->deletePlatformCategory($this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformCategoryDeleted;
+				$this->registry->session->message['type'] = 'info';
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformCategoryNotDeleted;
+				$this->registry->session->message['type'] = 'info';
+			}
+			header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+			exit;
+		}
+		$data = $this->platformCategoryModel->getPlatformCategoryBy('categoryId', $this->registry->request['id']);
+		$this->pageTitle .= ' "' . $data['categoryName'] . '"';
+		// delete page confirmation
+		$this->platformCategoryView->details('delete', $data, 'delete');
+	}
+	
+	private function activate()
+	{
+		// activate/deactivate PlatformCategorys
+		// this action is called via Ajax
+		
+		$id = (isset($_POST['id'])) ? (int)$_POST['id'] : 0;
+		$isActive = $this->platformCategoryModel->activatePlatformCategory($id);
+		$result = array(
+						"success" => true,
+						"id" => $id,
+						"isActive" => $isActive
+		);
+		echo Zend_Json::encode($result);
+		exit;
+	}
+}

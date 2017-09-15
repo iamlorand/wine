@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+		</variable>
+		<variable option="admin">
+			<pageTitle>
+				<action>
+					<list>List Platforms</list>
+					<add>Add New Platform</add>
+					<update>Update Platform</update>
+					<delete>Delete Platform</delete>
+				</action>
+			</pageTitle>
+			<errorMessage>		
+				<platformName>Please set a name for platform.</platformName>	
+			</errorMessage>
+			<infoMessage>
+				<platformAdded>platform was added.</platformAdded>	
+				<platformUpdated>platform was added.</platformUpdated>
+				<platformDeleted>platform was deleted.</platformDeleted>
+				<zipNotAdded>Zip Code was not added.</zipNotAdded>
+				<zipAdded>Zip Code was added.</zipAdded>
+				<zipDeleted>Platform location was deleted.</zipDeleted>
+				<investorDeleted>investor was deleted.</investorDeleted>
+				<platformUserCreated>Platform user created successfully.</platformUserCreated>
+			</infoMessage>
+			<warningMessage>
+				<userPermission>You don't have enough credentials to access this url.</userPermission>
+				<tokenExpired>The security token expired ! Please log in again </tokenExpired>
+				<platformNotDeleted>platform was not deleted.</platformNotDeleted>
+				<investorNotDeleted>investor was not deleted.</investorNotDeleted>
+				<zipTooLong>Zip code is too long.</zipTooLong>
+				<zipNotDeleted>Platform location not deleted.</zipNotDeleted>
+				<emailAlreadyExists>Email adress already registrated.</emailAlreadyExists>
+			</warningMessage>
+			<validate>
+				<password>
+					<lengthMin>3</lengthMin>
+					<lengthMax>20</lengthMax>
+				</password>
+			</validate>					
+		</variable>
+		<variable option="frontend">
+			<pageTitle>
+				<action>
+					<login>Welcome to the dashboard</login>
+					<about>About Us</about>
+					<who-we-are>Who We Are</who-we-are>
+					<coding-standard>Coding Standard</coding-standard>
+					<image>Image Structure</image>
+					<outbound-links>Outbound Links</outbound-links>
+				</action>
+			</pageTitle>
+			<errorMessage>		
+				<login>Bad login please try again</login>
+				<samePassword>Not the same password!</samePassword>	
+			</errorMessage>
+			<infoMessage>		
+				<accountUpdated>Password Updated</accountUpdated>
+			</infoMessage>
+			<validate>
+				<password>
+					<lengthMin>3</lengthMin>
+					<lengthMax>20</lengthMax>
+				</password>
+			</validate>		
+		</variable>
+	</dots>
+</config>

@@ -1,0 +1,60 @@
+<div class="general_cleaner_v5">
+	<div class="row ">
+		<div class="col-md-9 col-sm-8 info">
+			<h2 class="job_title">Hiring Notice: Apply Now For House
+				Cleaning Job</h2>
+			<p>We're looking to add some new cleaners that are upbeat,
+				positive, and outgoing to our growing team. Full time or part time
+				positions are available immediately.</p>
+			<p class="title_highlights">WHAT WE OFFER</p>
+			<ul>
+				<li>Paid comprehensive training</li>
+				<li>Supplies are provided</li>
+				<li>Competitive compensation</li>
+				<li>Paid drive time</li>
+				<li>Friendly atmosphere</li>
+				<li>Opportunity for advancement</li>
+				<li>Team performance bonuses</li>
+				<li>Team building events</li>
+				<li>Monday-Friday 8:00 a.m. - 5:00 p.m.</li>
+				<li>No nights, weekends, or holidays(Those are for family and
+					friends)</li>
+				<li>Compensation of $12-$15 an hour depending on experience,
+					attitude,and availability.</li>
+				<li>You will receive extensive training that will educate you
+					on every aspect of becoming a successful cleaning professional.</li>
+			</ul>
+
+			<p class="title_highlights">WHAT WE'RE LOOKING FOR</p>
+			<ul>
+				<li>Hardworking, detail-oriented and enjoy cleaning.</li>
+				<li>Friendly and over-the-top client-service-focused Motivated,
+					and dependable Extremely punctual and able to plan ahead and arrive
+					on-time to all appointments</li>
+			</ul>
+			<p class="title_highlights">REQUIREMENTS</p>
+			<ul>
+				<li>Must be able to lift 25 lbs, stand, bend, & kneel for long
+					periods of time</li>
+				<li>Awesome attitude- Professional & positive</li>
+				<li>Excellent communication skills</li>
+				<li>Drug free* Drivers license</li>
+				<li>Reliable vehicle with valid insurance</li>
+				<li>Comfortable driving your own vehicle to and from client's
+					homes to clean</li>
+				<li>Must be legally authorized to work in the United States</li>
+			</ul>
+		</div>
+
+		<div class="col-md-3 col-sm-4 job_info">
+			<h2 class="info_title"> 2 Positions Left</h2>
+			<div class="info_text">
+			<p class="text">How often: Full time</p>
+			<p class="text">Start Date: ASAP</p>
+			<p class="text">Hourly Rate: Up To $50/hour</p>
+			</div>
+			<a href="{SITE_URL}/user/register-first-step" class="button apply"
+				style="width: 200px;">APPLY NOW</a>
+		</div>
+	</div>
+</div>

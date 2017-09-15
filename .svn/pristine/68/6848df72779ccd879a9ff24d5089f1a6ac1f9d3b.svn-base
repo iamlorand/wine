@@ -1,0 +1,112 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @PlatformCategory   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: AdminView.php 6 2015-06-25 13:55:51Z andreic $
+*/
+
+/**
+* PlatformCategory View Class
+* class that prepare output related to User controller 
+* @PlatformCategory   DotKernel
+* @package    Admin 
+* @author     Lajos <lajos@dotbosot.com>
+*/
+
+class PlatformCategory_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->settings = Zend_Registry::get('settings');
+		$this->session = Zend_Registry::get('session');
+	}
+	/**
+	 * List the admin users
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $list
+	 * @param int $page
+	 * @param bool $ajax - Using ajax, parse only the list content
+	 * @return void
+	 */
+	public function listPlatformCategory($templateFile, $list, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'platformCategory/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->addUserToken();
+		$this->tpl->setVar('PAGE', $page);
+		foreach ($list['data'] as $k => $v)
+		{
+		    $this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('ID', $v['categoryId']);
+			$this->tpl->setVar('NAME', $v['categoryName']);
+			if($v['parentId'])
+			{
+				$this->tpl->setVar('PARENT', $v['parent']);
+				$this->tpl->setVar('ID_PARENT', $v['parentId']);
+			}
+			else
+			{
+				$this->tpl->setVar('PARENT', '');
+				$this->tpl->setVar('ID_PARENT', '');
+			}
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+	/**
+	 * Display admin user details. It is used for add and update actions
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data [optional]
+	 * @return void
+	 */
+	public function details($templateFile, $data=array(), $type)
+	{
+		$this->tpl->setFile('tpl_main', 'platformCategory/' . $templateFile . '.tpl');
+		$this->tpl->setVar('BUTTON_TYPE', $type);
+		if($type != 'add')
+		{
+			$this->tpl->setVar('NAME', $data['categoryName']);
+			$this->tpl->setVar('CATEGORYID', $data['categoryId']);
+		}
+		if(isset($data['categoryList']))
+		{
+			$this->tpl->setBlock('tpl_main', 'categoryTree', 'categoryTree_block');
+			$this->tpl->setBlock('tpl_main', 'allcategories', 'allcategories_block');
+			foreach($data['categoryList'] as $k=>$category)
+			{
+				$this->tpl->setVar('CATEGORY_ID', $category['categoryId']);
+				$this->tpl->setVar('CATEGORY', $category['categoryName']);
+				if(isset($data['parentId'])&&$data['parentId'] == $category['categoryId'])
+				{
+					$this->tpl->setVar('SELECTED_CATEGORY', 'selected');
+				}
+				else
+				{
+					$this->tpl->setVar('SELECTED_CATEGORY', '');
+				}
+				for($i=1;$i<=$category['level']*2;$i++)
+				{
+					$this->tpl->parse('categoryTree_block', 'categoryTree', true);
+				}
+				$this->tpl->parse('allcategories_block', 'allcategories', true);
+				$this->tpl->parse('categoryTree_block', '');
+			}
+		}
+		else
+		{
+			$this->tpl->parse('allcategories_block', '');
+		}
+	}
+}

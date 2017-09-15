@@ -1,0 +1,21 @@
+<div class="box-shadow" style="width: 500px">
+	<ul class="form">
+		<li class="clearfix">
+			Click here to Download example import file:
+			<a href="{SITE_URL}/upload/model/update-import-example.csv" download="update-import-example.csv" class="button">Download Example File</a>
+		</li>
+	</ul>
+</div>
+
+<form action="{SITE_URL}/admin/affiliate/update-csv" method="post" enctype="multipart/form-data">
+	<div class="box-shadow" style="width: 500px">
+		<ul class="form">
+			<li class="clearfix">
+				<input type="file" name="csv" value="" class="button"/>
+			</li>
+			<li class="clearfix">
+				<input type="submit" name="submit" value="Update" class="button"/>
+			</li>
+		</ul>
+	</div>
+</form>

@@ -1,0 +1,22 @@
+<div class="city_category">
+	<h1>Jobs in {CITY_NAME}</h1>
+	<h2>Select your Industry </h2>
+	<!-- BEGIN category_list_row -->
+	<div class="row">
+		<!-- BEGIN category_list_md -->
+		<div class="col-md-6">
+			<div class="row">
+				<!-- BEGIN category_list_sm -->
+				<div class="col-sm-6">
+					<a href="{SITE_URL}/{CITY}/{CATEGORY}">
+						<img src="{SITE_URL}/images/frontend/{CATEGORY}_icon.png" />
+						<p>{CATEGORY}</p>
+					</a>
+				</div>
+				<!-- END category_list_sm -->
+			</div>
+		</div>
+		<!-- END category_list_md -->
+	</div>
+	<!-- END category_list_row -->
+</div>

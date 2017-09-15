@@ -1,0 +1,116 @@
+<?php
+
+/**
+ *
+ * @author Andrei
+ *
+ */
+
+class Video_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->session = Zend_Registry::get('session');
+	}
+	
+	/**
+	 * Display page
+	 * @param string $templateFile
+	 * @access public
+	 */
+	public function showPage($templateFile, $wistiaPlaylist, $email, $nextCategoryUrl, $callToActionText, $categoryTitle)
+	{
+		$this->tpl->setFile('tpl_main', 'video/' . $templateFile . '.tpl');
+		$this->tpl->setVar('PLAYLIST_CATEGORY', $wistiaPlaylist);
+		$this->tpl->setVar('EMAIL', $email);
+		$this->tpl->setVar('NEXT_CATEGORY_URL', $nextCategoryUrl);
+		$this->tpl->setVar('CALL_TO_ACTION_TEXT', $callToActionText);
+		$this->tpl->setVar('CATEGORY_TITLE', $categoryTitle);
+	}
+	
+	/**
+	 * Display page
+	 * @param string $templateFile
+	 * @access public
+	 */
+	public function showPage2($templateFile, $videosData, $email, $nextCategoryUrl, $callToActionText, $categoryTitle)
+	{
+		$this->tpl->setFile('tpl_main', 'video/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'video', 'video_block');
+
+		$flow = Survey_View::setFlowForBoomtrain($this->session);
+		
+		$this->tpl->setVar('CURRENT_CATEGORY', $flow . 'video_' . $this->tpl->requestAction . '_' . $this->session->currentCategory);
+		
+		foreach($videosData as $key => $videoData)
+		{
+			//check if this video is first video
+			if ($key == 0)
+			{
+				$this->tpl->setVar('CURRENT_VIDEO_TITLE', $videoData['name']);
+				$this->tpl->setVar('FIRST_VIDEO_HASHED_ID', $videoData['hashed_id']);
+			}
+
+			end($videosData);
+			$lastKey = key($videosData);
+			
+			if ($key == $lastKey)
+			{
+				$this->tpl->setVar('LAST_VIDEO_HASHED_ID', $videoData['hashed_id']);
+				$this->tpl->setVar('CALL_TO_ACTION_TEXT', $callToActionText);
+				$this->tpl->setVar('CALL_TO_ACTION_REDIRECT', $nextCategoryUrl);
+			}
+			
+			$this->tpl->setVar('HASHED_ID', $videoData['hashed_id']);
+			$this->tpl->setVar('VIDEO_TITLE', $videoData['name']);
+			$this->tpl->setVar('THUMBNAIL_URL', $videoData['thumbnail'] . "&image_play_button=true");
+			
+			$this->tpl->parse('video_block', 'video', true);
+		}
+		
+		$this->tpl->setVar('EMAIL', $email);
+// 		$this->tpl->setVar('CATEGORY_TITLE', $categoryTitle);
+	}
+	
+	/**
+	 * Display simple video page
+	 * @param string $templateFile
+	 * @access public
+	 */
+	public function displayPage($templateFile, $title = '', $videoHash = '', $callToAction, $email)
+	{
+		$this->tpl->setFile('tpl_main', 'video/' . $templateFile . '.tpl');
+		$this->tpl->setVar('TITLE', $title);
+		$this->tpl->setVar('VIDEO_HASH', $videoHash);
+		$this->tpl->setVar('CALL_TO_ACTION_TEXT', $callToAction);
+		$this->tpl->setVar('EMAIL', $email);
+	}
+
+	/**
+	 * Display simple video page
+	 * @param string $templateFile
+	 * @access public
+	 */
+	public function displayFlow1fPage($templateFile, $title = '', $videoHash = '', $callToAction, $email)
+	{
+		
+		$this->tpl->setFile('tpl_main', 'video/' . $templateFile . '.tpl');
+		$this->tpl->setVar('TITLE', $title);
+		$this->tpl->setVar('VIDEO_HASH', $videoHash);
+		$this->tpl->setVar('CALL_TO_ACTION_TEXT', $callToAction);
+		$this->tpl->setVar('EMAIL', $email);
+
+		if($this->session->dayInTheLifeFlow == '2')
+		{
+			$this->tpl->setVar('CALL_TO_ACTION_REDIRECT', 'survey/surveys/id/1');
+			
+		}
+
+	}
+}

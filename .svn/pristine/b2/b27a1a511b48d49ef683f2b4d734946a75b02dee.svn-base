@@ -1,0 +1,28 @@
+<script>
+	var SITE_URL = '{SITE_URL}';
+</script>
+<!-- <script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/user.js"></script> -->
+
+<div class="message_error" style="display:none" id="msgError"></div>
+<br/>
+
+<div class="registration_step_1">
+	<h2>{INDUSTRY_STEP1} Needed Immediately. Now Hiring: <span><br/></span> Please fill in your details below to proceed with 
+the application process</h2>
+	
+	<form method="POST" class="facebook_login" action="{SITE_URL}/user/login">
+		<button type="submit" name="socialNetwork" value="facebook"><img src="{SITE_URL}/images/frontend/socialNetworks/facebookButton.png" alt="Login with Facebook" height="40" width="180"></button>
+		</br></br>
+		<button type="submit" name="socialNetwork" value="linkedin"><img src="{SITE_URL}/images/frontend/socialNetworks/linkedinButton.png" alt="Login with Linkedin" height="40" width="180"></button>
+	</form>
+	<br/>
+	<p>Apply with email</p>
+	<br/>
+	<form id="userRegister" action="" method="post">
+		<div class="clearfix register_email">
+			<input id="email" type="text" name="email" value="{EMAIL}" placeholder="Your Email..."/>
+			<input type="submit" class="button" value="Apply with email">
+		</div>
+	</form>
+</div>
+

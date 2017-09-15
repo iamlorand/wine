@@ -1,0 +1,327 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @package    Frontend
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: UserController.php 319 2015-09-25 11:08:24Z andreic $
+ */
+
+/**
+ * User Controller
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class frontend_CityStateController extends frontend_BaseController
+{
+	private $cityStateModel;
+	private $cityStateView;
+	private $userView;
+	private $userModel;
+	
+
+	public function __construct()
+	{
+		
+	}
+
+	public function doIt()
+	{
+		// instantiate classes related to module: model & view
+		$this->cityStateModel = new CityState();
+		$this->cityStateView = new CityState_View($this->tpl);
+		$this->userView = new User_View($this->tpl);
+		$this->userModel = new User();
+		// cleaning authority category name
+		$cleaningAuthority = 'cleaning_authority_or1';
+		//set array with cloned categories
+		$categoryClonesDifferentFlow = array('general_cleaner_co1', 'maids_denver_s1');
+
+		$this->session = Zend_Registry::get('session');
+		// $registry = Zend_Registry::getInstance();
+		$this->option = Zend_Registry::get('option');
+		
+		// all actions MUST set  the variable  $pageTitled
+		// $this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		
+		// get the link composition
+		$urlCity=strtolower($this->registry->requestController);
+		$urlCategory=strtolower($this->registry->requestAction);
+
+		// save the link in session so we can use it later
+		if(strpos($urlCategory, '?') != false)
+		{
+			$urlCategory=substr($urlCategory, 0, strpos($urlCategory, '?'));
+		}
+		
+		$this->session->city=$urlCity;
+		$this->session->category=$urlCategory;
+        
+		$this->session->cityData=$this->session->city;
+		$this->session->categoryData=$this->session->category;
+		$categoryName = $this->cityStateModel->getCategoryListForPageTitle($urlCategory);
+		$city = $this->cityStateModel->getCitiesListForPageTitle($urlCity);
+		$city = explode('-', $city);
+		$cityName = $city[0];	
+
+		$this->pageTitle = $cityName . ' ' . 'Jobs and Gigs';
+
+		//we don't know if the category is a clone or not so we need to check it up, that's why we save it in session for this page only
+		$this->session->categoryCloneOrNot=$this->session->category;
+
+		$possibleStateWithoutCity=$this->cityStateModel->stateWithoutCity();
+		
+		// if there is a category that means the user came with, or has a complete link
+		if(!empty($urlCategory))
+		{
+		    $this->setFlowIdInSession($urlCity, $urlCategory, $categoryClonesDifferentFlow);
+		    
+			$categoryTitle = str_replace('_', ' ', $categoryName);
+			$this->pageTitle = $cityName . ' ' . '-' . ' ' . $categoryTitle;
+			$possibleCategories=$this->cityStateModel->possibleCategories();
+			$orphanCategories = $this->cityStateModel->orphanCategories();
+			$categoryInfo = $this->cityStateModel->getCategoryInformation($urlCategory);
+		
+			$checkIfOrphan = $this->cityStateModel->setWistiaFlow($urlCategory);
+            $getOregonCities = $this->cityStateModel->getOregonCities($urlCity);    
+			$formattedCategory = $this->cityStateModel->returnCategoryName($this->session->category);
+			$checkIfHaveVideosForCategory = $this->cityStateModel->getVideoCategory($formattedCategory);
+			
+			//set Wistia flows
+			$this->cityStateModel->setWistiaFlowSession($checkIfOrphan, $formattedCategory, $checkIfHaveVideosForCategory, $this->session);
+			
+			if($getOregonCities == FALSE  && $formattedCategory === $cleaningAuthority)
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			if(isset($this->session->wistiaFlow) && $formattedCategory === $cleaningAuthority)
+			{
+				$this->session->cleaningAuthority = true;
+			}
+			else 
+			{
+				$this->session->cleaningAuthority = false;
+			}
+			
+			$cityChecked = $this->cityStateModel->checkCity($cityName);
+			$categoryNeeded = array('junior_developer', 'junior_web_developer', 'junior_frontend_developer');
+			
+			if(empty($cityChecked) && in_array($formattedCategory, $categoryNeeded))
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			$newCityList = array('Plainfield', 'Louisville', 'Fort Worth', 'Frisco');
+			
+			if(in_array($cityName, $newCityList) && $formattedCategory == 'general_cleaner')
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			if($cityName != 'Plainfield' && $formattedCategory == 'maids_plainfield')
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			if($cityName != 'Louisville' && $formattedCategory == 'buckets_and_bows_louisville')
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			if($cityName != 'Fort Worth' && $formattedCategory == 'themaidsfw')
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			if($cityName != 'Frisco' && $formattedCategory == 'worldmainclean')
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+			
+			if ($cityName != 'Denver' && in_array($formattedCategory, $categoryClonesDifferentFlow))
+			{
+			    header('Location: '.$this->registry->configuration->website->params->url);
+			    exit;
+			}
+
+			if(isset($this->session->wistiaFlow) && in_array($formattedCategory, $categoryClonesDifferentFlow))
+			{
+				//only the city of Denver is allowed for these categories
+				if ($cityName == 'Denver')
+				{
+					$this->session->cleaningCloneFlow = true;
+				}
+				else
+				{
+					$this->session->cleaningCloneFlow = false;
+					header('Location: '.$this->registry->configuration->website->params->url);
+					exit;
+				}
+			}
+	
+			if(isset($_GET['id']))
+			{
+				// verify if the UID exists in the database
+				$subIdIsGenuine=$this->userModel->urlSubIdIsGenuine($_GET['id']);
+				$getVariables = $_GET;
+				
+				// remove the UID from the get variables array in order to have only the  
+				unset($getVariables['id']);
+		
+				// if the subId does not exist in the database redirect to the home page
+				$this->session->subId=$_GET['id'];	
+				
+				if($subIdIsGenuine == False)
+				{
+					header('Location: '.$this->registry->configuration->website->params->url);
+					exit;
+				}
+
+				// track the visit
+				$this->userModel->trackPeopleVisits();
+				$this->userModel->storeSubIdLog();
+
+				// validate the get variables if they exit
+				if(!empty($getVariables))
+				{
+					$this->session->subSubId = $getVariables; 
+				}
+				$this->userModel->setAndSaveUserActivityOnPage();
+				$this->userModel->insertSubSubIdUrlTrackingAsUserIdZero();
+			}
+
+			$ok = false;
+			$posibleClone = substr($this->session->category, -3);
+
+			if($posibleClone == '_1e' && $formattedCategory !== $cleaningAuthority)
+			{
+				header('Location: '.$this->registry->configuration->website->params->url);
+				exit;
+			}
+
+
+			//check if this category is added in the database for wistia flow
+			$checkIfWistiaFlowForThisCategory = $this->cityStateModel->checkIfCategoryInWistiaFlow($formattedCategory);
+			//check if this category is added in the datavase for day in the life flow
+			$checkIfDayInLifeFlowCategory = $this->cityStateModel->checkIfCategoryInDayInTheLifeFlow($formattedCategory);
+			if ($posibleClone == "_1b" || (($posibleClone == "_1c" || $posibleClone == "_1e") && $checkIfWistiaFlowForThisCategory != false) || (($posibleClone == "_1d" || $posibleClone == "_1f") && $checkIfDayInLifeFlowCategory != false))
+			{
+
+				$cloneTitle = str_replace('_', ' ', $this->session->category);
+				$this->pageTitle = $cityName . ' ' . '-' . ' ' . $cloneTitle;
+				$target = substr($this->session->category, 0 ,strlen($this->session->category) - 3);
+				
+				//verify if the url category that comes is actually a clone or just a mistake
+				$verifyCloneOrNot = $this->cityStateModel->verifyCloneOrNot($target);
+				if ($verifyCloneOrNot == false ) 
+				{
+					header('Location: '.$this->registry->configuration->website->params->url);
+					exit;
+				}
+
+				$this->session->categoryCloneOrNot = $target;
+				$ok = True;		
+			}
+			else
+			{
+				$ok = False;
+			}
+			//in case there is a category url that we do not have in the DB , or there is a typing mistale
+			// we redirect the user to the homepage
+			if(!in_array($this->session->categoryCloneOrNot, $possibleCategories) && !in_array($this->session->categoryCloneOrNot, $orphanCategories))
+			{
+				header('Location: '.$this->registry->configuration->website->params->url);
+				exit;
+			}
+	
+			//here we load the corect category page
+			if (in_array($this->session->categoryCloneOrNot, $possibleCategories))
+			{
+			
+				//if we have clone _1d for a main category, we are displaying it's content from the database
+				//the function name is "showOrphanPages" but we are displaying content for a main category using the dinamical tpl file
+				if ($posibleClone == '_1d')
+				{
+					$this->session->dayInTheLifeFlow = '1';
+					$this->cityStateView->showOrphanPages("orphanCategories", $categoryInfo);
+				}
+				elseif ($posibleClone == '_1f') 
+				{
+					$this->registry->session->flow1f = True;
+					$this->session->dayInTheLifeFlow = '2';
+					$this->cityStateView->showOrphanPages("orphanCategories", $categoryInfo);
+				}
+				//if main category and not clone "_1d", use the function for "hardcoded" main categories and clones _1b (each with its own tpl file)
+				else
+				{
+					$this->cityStateView->showPage("$urlCategory",$urlCategory,$urlCity,$possibleStateWithoutCity);
+				}
+			}
+            
+			foreach ($orphanCategories as $key => $value)
+			{
+				if($this->session->categoryCloneOrNot == $value && $ok== True)
+				{
+					if ($this->session->category == 'general_cleaner_v5') 
+					{
+						$this->cityStateView->showSpecialOrphanPage("specialOrphan");
+					}
+					else
+					{
+
+					$this->cityStateView->showOrphanPages("orphanCategories", $categoryInfo);
+					}
+				}
+				elseif ($this->session->categoryCloneOrNot == $value && $ok== false)
+				{	
+					if ($this->session->category == 'general_cleaner_v5') 
+					{
+						$this->cityStateView->showSpecialOrphanPage("specialOrphan");
+					}
+					else
+					{
+						
+					$this->cityStateView->showOrphanPages("orphanCategories", $categoryInfo);
+					}
+				}
+			}
+		}
+
+		// if there is no category that means the user came from the blog homepage 
+		else
+		{
+				$data = $this->cityStateModel->getCategories($urlCity);
+	
+				$this->cityStateView->showCategories('categories',$data,$urlCity,$possibleStateWithoutCity);
+		}		
+	}
+	
+	/**
+	 * @param unknown $urlCity
+	 * @param unknown $urlCategory
+	 * @param unknown $categoryClonesDifferentFlow
+	 */
+	private function setFlowIdInSession($urlCity, $urlCategory, $categoryClonesDifferentFlow)
+	{
+	    /**
+	     * @var unknown $flowId
+	     */
+	    $flowId = $this->cityStateModel->getIdForSpecificFlow($urlCity, $urlCategory, $categoryClonesDifferentFlow);
+	    
+	    if(isset($flowId))
+	    {
+	        $this->session->flowId = $flowId;
+	    }
+	}
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+	<dots>
+		<variable option="global">
+		</variable>
+		<variable option="admin">
+			<pageTitle>
+				<action>
+					<list>List Affiliates</list>
+					<add>Add New Affiliate</add>
+					<update>Update Affiliate</update>
+					<delete>Delete Affiliate</delete>
+				</action>
+			</pageTitle>
+			<errorMessage>		
+				<affiliateIdExists>Affiliate Id already exists.</affiliateIdExists>
+				<affiliateName>Please set a name for affiliate and the ID.</affiliateName>	
+				<affiliateImportFile>This is not a valid type of file. Please select a .csv file.</affiliateImportFile>
+				<affiliateIncorrectHeader>Incorrect header in file.</affiliateIncorrectHeader>
+				<affiliateSubIds>Please insert subIds.</affiliateSubIds>
+				<creativeIdSmaller>The Creative ID Last can not be smaller than the Creative ID!</creativeIdSmaller>
+				<selectCity>Plese select a city.</selectCity>
+			</errorMessage>
+			<infoMessage>
+				<allAffiliateAdded>All the Affiliates have been added: </allAffiliateAdded>
+				<affiliateAdded>Affiliate was added.</affiliateAdded>	
+				<affiliateUpdated>Affiliate was updated.</affiliateUpdated>
+				<affiliateBulkUpdate>Affiliate bulk was updated.</affiliateBulkUpdate>
+				<affiliateDeleted>Affiliate was deleted.</affiliateDeleted>
+				<affiliateNotDeleted>Affiliate was not deleted.</affiliateNotDeleted>
+				<affiliateImportCost>File imported successfully.</affiliateImportCost>
+			</infoMessage>
+			<warningMessage>
+				<numberOfAffiliateAdded>The number of Affiliates that has been added is: $affiliateAdded , and  $affiliateNotAdded were not added because the affiliate Id was already taken.</numberOfAffiliateAdded>
+				<userPermission>You don't have enough credentials to access this url.</userPermission>
+				<tokenExpired>The security token expired ! Please log in again </tokenExpired>
+			</warningMessage>
+			<validate>
+			</validate>					
+		</variable>
+		<variable option="frontend">
+		</variable>		
+	</dots>
+</config>

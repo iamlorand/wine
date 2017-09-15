@@ -1,0 +1,1385 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: Admin.php 6 2015-06-25 13:55:51Z andreic $
+ */
+
+/**
+ * Affiliate Model
+ * Here are all the actions related to the admin users
+ * @category   DotKernel
+ * @package    Admin
+ * @author     Gellert
+ */
+
+class Affiliate extends Dot_Model
+{
+	private $_userAgent;
+	private $_httpReferer;
+
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct($userAgent = null, $httpReferer=null)
+	{
+		parent::__construct();
+		// if no userAgent is given on function call mark it as empty - if the userAgent is empty keep it empty
+		// if the userAgent stays empty it can be used for robot detecting or devices with blank UA (usually bots)
+		// HTTP Reffer is optional so mark it empty if there is no HTTP Reffer
+		$this->_userAgent = (!is_null($userAgent)) ? $userAgent : '';
+		$this->_httpReferer = (!is_null($httpReferer)) ? $httpReferer : '';
+
+		$this->seo = Zend_Registry::get('seo');
+	}
+
+
+	/**
+	 * Get affiliate by filter
+	 * @access public
+	 * @return array
+	 */
+	public function getAffiliateByFilter($page = 1, $filters = array())
+	{
+		$select = $this->db->select()
+							->from('microRecruitingAffiliateUser');
+		$filters = $this->_cleanFilters($filters);
+		foreach($filters as $filter)
+		{
+										//    name   			LIKE || = 					"John Doe"
+			$select = $select->where($filter['field'].' '.$filter['operator'] . ' ? ', $filter['value']);
+		}
+			
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	/**
+	 * clean the filters that come from the user
+	 * @access private
+	 * @return array
+	 */
+	private function _cleanFilters($filters)
+	{
+		$allowedOperators = ['=','LIKE','!=','NOT LIKE', '>=', '<='] ;
+		foreach($filters as $filterKey => $filter)
+		{
+			foreach($filter as $key => $value)
+			{
+				if($key =='operator')
+				{
+					$filters[$filterKey][$key] = in_array($value, $allowedOperators) ? $value : '=' ;	
+				}
+			}
+		}
+		return $filters;
+	}
+
+	/**
+	 * Add new category
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function addAffiliate($data)
+	{
+		if (empty($data['note']))
+		{
+			unset($data['note']);
+		}
+		
+		//Adding affiliate to DB
+		$this->db->insert('microRecruitingAffiliateUser', $data);
+	}
+
+	/**
+	 * Get category by field
+	 * @access public
+	 * @param int $id
+	 * @return bool
+	 */
+	public function chechId($id)
+	{
+		$select = $this->db->select()
+		->from('microRecruitingAffiliateUser')
+		->where('id = ?', $id);
+		$result = $this->db->fetchRow($select);
+		if(empty($result))
+		{
+			return true;
+		}
+		else 
+		{
+			return false;
+		}
+	}
+
+	/**
+	 * get affiliateUserID bigger than Creative ID
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function searchId($actualId)
+	{
+		$select = $this->db->select('id')
+							->from('microRecruitingAffiliateUser')
+							->where('id='.$actualId);
+		
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Update category
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function updateAffiliate($data, $id)
+	{
+		$this->db->update('microRecruitingAffiliateUser', $data, 'id = ' . $id);
+	}
+
+		/**
+	 * Get category by field
+	 * @access public
+	 * @param string $field
+	 * @param string $value
+	 * @return array
+	 */
+	public function getAffiliateBy($field = '', $value = '')
+	{
+		$select = $this->db->select()
+		->from('microRecruitingAffiliateUser')
+		->where($field . ' = ?', $value)
+		->limit(1);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+
+	/**
+	 * Save data from file in array
+	 * @param array $file
+	 * @return array
+	 */
+	
+	public function importFile($file)
+	{
+		$tmpName = $file['csv']['tmp_name'];
+		$csvAsArray = array_map('str_getcsv', file($tmpName));
+		return $csvAsArray;
+	}
+
+	/**
+	 * Check if is set correct header
+	 * @param array $header
+	 * @return boolean
+	 */
+	
+	public function checkHeader($header)
+	{
+		$tableColumns = array('date', 'referalid');
+		
+		foreach ($header as $key => $column)
+		{
+			$columnName = strtolower($column);
+			if (!in_array($columnName, $tableColumns))
+			{
+				return false;
+			}
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Check if is set correct header for update
+	 * @param array $header
+	 * @return boolean
+	 */
+	
+	public function checkHeaderUpdate($header)
+	{
+	    $tableColumns = array('id', 'name', 'flow');
+	
+	    foreach ($header as $key => $column)
+	    {
+	        $columnName = strtolower($column);
+	        if (!in_array($columnName, $tableColumns))
+	        {
+	            return false;
+	        }
+	    }
+	
+	    return true;
+	}
+
+	/**
+	 * Set correct header if there is any uppercare or lowercase that we don't need
+	 * @param array $data
+	 * @return array
+	 */
+	
+	public function setHeader($data)
+	{
+		$header = array('date', 'referalId', 'cost');
+		$data[0] = $header;
+		
+		return $data;
+	}
+
+	/**
+	 * Set correct header if there is any uppercare or lowercase that we don't need for update
+	 * @param array $data
+	 * @return array
+	 */
+	
+	public function setHeaderUpdate($data)
+	{
+	    $header = array('id', 'name', 'flow');
+	    $data[0] = $header;
+	
+	    return $data;
+	}
+
+	/**
+	 * Prepare imported data for Database
+	 * @param array $data
+	 * @return multitype:
+	 */
+	
+	public function prepareImportedData($data)
+	{
+		$header = current($data);
+		unset($data['0']);
+		$formattedData = array();
+		foreach ($data as $row)
+		{
+			$array = array();
+			$array[$header['0']] = $row['0'];
+			$array[$header['1']] = $row['1'];
+			$array[$header['2']] = $row['2'];
+			array_push($formattedData, $array);
+		}
+		
+		return $formattedData;
+	}
+
+	 // <Import Cost> Not Used for now 
+	/**
+	 * Save data from imported file to database
+	 * @param array $data
+	 */
+	
+	// public function addReferalCost($data)
+	// {
+	// 	$data = $this->checkEmptyRow($data);
+	// 	foreach ($data as &$row)
+	// 	{
+	// 		$dateTime = DateTime::createFromFormat('m/d/Y', $row['date']);
+	// 		$date = $dateTime->format('Y-m-d H:i:s');
+	// 		$row['date'] = $date;
+	// 		$dateCheck = $dateTime->format('Y-m-d');
+	// 		$check = $this->referalCheckCost($row['referalId'], $dateCheck);
+			
+	// 		if ($check)
+	// 		{
+	// 			$where = array(
+	// 							'referalId = ?' => $row['referalId'],
+	// 							'DATE_FORMAT(date, "%Y-%m-%d") = ?' => $dateCheck
+	// 			);
+	// 			$this->db->update('affiliateUserCost', $row, $where);
+	// 		}
+	// 		else 
+	// 		{
+	// 			$this->db->insert('affiliateUserCost', $row);
+	// 		}
+	// 	}
+	// 	unset($row);
+	// }
+							#### </Import Cost> Not Used for now ###
+
+	public function updateAffiliateCsv($data)
+	{
+	    foreach ($data as $row)
+	    {
+	        $where=$row['id'];
+	        if($this->alreadyImported($row))
+	        {
+	        	$this->db->update('microRecruitingAffiliateUser', $row, 'id = ' . $where);
+	        }
+	        else
+	        {
+	        	$this->db->insert('microRecruitingAffiliateUser', $row);
+	        }
+	    }
+	}
+	
+	/**
+	 * Update bulk affiliate
+	 * @access public
+	 * @param array $filters
+	 * @param array data
+	 * @return void
+	 */
+	public function affiliateBulkUpdate($filters, $data)
+	{
+			
+		if($data['name']=='')
+		{
+			unset($data['name']);
+		}
+		if($data['note']=='')
+		{
+			unset($data['note']);
+		}
+		
+		if(!empty($data['flow_city'] && !empty($data['flow_category'])))
+		{
+			$data['flow'] = $data['flow_city'] . '/' . $data['flow_category'];
+			unset($data['flow_city']);
+			unset($data['flow_category']);
+		}
+		
+		if(!empty($data['flow_city']))
+		{
+			$data['flow'] = $data['flow_city'];
+			unset($data['flow_city']);
+		}
+		
+		if(!empty($data['flow_category']))
+		{
+			$data['flow'] = $data['flow_category'];
+			unset($data['flow_category']);
+		}
+		
+		$filters = $this->_cleanFilters($filters);
+		$select = $this->db->select()->from('microRecruitingAffiliateUser');
+		foreach($filters as $filter)
+		{
+			$select = $select->where($filter['field'].' '.$filter['operator'] . ' ? ', $filter['value']);
+		}
+		$result = $this->db->fetchAll($select);
+		if(!empty($data))
+		{
+			foreach ($result as $item)
+			{
+				$this->db->update('microRecruitingAffiliateUser', $data, 'id = ' . $item['id']);
+			}
+		}
+	}
+	
+	/**
+	 * get the flow data from each affiliate with the user
+	 * @access public
+	 * @return string
+	 */
+	public function flowData()
+	{
+		$select=$this->db->select()
+		->from('microRecruitingAffiliateUser', array('flow'));
+		return $this->db->fetchAll($select);
+	}
+	
+	/**
+	 * Get Cities by id
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getCities()
+	{
+		$select = $this->db->select()
+							->from('microRecruitingCities', array('id', 'name', 'cityLink'));
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get Cities by id
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getCategories()
+	{
+		$select = $this->db->select()
+						->from('microRecruitingCategory', array('id','categoryName'));
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+
+	/**
+	 * clean the filters that come from the user
+	 * @access private
+	 * @return array
+	 */
+	private function _cleanAllFilters($filters)
+	{
+		$allowedOperators = ['=','LIKE','!=','NOT LIKE', '>=', '<=', 'AS'] ;
+		foreach($filters as $filterKey => $filter)
+		{
+			foreach($filter as $key => $value)
+			{
+				if($key =='operator')
+				{
+					$filters[$filterKey][$key] = in_array($value, $allowedOperators) ? $value : '=' ;
+				}
+			}
+		}
+		
+		return $filters;
+	}
+	
+	/**
+	 * Get affiliate Sub Id's for list by filter
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return array
+	 */
+	public function getAllSubIdByFilter($page=1, $filters=array(), $sort=array())
+	{
+		$select = $this->db->select() 
+		->from(array('mj' => 'microRecruitingJob'), array('id'))
+		->joinLeft(array('mc' => 'microRecruitingCities'), 'mc.id=mj.cityId', array('city' => 'cityLink', 'cityState' => 'name')) 
+		->joinLeft(array('mca' => 'microRecruitingCategory'), 'mca.id=mj.categoryId', array('category' => 'categoryName'))
+ 		->joinLeft(array('mrjp'=>'microRecruitingJobPlatform'), 'mj.platformId=mrjp.id', array('platformName' => 'name'));
+
+ 		$orderBy = isset($sort['order-by']) ? $sort['order-by'] : 'id';
+ 		if ( isset($sort['dir']) )
+ 		{
+ 			$dir = strtoupper($sort['dir']);
+ 			if ( !in_array($dir, array('ASC', 'DESC')) )
+ 			{
+ 				$dir = 'DESC';
+ 			}
+ 		}
+ 		else
+ 		{
+ 			$dir = 'DESC';
+ 		}
+
+		switch ( $orderBy )
+		{
+			case 'id':
+				$select->order('mj.id ' . $dir);
+			break;
+			case 'category':
+				$select->order('mc.cityLink ' . $dir);
+				$select->order('mca.categoryName ' . $dir);
+				$select->order('mj.id ' . $dir);
+			break;
+		}
+
+		$filters = $this->_cleanAllFilters($filters);
+		foreach($filters as $filter)
+		{
+			//    name   			LIKE || = 					"John Doe"
+			$select = $select->where($filter['field'].' '.$filter['operator'] . ' ? ', $filter['value']);
+		
+		}
+		
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+	
+	/**
+	 * Get affiliate Sub Id's for list
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return array
+	 */
+	public function getAllSubIdById($id)
+	{
+
+		$select = $this->db->select() 
+		->from(array('mj' => 'microRecruitingJob'), array('id'))
+		->joinLeft(array('mc' => 'microRecruitingCities'), 'mc.id=mj.cityId', array('city' => 'cityLink', 'cityState' => 'name')) 
+		->joinLeft(array('mca' => 'microRecruitingCategory'), 'mca.id=mj.categoryId', array('category' => 'categoryName')) 
+		->joinLeft(array('mjt' => 'microRecruitingJobType'), 'mjt.id=mj.jobTypeId', array('jobTypeId' => 'id', 'jobType')) 
+		->joinLeft(array('mjti' => 'microRecruitingJobTitle'), 'mjti.id=mj.titleId', array('title')) 
+		->joinLeft(array('mjd' => 'microRecruitingJobDescription'), 'mjd.id=mj.titleId', array('description'))
+		->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platformName' => 'name'))
+		->joinLeft(array('mjpc' => 'microRecruitingJobPlatformCost'), 'mj.platformId=mjpc.platformId', array('cost'))
+		->where('mj.id =?', $id);
+			$result = $this->db->fetchAll($select);
+
+		return $result;	
+		
+	}
+	
+	/**
+	 * Get affiliate details grouped by referer
+	 * @access public
+	 * @author Nicu
+	 * @return array
+	 */
+	public function getAllSubIdByIdGrupedByReferer($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mj' => 'microRecruitingJob'), array('id'))
+		->join(array('mrv' => 'microRecruitingVisits'),'mj.id = mrv.subId')
+		->where('mj.id =?', $id);
+			$result = $this->db->fetchAll($select);
+
+		return $result;	
+		
+	}
+
+	/**
+	 * Get Total VIsits for one Affiliate Sub Id
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getTotalVisitsById($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mrv' => 'microRecruitingVisits'), array('count' => new Zend_Db_Expr('COUNT(subId)')))
+		->where('mrv.subId =?', $id);
+			
+			$result = $this->db->fetchOne($select);
+
+		return $result;	
+		
+	}
+
+	/**
+	 * Get Total VIsits for one Affiliate Sub Id grouped by referer 
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getTotalVisitsByIdGroupedByReferer($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mrv' => 'microRecruitingVisits'), array('referer','count' => new Zend_Db_Expr('COUNT(subId)'),
+			new Zend_Db_Expr ('"visits" AS type')))
+		->where('mrv.subId =?', $id)
+		->group('referer');
+			
+			$result = $this->db->fetchAll($select);
+		return $result;	
+		
+	}
+	
+	/**
+	 * Get Total Visits for one Affiliate Sub Id grouped by referer
+	 * @access public
+	 *
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getSubIdsPerReferer($id)
+	{
+	
+		$select = $this->db->select()
+		->from(array('mrv' => 'microRecruitingVisits'), array('referer','id', new Zend_Db_Expr ('"visits" AS type')))
+						->where('mrv.subId =?', $id);
+			
+		$result = $this->db->fetchAll($select);
+		
+		$referrers = array();
+		$referrersWithVisits = array();
+		
+		foreach ($result as $visit)
+		{
+			if (!in_array($visit['referer'], $referrers))
+			{
+				array_push($referrers, $visit['referer']);
+			}
+			$key = array_search ($visit['referer'], $referrers);
+			
+			if (!array_key_exists($key, $referrersWithVisits))
+			{
+				$referrersWithVisits[$key] = array();
+			}
+			
+			array_push($referrersWithVisits[$key], $visit['id']);
+		}
+		
+		$select = $this->db->select()
+					->from(array('sst' => 'subSubIdUrlTracking'), array('visitId', 'uniqueId'))
+					->join(array('ss' => 'subSubId'), 'sst.subSubId=ss.id', array('subSubIdName', 'subSubIdValue'))
+					->where('uniqueId =?', $id)
+					->group('subSubId')
+					->group('visitId');
+		$result = $this->db->fetchAll($select);
+		
+		$subIdsPerReferrer = array();
+		foreach ($result as $visit)
+		{
+			foreach ($referrersWithVisits as $referrerId => $visitsPerReferrer)
+			{
+				if (in_array($visit['visitId'], $visitsPerReferrer))
+				{
+					if (!array_key_exists($referrerId, $subIdsPerReferrer))
+					{
+						$subIdsPerReferrer[$referrerId] = array();
+					}
+					if(!array_key_exists($visit['visitId'], $subIdsPerReferrer[$referrerId]))
+					{
+						$subIdsPerReferrer[$referrerId][$visit['visitId']] = array();
+					}
+					if (!array_key_exists($visit['subSubIdName'], $subIdsPerReferrer[$referrerId][$visit['visitId']]))
+					{
+						$subIdsPerReferrer[$referrerId][$visit['visitId']][$visit['subSubIdName']] = array();
+					}
+					
+					$subIdsPerReferrer[$referrerId][$visit['visitId']][$visit['subSubIdName']] = $visit['subSubIdValue'];
+				}
+				
+			}
+		}
+		
+		$urlsPerReferrer = array();
+		
+		foreach ($subIdsPerReferrer as $referrerId => $visitValues)
+		{
+			foreach ($visitValues as $subSubIds)
+			{
+				$subIdsUrl = '';
+				foreach ($subSubIds as $subSubIdName => $subSubIdValue)
+				{
+					$subIdsUrl .= '&' . $subSubIdName . '=' . $subSubIdValue;
+				}
+				
+				if (!array_key_exists($referrerId, $urlsPerReferrer))
+				{
+					$urlsPerReferrer[$referrerId] = array();
+				}
+				
+				if (!in_array($subIdsUrl, $urlsPerReferrer[$referrerId]))
+				{
+					array_push($urlsPerReferrer[$referrerId], $subIdsUrl);
+				}
+			}
+		}
+		
+		foreach ($subIdsPerReferrer as $referrerKey => $subIds)
+		{
+			ksort($subIdsPerReferrer[$referrerKey]);
+		}
+		
+		$referrerData = array(	'referrers'			=>	$referrers,
+								'referrersUrls'		=>	$urlsPerReferrer
+		);
+		
+		return $referrerData;
+	
+	}
+
+
+
+	/**
+	 * Get Step1 visits for each affiliate sub Id
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getVisitsStep1($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mrs' => 'microRecruitingSubIdTrackingStep1'), array('count' => new Zend_Db_Expr('COUNT(subId)')))
+		->join(array('ud'=> 'userDataStep1'), 'ud.id = mrs.userId')
+		->where('mrs.subId =?', $id);
+			
+			$result = $this->db->fetchOne($select);
+			
+		return $result;	
+		
+	}
+
+	/**
+	 * Get Step1 visits for each affiliate sub Id by referer
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getStep1VisitsByReferer($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mrs' => 'microRecruitingSubIdTrackingStep1'), array())
+		->join(array('ud'=> 'userDataStep1'), 'ud.id = mrs.userId')
+		->join(array('mrv'=> 'microRecruitingVisits'), 'mrs.visitorId = mrv.id',array('referer','count' => new Zend_Db_Expr('COUNT(mrs.subId)'),
+			new Zend_Db_Expr ('"reg1" AS type')))
+		->where('mrs.subId =?', $id)
+		->group('mrv.referer');
+			
+			$result = $this->db->fetchAll($select);
+		return $result;	
+	}
+
+	/**
+	 * Get Step visits for each affiliate sub Id
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getVisitsStep2($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mrs' => 'microRecruitingSubIdTrackingStep2'), array('count' => new Zend_Db_Expr('COUNT(subId)')))
+		->join(array('ud'=> 'userData'), 'ud.id = mrs.userId')
+		->where('mrs.subId =?', $id);
+			
+			$result = $this->db->fetchOne($select);
+		return $result;	
+		
+	}
+
+	/**
+	 * Get Step2 visits for each affiliate sub Id by referer
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getStep2VisitsByReferer($id)
+	{
+		
+		$select = $this->db->select() 
+		->from(array('mrs' => 'microRecruitingSubIdTrackingStep2'), array())
+		->join(array('ud'=> 'userData'), 'ud.id = mrs.userId')
+		->join(array('mrv'=> 'microRecruitingVisits'), 'mrs.visitorId = mrv.id',array('referer','count' => new Zend_Db_Expr('COUNT(mrs.subId)'),
+			new Zend_Db_Expr ('"reg2" AS type')))
+		->where('mrs.subId =?', $id)
+		->group('mrv.referer');
+			
+			$result = $this->db->fetchAll($select);
+		return $result;	
+		
+	}
+
+	public function setDataPerReferer($totalVisits, $reg1, $reg2, $uniqueVisits)
+	{
+		$totalVisits = $this->setDataWithRefererAsKey($totalVisits);
+		$reg1 = $this->setDataWithRefererAsKey($reg1);
+		$reg2 = $this->setDataWithRefererAsKey($reg2);
+		$uniqueVisits = $this->setDataWithRefererAsKey($uniqueVisits);
+		$data = array_merge_recursive($totalVisits, $reg1, $reg2, $uniqueVisits);
+		
+		$keys=array('visits','reg1','reg2', 'uniqueVisits');
+		foreach ($data as $key => $value) 
+		{
+			foreach ($keys as $keyType) 
+			{
+
+				if(!isset($value[$keyType]))
+				{
+					@$data[$key][$keyType] = '0';
+				}
+			}
+		
+		}
+		return $data;
+	}
+	
+	private function setDataWithRefererAsKey($data)
+	{
+		$newData = array();
+		foreach($data as $key => $value)
+		{
+			$newData[$value['referer']] =array($value['type'] => $value['count']);
+		}
+
+		return $newData;
+	}
+
+
+	/**
+	 * Get Total VIsits for one Affiliate Sub Id
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getUniqueVisitsById($id)
+	{
+		$select = $this->db->select()
+		->from(array('mrv' => 'microRecruitingVisits'), array('count' => new Zend_Db_Expr('COUNT(DISTINCT(ip))')))
+		->where('mrv.subId =?', $id);
+			
+			$result = $this->db->fetchOne($select);
+
+		return $result;			
+	}
+
+	/**
+	 * Get Total VIsits for one Affiliate Sub Id
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getUniqueVisitsByIdByReferer($id)
+	{
+		
+		$select = $this->db->select()
+		->from(array('mrv' => 'microRecruitingVisits'), array('referer','count' => new Zend_Db_Expr('COUNT(DISTINCT(ip))'), new Zend_Db_Expr ('"unique" AS type')))
+		->where('mrv.subId =?', $id)
+		->group('referer');
+			
+			$result = $this->db->fetchAll($select);
+
+		return $result;			
+	}
+
+	public function getVisitsGroupedByPlatform()
+	{
+		$select = $this->db->select()
+					->from(array('mj' => 'microRecruitingJob'), '')
+					->join(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platformName' => 'name', 'platformId' => 'id'))
+					->join(array('mv' => 'microRecruitingVisits'), 'mj.id = mv.subId', '')
+					->join(array('mjpc'=>'microRecruitingJobPlatformCost'), 'mj.platformId = mjpc.platformId', array('cost'));
+
+		$select2 = $this->db->select()
+					->from(array('visits' => new Zend_Db_Expr("($select)")), array('platformName', 'count' => new Zend_Db_Expr('COUNT(platformId)'), 'cost'))
+					->group('platformId');
+		
+		$result = $this->db->fetchAll($select2);
+		return $result;
+	}
+	
+	public function getUniqueVisitsGroupedByPlatform()
+	{
+		$select = $this->db->select()
+		->from(array('mj' => 'microRecruitingJob'), '')
+		->join(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platformName' => 'name', 'platformId' => 'id'))
+		->join(array('mv' => 'microRecruitingVisits'), 'mj.id = mv.subId', 'ip');
+		
+		$select2 = $this->db->select()
+		->from(array('visits' => new Zend_Db_Expr("($select)")), array('platformName', 'count' => new Zend_Db_Expr('COUNT(DISTINCT(ip))')))
+		->group('platformId');
+		
+		$result = $this->db->fetchAll($select2);
+		return $result;
+	}
+	
+	public function getReg1VisitsGroupedByPlatform()
+	{
+		$select = $this->db->select()
+		->from(array('mj' => 'microRecruitingJob'), '')
+		->join(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platformName' => 'name', 'platformId' => 'id'))
+		->join(array('mv' => 'microRecruitingVisits'), 'mj.id = mv.subId', 'ip')
+		->join(array('mrsit' => 'microRecruitingSubIdTrackingStep1'), 'mrsit.subId = mj.id')
+		->group('userId');
+		
+		$select2 = $this->db->select()
+					->from(array('visits' => new Zend_Db_Expr("($select)")), array('platformName', 'count' => new Zend_Db_Expr('COUNT(subId)')))
+					->group('platformId');
+		
+		$result = $this->db->fetchAll($select2);
+		return $result;	
+	}
+	
+	public function getReg2VisitsGroupedByPlatform()
+	{
+		$select = $this->db->select()
+		->from(array('mj' => 'microRecruitingJob'), '')
+		->join(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platformName' => 'name', 'platformId' => 'id'))
+		->join(array('mv' => 'microRecruitingVisits'), 'mj.id = mv.subId', 'ip')
+		->join(array('mrsit' => 'microRecruitingSubIdTrackingStep2'), 'mrsit.subId = mj.id')
+		->group('userId');
+		
+		$select2 = $this->db->select()
+					->from(array('visits' => new Zend_Db_Expr("($select)")), array('platformName', 'count' => new Zend_Db_Expr('COUNT(subId)')))
+					->group('platformId');
+		
+		$result = $this->db->fetchAll($select2);
+		return $result;
+	}
+
+	/**
+	 * Get All the Users from Reg2 By PlatformId
+	 * @access public
+	 * 
+	 * @author Nicu
+	 * @return number
+	 */
+	public function getRegisteredUsersByPlatformId($jobId, $platform = '2')
+	{
+
+		$select = $this->db->select()
+		->from(array('ud' => 'userData'),array('id','email','dateCreated'))
+		->join(array('mrs2'=>'microRecruitingSubIdTrackingStep2'),'ud.id = mrs2.userId',array('subId','userId'))
+		->where('ud.platform =?', $platform)
+		->where('mrs2.subId =?', $jobId);
+			
+			$result = $this->db->fetchAll($select);
+
+		return $result;			
+	}
+
+	/**
+	 * Get Cities by id
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getAffiliateJobCities()
+	{
+		$select = $this->db->select()
+							->from('microRecruitingCities', array('cityId'=>'id', 'name'));
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get Cities by id
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getAffiliateJobCategories()
+	{
+		$select = $this->db->select()
+						->from('microRecruitingCategory', array('categoryId'=>'id','categoryName'));
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+
+	/**
+	 * Get Cities by id
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getAffiliateJobPlatform()
+	{
+		$select = $this->db->select()
+						->from('microRecruitingJobPlatform', array('platformId'=>'id','platformName'=> 'name'));
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+
+	/**
+	 * Get  All JobType
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getJobType()
+	{
+		$select = $this->db->select() 
+		->from(array('mc' => 'microRecruitingJobType'), array('jobTypeId'=>'id', 'jobType'));
+				
+		$result = $this->db->fetchAll($select);
+
+		return $result;	
+	}
+
+	/**
+	 * Verify Cities
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getSpecificCity($id)
+	{
+		$select = $this->db->select()
+		->from(array('mc' => 'microRecruitingCities'),  array('cityName'=>'name'))
+		->where('mc.id =? ', $id);
+				
+		$result = $this->db->fetchOne($select);
+
+		return $result;	
+	}
+	/**
+	 * Verify Category
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getSpecificCategory($id)
+	{
+		$select = $this->db->select()
+						->from(array('mrc'=>'microRecruitingCategory'), array('categoryName'))
+						->where('mrc.id =? ', $id);
+				
+		$result = $this->db->fetchOne($select);
+
+		return $result;	
+	}
+
+	/**
+	 * Verify Title
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function getSpecificPlatform($id)
+	{
+		$select = $this->db->select()
+		->from(array('mjp' => 'microRecruitingJobPlatform'),  array('platformName'=>'name'))
+		->where('mjp.id =? ', $id);
+				
+		$result = $this->db->fetchOne($select);
+
+		return $result;	
+	}
+	
+	/**
+	 * Get Visits For requested subIds in the selected date range
+	 * @param array $dates
+	 * @param array $subIds
+	 * @return array
+	 */
+	
+	private function getVisitsForSubIds($dates, $subIds)
+	{
+		$select = $this->db->select()
+		->from(array('mj' => 'microRecruitingJob'), '')
+		->join(array('mv' => 'microRecruitingVisits'), 'mj.id=mv.subId', array('subId'))
+		->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platform' => 'name', 'visits' => new Zend_Db_Expr('COUNT(subId)')))
+		->where(new Zend_db_Expr('CAST(mv.date as DATE) BETWEEN CAST("' . $dates['dateFrom'] . '" AS DATE) AND CAST("' . $dates['dateUntil'] . '" as DATE)'))
+		->where('mv.subId IN (?)', $subIds)
+		->group('mv.subId');
+		
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get Reg 1 (step 1 registration) For requested subIds in the selected date range
+	 * @param array $dates
+	 * @param array $subIds
+	 * @return array
+	 */
+	
+	private function getReg1ForSubIds($dates, $subIds)
+	{
+		$select = $this->db->select()
+		->from(array('mj' => 'microRecruitingJob'), '')
+		->join(array('mst1' => 'microRecruitingSubIdTrackingStep1'), 'mj.id=mst1.subId', array('subId'))
+		->join(array('us1' => 'userDataStep1'), 'mst1.userID = us1.id', '')
+		->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platform' => 'name', 'reg1' => new Zend_Db_Expr('COUNT(subId)')))
+		->where(new Zend_db_Expr('CAST(us1.dateCreated as DATE) BETWEEN CAST("' . $dates['dateFrom'] . '" AS DATE) AND CAST("' . $dates['dateUntil'] . '" as DATE)'))
+		->where('mst1.subId IN (?)', $subIds)
+		->group('mst1.subId');
+	
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get Reg 2 (step 2 registration) For requested subIds in the selected date range
+	 * @param array $dates
+	 * @param array $subIds
+	 * @return array
+	 */
+	
+	private function getReg2ForSubIds($dates, $subIds)
+	{
+		$select = $this->db->select()
+		->from(array('mj' => 'microRecruitingJob'), '')
+		->join(array('mst2' => 'microRecruitingSubIdTrackingStep2'), 'mj.id=mst2.subId', array('subId'))
+		->join(array('u' => 'userData'), 'mst2.userId = u.id', '')
+		->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platform' => 'name', 'reg2' => new Zend_Db_Expr('COUNT(subId)')))
+		->where(new Zend_db_Expr('CAST(u.dateCreated as DATE) BETWEEN CAST("' . $dates['dateFrom'] . '" AS DATE) AND CAST("' . $dates['dateUntil'] . '" as DATE)'))
+		->where('mst2.subId IN (?)', $subIds)
+		->group('mst2.subId');
+	
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Merge arrays with data
+	 * @param array $argsArray
+	 * @return array
+	 */
+	private function mergeKeysArray($argsArray)
+	{
+		$dataArray = array();
+		foreach($argsArray as $arg)
+		{
+			foreach($arg as $userId => $value)
+			{
+				if(! array_key_exists($userId, $dataArray))
+				{
+					$dataArray[$userId] = $value;
+				}
+				else
+				{
+					@$dataArray[$userId] = array_merge($dataArray[$userId], $arg[$userId]);
+				}
+			}
+		}
+	
+		return $dataArray;
+	}
+	
+	/**
+	 * Get subIds logs
+	 * @param array $post
+	 * @return array
+	 */
+	
+	public function listSubIdsLogs($post)
+	{
+		$dates = array('dateFrom' => $post['dateFrom'], 'dateUntil' => $post['dateUntil']);
+		$dates = $this->formatDate($dates);
+		$subIds = explode(PHP_EOL, $post['subIds']);
+		
+		foreach ($subIds as $key =>  $subId)
+		{
+			$subIds[$key] = trim($subId);
+			
+			if ($subIds[$key] == '')
+			{
+				unset($subIds[$key]);
+			}
+		}
+		
+		$visits = $this->getVisitsForSubIds($dates, $subIds);
+		$reg1 = $this->getReg1ForSubIds($dates, $subIds);
+		$reg2 = $this->getReg2ForSubIds($dates, $subIds);
+		
+		$visits = $this->setSubIdAsKey($visits);
+		$reg1 = $this->setSubIdAsKey($reg1);
+		$reg2 = $this->setSubIdAsKey($reg2);
+		
+		$data = $this->mergeKeysArray(array($visits, $reg1, $reg2));
+		
+		return $data;
+	}
+	
+	/**
+	 * Set subId as key
+	 * @param array $subIds
+	 * @return array
+	 */
+	
+	private function setSubIdAsKey($subIds)
+	{
+		$newArray = array();
+		
+		foreach ($subIds as $subId)
+		{
+			$newArray[$subId['subId']] = $subId;
+			unset($newArray[$subId['subId']]['subId']);
+		}
+		
+		return $newArray;
+	}
+	
+	/**
+	 * Format dates to use them in select
+	 * @param array $dates
+	 * @return array
+	 */
+	
+	public function formatDate($dates)
+	{
+		$dateFrom=date_create($dates['dateFrom']);
+		$dateUntil=date_create($dates['dateUntil']);
+	
+		$dates['dateFrom']=date_format($dateFrom, 'Y-m-d');
+		$dates['dateUntil']=date_format($dateUntil, 'Y-m-d');
+	
+		return $dates;
+	}
+	
+	/**
+	 * Get data for subIds with no data
+	 * @param array $subIds
+	 * @return array
+	 */
+	
+	private function getPlatformNameForSubIdsWithNoData($subIds)
+	{
+		$select = $this->db->select()
+						->from(array('mj' => 'microRecruitingJob'), array('subId' => 'id'))
+						->join(array('mp' => 'microRecruitingJobPlatform'), 'mj.platformId=mp.id', array('platform' => 'name'))
+						->where('mj.id IN (?)', $subIds);
+		
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get SubIds With No Data
+	 * @param string $subIds
+	 * @param aray $data
+	 * @return array:
+	 */
+	
+	public function getSubIdsWithNoData($subIds, $data)
+	{
+		$subIds = explode(',', $subIds);
+		
+		foreach ($subIds as $key =>  $subId)
+		{
+			$subIds[$key] = trim($subId);
+			
+			if ($subIds[$key] == '')
+			{
+				unset($subIds[$key]);
+			}
+		}
+		
+		$subIdsWithNoData = array();
+		$subIdsWithData = array_keys($data);
+		
+		foreach ($subIds as $subId)
+		{
+			if (!in_array($subId, $subIdsWithData))
+			{
+				array_push($subIdsWithNoData, $subId);
+			}
+		}
+		
+		if (!empty($subIdsWithNoData))
+		{
+			$subIdsWithNoData = $this->getPlatformNameForSubIdsWithNoData($subIdsWithNoData);
+		}
+		
+		return $subIdsWithNoData;
+	}
+	
+	/**
+	 * Get all subSubIds for the requested unique ID
+	 * @param string $uniqueId
+	 * @return array
+	 */
+	
+	public function addSubIdsToUniqueId($uniqueId)
+	{
+		$select = $this->db->select()
+						->from(array('ssut' => 'subSubIdUrlTracking'), '')
+						->join(array('ss' => 'subSubId'), 'ssut.subSubId=ss.id', array('subSubIdName', 'subSubIdValue'))
+						->where('uniqueId =?', $uniqueId)
+						->group('uniqueId')
+						->group('subSubId');
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get all visits for the desired subId (uniqueId)
+	 * @param string $subId
+	 * @return array
+	 */
+	
+	public function getAllVisitsForSubId($subId)
+	{
+		$select = $this->db->select()
+						->from(array('mv' => 'microRecruitingVisits'), array('id', 'referer'))
+						->join(array('sst' => 'subSubIdUrlTracking'), 'mv.id=sst.visitId', '')
+						->join(array('ss' => 'subSubId'), 'sst.subSubId=ss.id', array('subSubIdName', 'subSubIdValue'))
+						->where('subId =?', $subId)
+						->where('platformId =?', '2');
+
+		$result = $this->db->fetchAll($select);
+		
+		$visitsWithSubSubIds = array();
+		foreach ($result as $subIdForVisit)
+		{
+			if (!array_key_exists($subIdForVisit['id'], $visitsWithSubSubIds))
+			{
+				$visitsWithSubSubIds[$subIdForVisit['id']] = array();
+			}
+			$visitsWithSubSubIds[$subIdForVisit['id']]['referer'] = $subIdForVisit['referer'];
+			$visitsWithSubSubIds[$subIdForVisit['id']][$subIdForVisit['subSubIdName']] = $subIdForVisit['subSubIdValue'];
+			
+		}
+		
+		return $visitsWithSubSubIds;
+	}
+	
+	/**
+	 * Get all step 1 users for the desired visit IDs
+	 * @param array $visitIds
+	 * @return array
+	 */
+	
+	public function getAllStep1ForSubId($visitIds)
+	{
+		if (empty($visitIds))
+		{
+			return false;
+		}
+		$select = $this->db->select()
+					->from(array('mst1' => 'microRecruitingSubIdTrackingStep1'), array('visitorId'))
+					->where('visitorId IN (?)', $visitIds);
+	
+		$result = $this->db->fetchAll($select);
+		$step1 = $this->removeMultidimensionalArray($result, 'visitorId');
+		return $step1;
+	}
+	
+	/**
+	 * Get all step 2 users for the desired visit IDs
+	 * @param array $visitIds
+	 * @return array
+	 */
+	
+	public function getAllStep2ForSubId($visitIds)
+	{
+		if (empty($visitIds))
+		{
+			return false;
+		}
+		$select = $this->db->select()
+					->from(array('mst1' => 'microRecruitingSubIdTrackingStep2'), array('visitorId'))
+					->where('visitorId IN (?)', $visitIds);
+	
+		$result = $this->db->fetchAll($select);
+		$step2 = $this->removeMultidimensionalArray($result, 'visitorId');
+		return $step2;
+	}
+	
+	/**
+	 * Create only one array with values from one multidimensional array that has multiple similar arrays
+	 * @param array $data
+	 * @param string $keyFromArrays
+	 * @return array
+	 */
+	
+	public function removeMultidimensionalArray($data, $keyFromArrays = 'id')
+	{
+		$newArray = array();
+		foreach ($data as $value)
+		{
+			array_push($newArray, $value[$keyFromArrays]);
+		}
+		
+		return $newArray;
+	}
+	
+	/**
+	 * Get all wistia appliances
+	 * @return array
+	 */
+	
+	public function getAllWistiaAppliances($page = 1)
+	{
+		$select = $this->db->select()
+						->from(array('mtrw' => 'microRecruitingTrackingRedirectWistia'), array('userId', 'subId', 'date', 'flow', 'redirect'))
+						->join(array('u' => 'userData'), 'mtrw.userId=u.id', array('email'))
+						->order('mtrw.date DESC');
+		
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+}

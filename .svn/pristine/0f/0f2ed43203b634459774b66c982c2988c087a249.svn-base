@@ -1,0 +1,413 @@
+<?php
+
+class frontend_SurveyController extends frontend_BaseController
+{
+	private $surveyModel;
+	private $surveyView;
+	private $userModel;
+	private $surveyList = array('1'	=>	'106',
+								'2'	=>	'107',
+								'3'	=>	'108',
+								'4'	=>	'109',
+								'5'	=>	'110',);
+
+	private $flow_1f_surveyList = array('1' => '500',
+										'2' => '501',
+										'3' => '502',
+										'4' => '503',
+										'5' => '504',
+										'6' => '505',
+										'7' => '506',
+										'8' => '507'
+										);
+
+	private $surveyCleaningList = array('kitchen'				=>	'111',
+										'kitchenappliances'		=>	'112',
+										'bathroom'				=>	'113',
+										'bedroom'				=>	'114',
+										'familyroom'			=>	'115',
+										'customerservice'		=>	'116');
+	
+	private $categoryTitle = array(	'kitchen'				=>	'Training Videos - Cleaning - Kitchen',
+									'kitchenappliances'		=>	'Training Videos - Cleaning - Kitchen Appliances',
+									'bathroom'				=>	'Training Videos - Cleaning - Bathroom',
+									'bedroom'				=>	'Training Videos - Cleaning - Bedroom',
+									'familyroom'			=>	'Training Videos - Cleaning - Family Room/Dining Room',
+									'customerservice'		=>	'Training Videos - Cleaning - Miscellaneous'
+	);
+
+	private $rotationMatrixCities = array(	'San Francisco, CA' => array('lat' => '37.751934', 'long' => '-122.438653'),
+											'New York, NY' => array('lat' => '40.741840', 'long' => '-73.861758'),
+											'Boston, MA' => array('lat' => '42.308782', 'long' => '-71.089088'),
+											'Dallas, TX' => array('lat' => '32.784226', 'long' => '-96.781473'),
+											'Seattle, WA' => array('lat' => '47.608464', 'long' => '-122.331149'),
+											'Houston, TX' => array('lat' => '29.777555', 'long' => '-95.364245'),
+											'Chicago, IL' => array('lat' => '41.868939', 'long' => '-87.632599'),
+											'Salt Lake City, UT' => array('lat' => '40.765927', 'long' => '-111.919800'),
+											'San Diego, CA' => array('lat' => '32.807277', 'long' => '-117.142175'),
+											'Denver, CO' => array('lat' => '39.731489', 'long' => '-104.964474'),
+											'Philadelphia, PA' => array('lat' => '39.985205', 'long' => '-75.146193'),
+											'Portland, OR' => array('lat' => '45.524721', 'long' => '-122.655158'),
+											'Washington DC' => array('lat' => '38.901717', 'long' => '-77.027278'),
+											'Sacremento, CA' => array('lat' => '38.567100', 'long' => '-121.476495'),
+											'New Jersey' => array('lat' => '40.101132', 'long' => '-74.665154'),
+											'Los Angeles, CA' => array('lat' => '34.063048', 'long' => '-118.253679'),
+											'Austin, TX' => array('lat' => '30.282786', 'long' => '-97.745170'));
+	
+	private $buttonTextSurveyFlow = 'NEXT';
+	private $buttonTextWistia = 'CONTINUE';
+	
+	public function doIt()
+	{
+		$this->surveyModel = new Survey();
+		$this->surveyView = new Survey_View($this->tpl);
+		$this->session = Zend_Registry::get('session');
+		$this->mc = new Micromail_Micromail();
+
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		$session = Zend_Registry::get('session');
+		//check if user already answered this survey
+		
+		switch ($this->registry->requestAction)
+		{
+			default:
+			case 'list':
+			{
+				$this->listSurvey();
+				break;
+			}
+			case 'thank-you':
+			{
+				$this->thankYou();
+			}
+		}
+	}
+	
+	/**
+	 * Redirect the user to the step that has to be done now
+	 */
+	
+	private function redirectUserToStepToBeDone()
+	{
+		header('Location: ' . $this->registry->configuration->website->params->url . '/survey/list/id/' . $this->session->stepToBeDone);
+		exit();
+	}
+	
+	/**
+	 * Check if userId isset in session. If not, redirect to first page
+	 */
+	
+	private function redirectToFirstPage()
+	{
+		if (!isset($this->session->userId) || $this->session->userId == false)
+		{
+			header('Location: ' . $this->registry->configuration->website->params->url);
+		}
+	}
+	
+	private function thankYou()
+	{
+		$this->redirectToFirstPage();
+		
+		$this->boomtrainData();
+		
+		if($this->session->dayInTheLifeFlow == '2')
+		{
+			$surveyListData = $this->flow_1f_surveyList;
+		}
+		else 
+		{
+			$surveyListData = $this->surveyList;
+		}
+	
+		if (isset($_POST) && !empty($_POST))
+		{
+			if($this->surveyModel->checkIfAllQuestionsAnswered($_POST, $surveyListData[$this->session->stepToBeDone]) == false)
+			{
+				$this->session->message['txt'] = $this->option->errorMessage->questionAnswer;
+				$this->session->message['type'] = 'error';
+		
+				$this->redirectUserToStepToBeDone();
+			}
+			$this->surveyModel->saveSurveyData($_POST, $surveyListData[$this->session->currentSurveyIdOrder], $this->session->userId);
+			
+			if(isset($this->session->dayInTheLifeFlow) && $this->session->dayInTheLifeFlow == '2')
+			{					
+				$this->_urlRotationMatrix();
+			}
+			session_destroy();
+		}
+
+		if(isset($this->session->dayInTheLifeFlow) && $this->session->dayInTheLifeFlow == '2')
+		{
+			$this->_urlRotationMatrix();
+			session_destroy();
+		}
+		
+		$this->surveyView->showPage('thankyou');
+	}
+	
+	/**
+	 * function for case "list"
+	 */
+	
+	private function listSurvey()
+	{
+		if (isset($this->registry->request['id']))
+		{
+
+			$this->redirectToFirstPage();
+			$surveyIdOrder=(isset($this->registry->request['id'])) ? $this->registry->request['id'] : '';
+			$this->session->surveyOrderId = $surveyIdOrder;
+			// $this->surveyData = $this->_getsurveyData();
+			
+			if($this->session->dayInTheLifeFlow == '2')
+			{
+				$surveyId = $this->flow_1f_surveyList[$surveyIdOrder];
+				$surveyListData = $this->flow_1f_surveyList;
+			}
+			else
+			{
+				$surveyId = $this->surveyList[$surveyIdOrder];
+				$surveyListData = $this->surveyList;
+			}
+
+			if(!array_key_exists($surveyIdOrder, $surveyListData))
+			{
+				$this->redirectUserToStepToBeDone();
+			}
+			
+			$this->boomtrainData();
+			
+			if (isset($_POST) && !empty($_POST))
+			{
+				if($this->surveyModel->checkIfAllQuestionsAnswered($_POST, $surveyListData[$this->session->stepToBeDone] ) == false)
+				{
+					$this->session->message['txt'] = $this->option->errorMessage->questionAnswer; 
+					$this->session->message['type'] = 'error';
+					
+					$this->redirectUserToStepToBeDone();
+				}
+
+				$this->session->stepToBeDone += 1;
+				$this->surveyModel->saveSurveyData($_POST, $surveyListData[$this->session->currentSurveyIdOrder], $this->session->userId);
+			}
+			
+			$this->surveyModel->getCurrentAndLastSurveyIdsOrder($surveyListData,$surveyIdOrder);
+			
+			//verificam daca userul a raspuns deja la survey
+			if ($this->surveyModel->checkIfSurveyAnswered($this->session->userId, $surveyId) != false)
+			{
+				$lista = $surveyListData;
+				end($lista);
+				$lastSurvey = key($lista);
+
+				if ($this->session->stepToBeDone == $lastSurvey)
+				{
+					header('Location: ' . $this->registry->configuration->website->params->url . '/survey/thank-you/');
+					exit();
+				}
+				$this->session->stepToBeDone = $surveyIdOrder + 1;
+				header('Location: ' . $this->registry->configuration->website->params->url . '/survey/list/id/' . ($surveyIdOrder + 1));
+				exit();
+			}
+			if ($surveyIdOrder > $this->session->stepToBeDone)
+			{
+				$this->redirectUserToStepToBeDone();
+			}
+			
+			$surveyData = $this->surveyModel->getSurveyData($surveyId);
+			$surveyNumberText = 'Page ' . $surveyIdOrder . ' of ' . count($surveyListData);
+			
+			$this->surveyView->showSurvey('list', $surveyData, $this->buttonTextSurveyFlow, $surveyNumberText);
+		}
+		else 
+		{
+			$this->listSurveyPerCategory();
+		}
+	}
+	
+	private function listSurveyPerCategory()
+	{
+		if (!isset($this->session->userId))
+		{
+			header('Location: '.$this->registry->configuration->website->params->url);
+			exit;
+		}
+		
+		switch ($this->registry->requestAction)
+		{
+			default:
+			case 'cleaning':
+				if (!empty($this->registry->request))
+				{
+					$category = key($this->registry->request);
+					$this->session->videoCategory = $category;
+				}
+				
+				if (array_key_exists($category, $this->surveyCleaningList))
+				{
+					$surveyId = $this->surveyCleaningList[$category];
+					$surveyData = $this->surveyModel->getSurveyData($surveyId);
+				}
+				else
+				{
+					header('Location: '.$this->registry->configuration->website->params->url);
+					exit;
+				}
+				
+				$this->boomtrainData();
+				
+				$surveyOrderList = array_keys($this->surveyCleaningList);
+				if ($category != end($surveyOrderList))
+				{
+					$nextkey = array_search($category, $surveyOrderList) + 1;
+					$nextCategory = $surveyOrderList[$nextkey];
+				}
+
+				//check if user answered this category's survey
+				
+				$userId = $this->session->userId;
+				$surveyId = $this->surveyCleaningList[$category];
+				
+				$checkIfSurveyAnswered = $this->surveyModel->checkIfSurveyAnswered($userId, $surveyId);
+				
+				if ($checkIfSurveyAnswered != false)
+				{
+					$this->redirectUserToNextCategory($nextCategory);
+				}
+
+				if (isset($_POST) && !empty($_POST))
+				{
+					if($this->surveyModel->checkIfAllQuestionsAnswered($_POST, $surveyId) == false)
+					{
+						$this->session->message['txt'] = $this->option->errorMessage->questionAnswer;
+						$this->session->message['type'] = 'error';
+						
+						header('Location: '.$this->registry->configuration->website->params->url . '/survey/' . $this->registry->requestAction .'/' . $category);
+						exit;
+					}
+					$this->surveyModel->saveSurveyData($_POST, $surveyId, $this->session->userId);
+	
+					$order = array();
+					foreach ($this->surveyCleaningList as $key => $value) 
+					{
+						array_push($order, $key);
+					}
+					$categoryNumber = array_search($category, $order);
+					$step = 'WISTIA_FLOW2_'.strtoupper($category).$categoryNumber;
+					// Update the mailchimp
+					$this->mc->updateUserOptions($this->session->email,$step);
+					
+					$cities = array('dallas-tx', 'plainfield-il', 'louisville-tx', 'frisco-tx', 'fort_worth-tx');
+					$categories = array('general_cleaner_1c', 'maids_plainfield_1c', 'buckets_and_bows_louisville_1c', 'worldmainclean_1c', 'themaidsfw_1c');
+					
+					if ($category == end($surveyOrderList))
+					{
+						 if($this->session->wistiaFlow == '2')
+						{
+							if(in_array($this->session->categoryData, $categories) && in_array($this->session->cityData, $cities))
+							{
+								// $nextCategoryUrl = $this->registry->configuration->website->params->url . '/survey/thank-you/';
+								header('Location: ' . $this->registry->configuration->website->params->url . '/survey/thank-you/');
+								exit;
+							}
+						}
+						header('Location: ' . $this->registry->configuration->website->params->url . '/user/apply-page');
+						exit;
+					}
+					
+					$this->redirectUserToNextCategory($nextCategory);
+				}
+				
+				$this->surveyView->showSurvey('list', $surveyData, $this->buttonTextWistia);
+				break;
+		}
+	}
+	
+	/**
+	 * Redirect the user to the next video playlist category
+	 * @param string $nextCategory
+	 */
+	
+	private function redirectUserToNextCategory($nextCategory)
+	{
+		header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/' . $nextCategory);
+		exit;
+	}
+
+	private function _urlRotationMatrix()
+	{
+		$this->userModel = new User(Dot_Request::getUserAgent(), Dot_Request::getHttpReffer()); 
+		$zipcode = $this->session->userZipCode;
+		if(!isset($this->session->userZipCode) && empty($this->session->userZipCode))
+		{
+			$zipcode = $this->userModel->getUserZipCodeFOrUserAlreadyRegistered($this->session->email);
+		}
+
+		$coordinates = $this->userModel->getCoordinatesByZipCode($zipcode);
+		$distance = $this->userModel->calculateDistance($this->rotationMatrixCities, $coordinates);
+
+		$email=$this->session->email;
+		//get data from a certain User->email
+		$userDataExists=$this->userModel->verifyEmailUserData($email);
+		//save the Id for the user that got into this page
+		$userIdData=$userDataExists['id'];
+		
+		$variableToCompare = min($distance);
+		$subIdData = (isset($this->session->subId)) ? $this->session->subId : '0';
+		
+		if($variableToCompare < '75')
+		{
+			foreach ($distance as $key => $value)
+			{
+				if ($value == $variableToCompare)
+				{
+					$city = $key;
+				}
+			}
+			
+			if ($city == "Philadelphia, PA" || $city == "Portland, OR" || $city == "Sacremento, CA" || $city == 'New Jersey')
+			{
+				$urlRedirectDefault = 'http://www.instacart.com/shoppers?utm_source=crowded&utm_medium=jobboard&utm_campaign=ad_bos_supply_all_2015_12';
+				$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$urlRedirectDefault);
+				session_destroy();
+				header('Location: ' . $urlRedirectDefault);
+				exit;
+			}
+				
+			$redirectData=$this->userModel->randomRedirect($city);
+			$urlRedirect=array();	
+				
+			foreach ($redirectData as $key => $value)
+			{
+				array_push($urlRedirect, $value['url']);
+			}
+				
+			$redirect=array_rand ($urlRedirect);
+				
+			$redirect=$urlRedirect[$redirect];
+				
+			$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$redirect);
+			session_destroy();
+			header('Location: ' . $redirect);
+			exit;
+		}
+		
+		else
+		{
+			$urlRedirectDefault = 'http://www.instacart.com/shoppers?utm_source=crowded&utm_medium=jobboard&utm_campaign=ad_bos_supply_all_2015_12';
+			$this->userModel->setAndSaveMicroRecruitingSubIdTrackingRedirect($userIdData,$subIdData,$urlRedirectDefault);
+			session_destroy();
+			header('Location: ' . $urlRedirectDefault);
+			exit;
+		}
+	}
+	
+	private function boomtrainData()
+	{
+		$boom = new Boomtrain_BoomtrainApi();
+		$boom->registry = $this->registry;
+		$boom->setUserProperty();
+	}
+}

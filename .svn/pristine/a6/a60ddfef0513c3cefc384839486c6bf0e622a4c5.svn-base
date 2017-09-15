@@ -1,0 +1,85 @@
+<?php
+
+/**
+ * 
+ * @author Andrei
+ *
+ */
+
+class Export_View extends View
+{
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->settings = Zend_Registry::get('settings');
+	}
+	
+	public function details($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	
+	public function userExportView($templateFile, $data)
+	{
+	    $this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+
+	public function exportStep1($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	
+	public function exportStep2($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	
+	public function exportStats($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+
+	public function exportSubId($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+
+	public function exportClicks($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	
+	public function exportEmail($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	
+	public function exportDataByCityAndCategory($templateFile, $platformName)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+		
+		$this->tpl->setBlock('tpl_main', 'platform_list', 'platform_list_block');
+		
+		foreach($platformName as $value)
+		{
+			$this->tpl->setVar('PLATFORM_NAME', $value['platformName']);
+			$this->tpl->parse('platform_list_block', 'platform_list', true);
+		}
+	}
+	public function exportBrowserType($templateFile)
+	{
+	    $this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	public function exportAndroidIosType($templateFile)
+	{
+	    $this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	public function exportQuestions($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+	public function exportReg1ToEmail($templateFile)
+	{
+	    $this->tpl->setFile('tpl_main', 'export/' . $templateFile . '.tpl');
+	}
+}

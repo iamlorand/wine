@@ -1,0 +1,853 @@
+<?php
+
+class SocialBase implements \SocialAuthInterface
+{
+    // flag to be used when checking if user is logged in
+    private $isLoggedIn = false;
+    private $client;
+    private $userModel;
+    private $session;
+    public $registry;
+    private $platform = "microrecruiting";
+    
+    public function __construct()
+    {
+    	$this->session = Zend_Registry::get('session');
+    	$this->userModel = new User();
+    }
+    
+    protected function setIsLoggedIn($value)
+    {
+        $this->isLoggedIn = $value;
+    }
+    
+    protected function getIsLoggedIn()
+    {
+        return $this->isLoggedIn;
+    }
+    
+    protected function setClient($value)
+    {
+        if(isset($value))
+        {
+            $this->isLoggedIn = true;
+        }
+        
+        $this->client = $value;
+    }
+    
+    protected function getClient()
+    {
+        return $this->client;
+    }
+    
+    public function login($configArray)
+    {}
+
+    public function logout()
+    {}
+
+    public function getData()
+    {
+        if ($this->isLoggedIn) {
+            return $this->_getData();
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+
+    public function redirect($value)
+    {
+    	$socialNetwork = str_replace('Controller', '', get_class($this));
+    	$socialNetwork = strtolower($socialNetwork);
+    	$_SESSION['socialNetwork'] = $socialNetwork;
+    	header('Location: ' . $value);
+    }
+    
+    protected function _getData()
+    {}
+    
+    private function redirectToRegisterPageStep1()
+    {
+    	header('Location: '.$this->registry->configuration->website->params->url . '/user/register-first-step');
+    	exit;
+    }
+    
+    private function redirectToRegisterPageStep2()
+    {
+    	header('location: '.$this->registry->configuration->website->params->url . '/user/register');
+    	exit;
+    }
+    
+    public function loginProcess($data)
+    {
+    	$socialNetwork = $this->session->socialNetwork;
+    	
+    	if ($this->session->socialNetwork == 'facebook')
+    	{
+    		$this->session->socialNetworkId = $data['user_details']['facebookId'];
+    		$appsIds = $data['business_manager_ids'];
+    	}
+    	elseif ($this->session->socialNetwork == 'linkedin')
+    	{
+    		//for LinkedIn the ID stored in userSocialAccounts = email
+    		$this->session->socialNetworkId = $data['user_details']['email'];
+    		$appsIds = array($data['user_details']['linkedinId']);
+    	}
+    	$this->session->email = $data['user_details']['email'];
+    	//check if facebook user already exists in userSocialAccounts (if facebook unique ID is set for some user)
+    	//for linkedin check if linkedin user already exists in userSocialAccounts (if linkedin email is set for some user)
+    	$checkUniqueId = $this->checkIfUniqueIdIsSetForAnyUser($socialNetwork, $this->session->socialNetworkId);
+    	
+    	//verify which data is missing from what social networks returned compared to register survey
+    	$check_data = $this->checkMissingData($socialNetwork, $data);
+    	$this->session->checkedSocialNetworkData = $check_data;
+    	
+    	if ($checkUniqueId == false)
+    	{
+    		//check if app ID is set as facebookId instead of uniqueId (token)
+    		$checkAppIdInsteadOfUnique = $this->checkIfAppIdInsteadOfUnique($socialNetwork, $appsIds);
+    		
+    		if ($checkAppIdInsteadOfUnique == true)
+    		{
+    			if ($socialNetwork == 'facebook')
+    			{
+    				//set unique ID instead of app ID
+    				$this->setUniqueId($socialNetwork, $data['user_details']['facebookId'], $checkAppIdInsteadOfUnique);
+    				$platforms = $this->getPlatformNamesWithoutCurrent($this->platform);
+    				$check_Id_Token = $this->checkIfExistsAppId($socialNetwork, $appsIds, $platforms);
+    				if(!$check_Id_Token)
+    				{
+    					$this->addUniqueIdAndAppId($socialNetwork, $data['user_details']['facebookId'], $data['facebookAppId'], $this->platform);
+    				}
+    				else
+    				{
+    					$this->updateUniqueIdAndAppId($socialNetwork, $data['user_details']['facebookId'], $data['facebookAppId'], $this->platform);
+    				}
+    			}
+    			elseif ($socialNetwork == 'linkedin')
+    			{
+    				// get email from LinkedIn table
+    				$emailFromLinkedinTable = $this->getEmailFromLinkedinTable($data['user_details']['publicProfileUrl']);
+    				if ($emailFromLinkedinTable != $data['user_details']['email'])
+    				{
+    					//set email instead of app ID
+    					$this->setUniqueId($socialNetwork, $data['user_details']['email'], $data['user_details']['linkedinId']);
+    					$this->updateEmailForLinkedin($emailFromLinkedinTable, $data['user_details']['email']);
+    				}
+    			}
+    		}
+    	
+	    	else 
+	    	{
+	    		$userDataExists = $this->checkIfUserDataExists($socialNetwork, $appsIds, $data['user_details']['facebookId']);
+	    		if ($userDataExists == false)
+	    		{
+	    			if ($socialNetwork == 'facebook')
+	    			{
+	    				$this->addSocialUser($socialNetwork, $data);
+	    				$this->addUniqueIdAndAppId($socialNetwork, $data['user_details']['facebookId'], $data['facebookAppId'], $this->platform);
+	    			}
+	    			elseif ($socialNetwork == 'linkedin')
+	    			{
+	    				if ($data['user_details']['publicProfileUrl'] != NULL)
+	    				{
+	    					$urlCheck = $this->checkIfUrlExists($data['user_details']['publicProfileUrl']);
+	    				}
+	    				else
+	    				{
+	    					$checkEmail = $this->checkIfEmailExists($this->session->email);
+	    					if($checkEmail != false)
+	    					{
+	    						// 	    		$this->session->emailExistsId = $checkEmail;
+	    						$this->setSocialNetworkMarkedForUser($socialNetwork, $checkEmail, $this->session->socialNetworkId);
+	    						$this->redirectToRegisterPageStep2();
+	    					}
+	    					else 
+	    					{
+	    						$this->session->email = $data['user_details']['email'];
+	    						$this->redirectToRegisterPageStep1();
+	    					}
+	    				}
+	    				
+	    				if ($urlCheck != false)
+	    				{
+	    					$idOrEmailSetInUserSocialAccounts = $this->checkIfAppIdInsteadOfUnique($socialNetwork, $urlCheck);
+	    					$this->setUniqueId($socialNetwork, $data['user_details']['email'], $idOrEmailSetInUserSocialAccounts);
+	    					$emailFromLinkedinTable = $this->getEmailFromLinkedinTable($data['user_details']['publicProfileUrl']);
+	    					$this->updateEmailForLinkedin($emailFromLinkedinTable, $data['user_details']['email']);
+	    				}
+	    				elseif($checkEmail == false)
+	    				{
+	    					$this->addSocialUser($socialNetwork, $data);
+	    				}
+	    			}
+	    		}
+	    		else 
+	    		{
+	    			if($socialNetwork == 'facebook')
+	    			{
+	    				$appId = $this->checkFacebookAppId($socialNetwork, $appsIds);
+	    				if ($appId != false)
+	    				{
+	    					$this->setUniqueIdInFacebookTable($socialNetwork, $data['user_details']['facebookId'], $userDataExists);
+	    				}
+	    				
+	    				$platforms = $this->getPlatformNamesWithoutCurrent($this->platform);
+	    				$check_Id_Token = $this->checkIfExistsAppId($socialNetwork, $appsIds, $platforms);
+	    				if(!$check_Id_Token)
+	    				{
+	    					$this->addUniqueIdAndAppId($socialNetwork, $data['user_details']['facebookId'], $data['facebookAppId'], $this->platform);
+	    				}
+	    				else
+	    				{
+	    					$this->updateUniqueIdAndAppId($socialNetwork, $data['user_details']['facebookId'], $data['facebookAppId'], $this->platform);
+	    				}
+	    			}
+	    		}
+	    	}
+	    	$checkEmail = $this->checkIfEmailExists($this->session->email);
+    		$checkEmailBasedOnId = $this->checkIfEmailExistsBasedOnId($data['user_details']['facebookId'], $appsIds);
+    		if($checkEmail != false || $checkEmailBasedOnId != false)
+    		{
+    			if ($checkEmail != false)
+    			{
+    				$this->session->emailExistsId = $checkEmail;
+    			}
+    			else
+    			{
+    				$this->session->emailExistsId = $checkEmailBasedOnId;
+    			}
+	    		$this->setSocialNetworkMarkedForUser($socialNetwork, $this->session->emailExistsId, $this->session->socialNetworkId);
+	    		$this->redirectToRegisterPageStep2();
+	    	}
+	    	
+	    	$this->redirectToRegisterPageStep1();
+    	}
+    	else
+    	{
+    		if ($socialNetwork == 'facebook')
+    		{
+    			if ($this->checkIfAppIdIsSetInAppsIdsTable($data['user_details']['facebookId'], $data['facebookAppId'], $this->platform) == NULL)
+    			{
+    				$this->updateUniqueIdAndAppId($socialNetwork, $data['user_details']['facebookId'], $data['facebookAppId'], $this->platform);
+    			}
+    		}
+    		
+    		$this->redirectToRegisterPageStep2();
+    	}
+    }
+    
+    /**
+     * Check if app ID is in facebook table
+     * @param array $appsIds
+     */
+    
+    private function checkFacebookAppId($socialNetwork, $appsIds)
+    {
+    	foreach ($appsIds as $id)
+    	{
+    		if ($socialNetwork == 'facebook')
+    		{
+    			$select = $this->userModel->db->select()
+    			->from($socialNetwork, $socialNetwork . 'Id')
+    			->where($socialNetwork . 'Id =' . "'$id'");
+    		}
+    		 
+    		$result = $this->userModel->db->fetchOne($select);
+    
+    		if ($result)
+    		{
+    			return $result;
+    		}
+    	}
+    	return false;
+    }
+    
+    /**
+     * Check if email exists based on ID
+     * @param string $facebookId
+     * @return string / false
+     */
+    
+    private function checkIfEmailExistsBasedOnId($facebookId, $appsIds)
+    {
+    	array_push($appsIds, $facebookId);
+    
+    	foreach ($appsIds as $id)
+    	{
+    		$select = $this->userModel->db->select()
+    		->from(array('us' => 'userSocialAccounts'), 'userId')
+    		->where('facebookId =?', "$id");
+    
+    		$result = $this->userModel->db->fetchOne($select);
+    
+    		if ($result)
+    		{
+    			return $result;
+    		}
+    	}
+    
+    	return false;
+    }
+    
+    /**
+     * Check if (uniqueId is already set for current user)/(user exists)
+     * @param string $socialNetwork
+     * @param string $uniqueId
+     * @return unknown
+     */
+    
+    public function checkIfUniqueIdIsSetForAnyUser($socialNetwork, $uniqueId)
+    {
+    	if ($socialNetwork == 'facebook' || $socialNetwork == 'linkedin')
+    	{
+    		$select = $this->userModel->db->select()
+    		->from('userSocialAccounts', $socialNetwork . 'Id')
+    		->where($socialNetwork . 'Id = ' . "'$uniqueId'");
+    	}
+
+    	$result = $this->userModel->db->fetchOne($select);
+    	return $result;
+    }
+    
+    /**
+     * Check if appID instead of token/unique ID is set for current user
+     * @param string $socialNetwork
+     * @param string $ids_array
+     * @return unknown|boolean
+     */
+    
+    public function checkIfAppIdInsteadOfUnique($socialNetwork, $ids_array)
+    {
+    	foreach ($ids_array as $id)
+    	{
+    		if ($socialNetwork == 'facebook' || $socialNetwork == 'linkedin')
+    		{
+    			$select = $this->userModel->db->select()
+    			->from('userSocialAccounts', $socialNetwork . 'Id')
+    			->where($socialNetwork . 'Id = ' . "'$id'");
+    		}
+
+    		$result = $this->userModel->db->fetchOne($select);
+    
+    		if ($result)
+    		{
+    			return $result;
+    		}
+    	}
+    	return false;
+    }
+    
+     /**
+     * Set uniqueId instead of facebookAppId
+     * @param string $socialNetwork
+     * @param string $uniqueId
+     * @param string $appId
+     */
+    public function setUniqueId($socialNetwork, $uniqueId, $appId)
+    {
+    	if ($socialNetwork == 'facebook')
+    	{
+    		$uniqueData = array($socialNetwork . 'Id' => $uniqueId);
+    		$this->userModel->db->update($socialNetwork, $uniqueData, $socialNetwork . 'Id = ' . $appId);
+    	}
+    	elseif ($socialNetwork == 'linkedin')
+    	{
+    		$uniqueData = array($socialNetwork . 'Id' => $uniqueId);
+    	}
+    	
+    	$userId = $this->getUserId($socialNetwork, $appId);
+    	$this->userModel->db->update('userSocialAccounts', $uniqueData, 'userId = ' . "'$userId'");
+    
+    }
+    
+    /**
+     * Set uniqueId instead of facebookAppId ONLY in facebook
+     * @param string $socialNetwork
+     * @param string $uniqueId
+     * @param string $appId
+     */
+    public function setUniqueIdInFacebookTable($socialNetwork, $uniqueId, $appId)
+    {
+    	if ($socialNetwork == 'facebook')
+    	{
+    		$uniqueData = array($socialNetwork . 'Id' => $uniqueId);
+    		$this->userModel->db->update($socialNetwork, $uniqueData, $socialNetwork . 'Id = ' . $appId);
+    	}
+    }
+    
+    /**
+     * Get old email from linkedin table
+     * @param string $publicProfileUrl
+     * @return unknown
+     */
+    
+    private function getEmailFromLinkedinTable($publicProfileUrl)
+    {
+    	$select = $this->userModel->db->select()
+					    	->from('linkedin', 'email')
+					    	->where('publicProfileUrl =?', $publicProfileUrl);
+    	 
+    	$result = $this->userModel->db->fetchOne($select);
+    	return $result;
+    }
+    
+    /**
+     * Set new email as email in linkedin table
+     * @param string $oldEmail
+     * @param string $newEmail
+     */
+    
+    private function updateEmailForLinkedin($oldEmail, $newEmail)
+    {
+    	$emailData = array('email' => $newEmail);
+    	$this->userModel->db->update('linkedin', $emailData, 'email = ' . "'$oldEmail'");
+    }
+    
+    /**
+     * Check if User App Id is in facebookUniqueAppIds table
+     * ON crowded we check if isset gigProfits appID, and on gigProfits we check for crowded appID
+     * @param string $socialNetwork
+     * @param string $id
+     * @return unknown
+     */
+    private function checkIfExistsAppId($socialNetwork, $ids_array, $platforms)
+    {
+    	foreach ($ids_array as $id)
+    	{
+    		foreach ($platforms as $platform)
+    		{
+	    		if ($socialNetwork == 'facebook')
+	    		{
+	    			$select = $this->userModel->db->select()
+	    			->from($socialNetwork . 'UniqueIdAppIds', array($socialNetwork . 'Id'))
+	    			->where($platform . 'AppId= ' . "'$id'" );
+	    		}
+	    		 
+	    		$result = $this->userModel->db->fetchOne($select);
+	    		 
+	    		if ($result)
+	    		{
+	    			return $result;
+	    		}
+    		}
+    	}
+    	
+    	return false;
+    }
+    
+    /**
+     * Check if AppId is set for current platform in facebookUniqueIdAppIds table
+     * @param string $uniqueId
+     * @param string $appId
+     * @param string $platform
+     * @return string / NULL
+     */
+    
+    private function checkIfAppIdIsSetInAppsIdsTable($uniqueId, $appId, $platform)
+    {
+    	$select = $this->userModel->db->select()
+    					->from('facebookUniqueIdAppIds', $platform . 'AppId')
+    					->where('facebookId =?', $uniqueId);
+    	
+    	$result = $this->userModel->db->fetchOne($select);
+    	return $result;
+    }
+    
+    /**
+     * Insert data in FacebookUniqueIdAppIds table
+     * @param unknown $socialNetwork
+     * @param unknown $uniqueId
+     * @param unknown $id
+     */
+    private function addUniqueIdAndAppId($socialNetwork, $uniqueId, $appId, $platform)
+    {
+    	if ($socialNetwork == 'facebook')
+    	{
+    		$uniqueIdAppId = array(
+    						$socialNetwork . 'Id' 	=> $uniqueId,
+    						$platform . 'AppId'		=> $appId,
+    		);
+    		$this->userModel->db->insert($socialNetwork . 'UniqueIdAppIds', $uniqueIdAppId);
+    	}
+    }
+    
+    /**
+     * Update data in FacebookUniqueIdAppIds table
+     * @param unknown $socialNetwork
+     * @param unknown $uniqueId
+     * @param unknown $id
+     */
+    
+    private function updateUniqueIdAndAppId($socialNetwork, $uniqueId, $appId, $platform)
+    {
+    	if ($socialNetwork == 'facebook')
+    	{
+    		$uniqueIdAppId = array($platform . 'AppId'	=> $appId);
+    		$this->userModel->db->update($socialNetwork . 'UniqueIdAppIds', $uniqueIdAppId, $socialNetwork . 'Id=' . "'$uniqueId'");
+    	}
+    }
+    
+    /**
+     * Check if user data is in facebook or in linkedin table
+     * @param string $socialNetwork
+     * @param string $id
+     * @return unknown
+     */
+    public function checkIfUserDataExists($socialNetwork, $ids_array, $uniqueId)
+    {
+    	array_push($ids_array, $uniqueId);
+    	foreach ($ids_array as $id)
+    	{
+    		if ($socialNetwork == 'facebook' || $socialNetwork == 'linkedin')
+    		{
+    			$select = $this->userModel->db->select()
+    						->from($socialNetwork, array($socialNetwork . 'Id'))
+    						->where($socialNetwork . 'Id = ' . "'$id'" );
+    		}
+    	
+    		$result = $this->userModel->db->fetchOne($select);
+    	
+    		if ($result)
+    		{
+    			return $result;
+    		}
+    	}
+    	return false;
+    }
+    
+    /**
+     * check if url returned by LinkedIn API exists in our database (linkedin table), on another user ID / user email
+     * (we check this only in case a user registered from one platform (when we were storing the user ID instead of email),
+     * and then it registered on the second platform without logging in on the first platform after we made the changes)
+     * if yes, return the ID and the email
+     */
+    
+    public function checkIfUrlExists($publicProfileUrl)
+    {
+    	$select = $this->userModel->db->select()
+    	->from('linkedin', array('linkedinId', 'email'))
+    	->where('publicProfileUrl =?', $publicProfileUrl);
+    	 
+    	$result = $this->userModel->db->fetchRow($select);
+    	return $result;
+    }
+    
+    public function addSocialUser($social_login, $data)
+    {
+    	if ($social_login == 'facebook')
+    	{
+    		$id = $data['user_details']['facebookId'];
+    		$this->userModel->db->insert('facebook', $data['user_details']);
+    			
+    		$keys = array(
+    						'facebookEducation' =>	'education',
+    						'facebookWork' 		=>	'work',
+    						'facebookDevice' 	=>	'devices',
+    						'facebookLike' 		=>	'likes',
+    						'facebookGroup' 	=>	'groups',
+    						'facebookLink' 		=>	'links');
+    			
+    		foreach ($keys as $table => $key)
+    		{
+    			if (array_key_exists($key, $data))
+    			{
+    				foreach ($data[$key] as $data_array)
+    				{
+    					$data_link = array();
+    					$data_link['facebookId'] = $id;
+    					
+    					if ($key == 'education')
+    					{
+    						$link_table = 'facebookLinkEducation';
+    						$data_link['schoolId'] = $data_array['schoolId'];
+    						$itemId = $data_link['schoolId'];
+    						$column_name = 'schoolId';
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    
+    					elseif ($key == 'work')
+    					{
+    						$link_table = 'facebookLinkWork';
+    						$data_link['employerId'] = $data_array['employerId'];
+    						$itemId = $data_link['employerId'];
+    						$column_name = 'employerId';
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    
+    					elseif ($key == 'devices')
+    					{
+    						$link_table = 'facebookLinkDevice';
+    						$os = $data_array['os'];
+    						$osId = $this->checkItemExistance($table, 'os', $os);
+    							
+    						if($osId == false)
+    						{
+    							$userModel->db->insert($table, $data_array);
+    							$data_link['deviceId'] = $this->userModel->getLastId($table, 'id');
+    						}
+    						else
+    						{
+    							$data_link['deviceId'] = $osId;
+    						}
+    							
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    
+    					elseif ($key == 'likes')
+    					{
+    						$link_table = 'facebookLinkLike';
+    						$data_link['likeId'] = $data_array['likeId'];
+    						$itemId = $data_link['likeId'];
+    						$column_name = 'likeId';
+    
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    
+    					elseif ($key == 'groups')
+    					{
+    						$link_table = 'facebookLinkGroup';
+    						$data_link['groupId'] = $data_array['groupId'];
+    						$itemId = $data_link['groupId'];
+    						$column_name = 'groupId';
+    							
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    
+    					elseif ($key == 'links')
+    					{
+    						$link_table = 'facebookLinkLink';
+    						$data_link['linkId'] = $data_array['linkId'];
+    						$itemId = $data_link['linkId'];
+    						$column_name = 'linkId';
+    
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    
+    					if ($key != 'devices')
+    					{
+    						$checkItem = $this->checkItemExistance($table, $column_name, $itemId);
+    							
+    						if($checkItem == false)
+    						{
+    							$this->userModel->db->insert($table, $data_array);
+    						}
+    					}
+    				}
+    			}
+    		}
+    	}
+    
+    	elseif ($social_login == 'linkedin')
+    	{
+    		$id = $data['user_details']['linkedinId'];
+    		$this->userModel->db->insert('linkedin', $data['user_details']);
+    			
+    		$keys = array(
+    						'linkedinCompany' 	=>	'companies',
+    						'linkedinPosition' 	=>	'positions');
+    			
+    		foreach ($keys as $table => $key)
+    		{
+    			if (array_key_exists($key, $data))
+    			{
+    				foreach ($data[$key] as $data_array)
+    				{
+    					$data_link = array();
+    					$data_link['linkedinId'] = $id;
+    
+    					if ($key == 'companies')
+    					{
+    						$link_table = 'linkedinLinkCompany';
+    						$data_link['companyId'] = $data_array['companyId'];
+    						$itemId = $data_link['companyId'];
+    						$column_name = 'companyId';
+    							
+    						$this->userModel->db->insert($link_table, $data_link);
+    					}
+    					elseif($key == 'positions')
+    					{
+    						$data_array['linkedinId'] = $id;
+    						// 							$link_table = 'linkedinLinkPosition';
+    						// 							$data_link['companyId'] = $data_array['companyId'];
+    						// 							$data_link['positionId'] = $data_array['positionId'];
+    						// 							$itemId = $data_link['positionId'];
+    						// 							$column_name = 'positionId';
+    						$this->userModel->db->insert($link_table, $data_link);
+    							
+    					}
+    
+    					$checkItem = $this->checkItemExistance($table, $column_name, $itemId);
+    
+    					if($checkItem == false)
+    					{
+    						$this->userModel->db->insert($table, $data_array);
+    					}
+    
+    				}
+    			}
+    		}
+    	}
+    }
+    
+    /**
+     * Check what data misses from facebook/linkedin data returned
+     * @param string $socialNetwork
+     * @param array $data
+     * @return multitype:
+     */
+    
+    public function checkMissingData($socialNetwork, $data)
+    {
+    	$values = array();
+    	if ($socialNetwork == 'facebook')
+    	{
+    		$data_keys = array('firstName', 'lastName', 'gender', 'birthday',
+    						'location', 'zipcode', 'phoneNumber');
+    		 
+    		foreach ($data_keys as $key)
+    		{
+    			if ($key == 'location')
+    			{
+    				if (empty($data['user_details'][$key]))
+    				{
+    					array_push($values, 'country');
+    				}
+    			}
+    			elseif (empty($data['user_details'][$key]))
+    			{
+    				array_push($values, $key);
+    			}
+    		}
+    		
+    		if(empty($data['work']))
+    		{
+    			array_push($values, 'work');
+    		}
+    		elseif (empty($data['education']))
+    		{
+    			array_push($values, 'education');
+    		}
+    	}
+    	elseif($socialNetwork == 'linkedin')
+    	{
+    		$data_keys = array('firstName', 'lastName', 'locationName', 'zipcode',
+    						'birthday','gender', 'phoneNumber');
+    		foreach ($data_keys as $key)
+    		{
+    			if (empty($data['user_details'][$key]))
+    			{
+    				array_push($values, $key);
+    			}
+    		}
+    		 
+    		if (empty($data['companies']))
+    		{
+    			array_push($values, 'company');
+    		}
+    		elseif(empty($data['positions']))
+    		{
+    			array_push($values, 'position');
+    		}
+    		 
+    	}
+
+    	return $values;
+    }
+    
+    /**
+     * Check if email is in userData
+     * @param email $email
+     * @return unknown
+     */
+    
+    public function checkIfEmailExists($email)
+    {
+    	$select = $this->userModel->db->select()
+    	->from('userData', 'id')
+    	->where('userData.email = ' . "'$email'");
+    
+    	$result = $this->userModel->db->fetchOne($select);
+    
+    	return $result;
+    }
+    
+    /**
+     * Set ID in "userSocialAccounts" table for current social network accessed
+     * @param string $socialNetwork
+     * @param string $userId
+     * @param string $socialNetworkId
+     */
+    public function setSocialNetworkMarkedForUser($socialNetwork, $userId, $socialNetworkId)
+    {
+    	$data = array($socialNetwork . 'Id' => $socialNetworkId);
+    	$this->userModel->db->update('userSocialAccounts', $data, 'userId = ' . $userId);
+    }
+    
+    /**
+     * Get user ID
+     * @param string $socialNewtork
+     * @param string $id (social network ID)
+     * @return string (user ID)
+     */
+    
+    public function getUserId($socialNetwork, $id)
+    {
+    	$select = $this->userModel->db->select()
+    				->from('userSocialAccounts', 'userId')
+    				->where($socialNetwork . 'Id =' . "'$id'");
+    
+    	$result = $this->userModel->db->fetchRow($select);
+    	return $result['userId'];
+    }
+    
+    /**
+     * Get data for user for log in
+     * @param string $id
+     */
+    
+    public function getSocialNetworkUserData($id)
+    {
+    	$select = $this->userModel->db->select()
+    	->from('userData', array('email'))
+    	->where('id = ' . $id);
+    	return $this->userModel->db->fetchRow($select);
+    }
+    
+    /**
+     * Get all platform names except the current one
+     * @param string $currentPlatformName
+     * @return array with all platform names
+     */
+    
+    private function getPlatformNamesWithoutCurrent($currentPlatformName)
+    {
+    	$select = $this->userModel->db->select()
+    				->from('platformApplication')
+    				->where('name !=?', $currentPlatformName);
+    
+    	$result = $this->userModel->db->fetchAll($select);
+    	$names = array();
+    	
+    	foreach ($result as $platform)
+    	{
+    		array_push($names, $platform['name']);
+    	}
+    	return $names;
+    }
+    
+    private function checkItemExistance($table, $column_name, $id)
+    {
+    	$select = $this->userModel->db->select()
+    	->from($table)
+    	->where($column_name . ' = ' . "'$id'");
+    
+    	$result = $this->userModel->db->fetchOne($select);
+    	return $result;
+    }
+}
+
+?>

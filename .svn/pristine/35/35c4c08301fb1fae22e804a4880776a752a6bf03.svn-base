@@ -1,0 +1,81 @@
+ <script>
+	var SITE_URL = '{SITE_URL}';
+</script>
+
+<div class="message_error" style="display:none" id="msgError"></div>
+<br/>
+
+<div class="survey_list">
+	<p class='register_instruction'>{SURVEY_NUMBER}</p><br>
+	<form action="{SITE_URL}/{NEXT_SURVEY_LINK}" method="post">
+		<!-- BEGIN instruction -->
+			<p class='register_instruction'>{INSTRUCTION}</p><br>
+		<!-- END instruction -->
+<!-- BEGIN rewatch_button -->
+	<a href="{SITE_URL}/{VIDEO_CATEGORY__LINK}" id="survey_rewatch_button" name = "submit" class="button apply_button">REWATCH THIS MODULE</a>
+<!-- END rewatch_button -->
+		<br />
+		
+		<div class="survey_field">
+			<!-- BEGIN field --> 
+				<div class="row vertical_align">
+				<div class="col-sm-6 question"><p>{QUESTION}</p></div>
+			  		<div class="col-sm-6 answer">
+					  	<!-- BEGIN value -->
+					  	<div class="input_container answer_listing">
+					  		<label><input type="{TYPE}" id="{ID}" name="{NAME}" value="{VALUE}" {REQUIRED}>{DETAILS}</input></label>
+					  	</div>
+					  	<!-- END value -->
+					</div>
+				</div>
+			<!-- END field -->
+			
+			<!-- BEGIN dropdown -->
+				<div class="row">
+					<div class="col-sm-6 question">
+						{QUESTION}
+					</div>
+					<div class="col-sm-6 answer" >
+						<div class="selSpecial">
+							<!-- js-example-basic-single -->
+							<select class="styledSel" name="{NAME}" required >
+							<option selected="selected" value="">Please select an option</option>
+							<!-- BEGIN option -->
+								<option value="{VALUE}" {SELECTED}>{VALUE}</option>
+							<!-- END option -->
+							</select>
+						</div>
+					</div>
+				</div>
+			<!-- END dropdown -->
+
+			<input id="submit" type="submit" class="button {REGISTER_ACCES}" value="{REG_BUTTON}">
+		</div>
+	</form>
+</div>
+
+ <script type="text/javascript">
+	var siteUrl = "{SITE_URL}";
+	
+	$(document).ready(function(){
+		$('select.styledSel').customSelect();
+		// $("input#submit").click(function(){
+		//  	var categoryViewed = "{CURRENT_CATEGORY}";
+		// 	alert(categoryViewed);
+		// 	_btn.track(categoryViewed, {})
+
+		//  });
+		/*$(".js-example-basic-single").select2({
+			placeholder: "Select a state",
+			minimumResultsForSearch: -1
+		});*/
+	});
+
+	function submitSurvey(){
+	var categoryViewed = "{CURRENT_CATEGORY}";
+	_btn.track(categoryViewed, {});
+	};
+
+	document.getElementById("submit").addEventListener("click", submitSurvey(), true);
+	
+</script>

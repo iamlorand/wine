@@ -1,0 +1,463 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: User.php 981 2015-06-11 13:51:41Z gabi $
+ */
+
+/**
+ * User Model
+ * Here are all the actions related to the user
+ * @category   DotKernel
+ * @package    Admin
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class User extends Dot_Model_User
+{
+
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+	
+	//survey list for microrecruiting flows: wistia flow and survey flow - NO registration surveys in this list
+	private $surveyList = array('106', '107', '108', '109', '110', '111', '112', '113', '114', '115', '116');
+	
+	/**
+	 * Get user list
+	 * @access public
+	 * @param int $page [optional]
+	 * @return array
+	 */
+	public function getUserList($page = 1, $platformId = '2')
+	{
+		$select = $this->db->select()
+						   ->from(array('u' => 'userData'))
+						   ->joinLeft(array('mst2' => 'microRecruitingSubIdTrackingStep2'), 'u.id=mst2.userId', '')
+						   ->joinLeft(array('mj' => 'microRecruitingJob'), 'mst2.subId=mj.id', array('jobPlatformId' => 'platformId', 'jobId' => 'id'))
+						   ->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mjp.id=mj.platformId', array('jobPlatformName' => 'name'))
+						   ->join(array('mat' => 'microRecruitingActionTracking'), 'u.id=mat.userId', array('category', 'city'))
+		                   ->where('u.platform = ?', $platformId)
+		                   ->group('u.id')
+						   ->order('u.dateCreated DESC');
+ 		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	/**
+	 * Get user list step 1
+	 * @access public
+	 * @param int $page [optional]
+	 * @return array
+	 * @author Nicu
+	 */
+	public function getUserListStep1($page = 1, $platformId = '2')
+	{
+		$select = $this->db->select()
+		->from(array('u' => 'userDataStep1'),array('id','userEmail' => 'email','dateCreated'))
+		->join(array('mst1' => 'microRecruitingSubIdTrackingStep1'), 'u.id=mst1.userId', '')
+	    ->joinLeft(array('mj' => 'microRecruitingJob'), 'mst1.subId=mj.id', array('jobPlatformId' => 'platformId', 'jobId' => 'id'))
+	    ->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mjp.id=mj.platformId', array('jobPlatformName' => 'name'))
+		->where('u.platform = ?', $platformId)
+		->order('u.dateCreated DESC');
+		
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	
+	/**
+	 * Delete user
+	 * @param int $id
+	 * @return void
+	 */
+	public function deleteUser($id)
+	{
+		$this->db->delete('userData', 'id = ' . $id);
+	}
+	
+	/**
+	 * Send a link to reset the  password to user's email
+	 * @access public
+	 * @param int id
+	 * @return void
+	 */
+	public function sendPassword($id)
+	{
+		$session = Zend_Registry::get('session');
+		$seoOption = Zend_Registry::get('seo');
+		$value = $this->getUserBy('id', $id);
+		if(!empty($value))
+		{
+			$dotEmail = new Dot_Email();
+			$dotEmail->addTo($value['email']);
+			$subject = str_replace('%SITENAME%', $seoOption->siteName, $this->option->forgotPassword->subject);
+			$dotEmail->setSubject($subject);
+			
+			$userToken = Dot_Auth::generateUserToken($value['password']);
+			
+			$msg = str_replace(array('%FIRSTNAME%', '%SITE_URL%', '%USERID%', '%TOKEN%'),
+									array($value['firstName'], $this->config->website->params->url, $value['id'], $userToken),
+									$this->option->forgotPassword->message);
+			
+			$dotEmail->setBodyText($msg);
+			$succeed = $dotEmail->send();
+			if($succeed)
+			{
+				$session->message['txt'] = $this->option->infoMessage->emailSent.$value['email'];
+				$session->message['type'] = 'info';
+			}
+			else
+			{
+				$session->message['txt'] = $this->option->errorMessage->emailNotSent.$value['email'];
+				$session->message['type'] = 'error';
+			}
+		}
+		else
+		{
+			$session->message['txt'] = $value['email'].$this->option->infoMessage->emailNotFound;
+			$session->message['type'] = 'info';
+		}
+	}
+	
+	/**
+	 * Activate/Inactivate user account
+	 * @param int $id - user ID
+	 * @param int $isActive
+	 * @return void
+	 */
+	public function activateUser($id, $isActive)
+	{
+        $this->db->update('userData', array('isActive' => $isActive), 'id = '.$id);
+	}
+	
+	/**
+	 * Get admin users logins archive list
+	 * @access public
+	 * @param int $id
+	 * @param int $page [optional]
+	 * @param string $browser [optional]
+	 * @param string $loginDate [optional]
+	 * @param string $sortField [optional]
+	 * @param string $orderBy [optional]
+	 * @return array
+	 */
+	public function getLogins($id, $page = 1, $browser = '', $loginDate = '', $sortField = '', $orderBy = '')
+	{
+		$select = $this->db->select()
+						->from('userLogin')
+						->joinLeft(
+							'userData',
+							'userLogin.userId = userData.id',
+							'email'
+						);
+		if ($id > 0)
+		{
+			$select->where('userId = ?', $id);
+		}
+		if ($browser != '')
+		{
+			$select->where($this->db->quoteInto("userAgent LIKE ? ", '%'.$browser.'%'));
+		}
+		if ($loginDate != '')
+		{
+			$select->where('dateLogin LIKE ?', '%'.$loginDate.'%');
+		}
+		if ($sortField!="")
+		{
+			$select->order($sortField. ' '.$orderBy);
+		}
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+
+	}
+	
+	/**
+	 * Get top <topCount> logins by country
+	 * If there are more countries returned than <topCountry>, the sum of the remainder
+	 * will be added to $result['Other']
+	 * @param topCount - the number of countries to return
+	 * @access public
+	 * @return array
+	 */
+	public function getTopCountryLogins($topCount)
+	{
+		$select = $this->db->select()
+					  	   ->from(
+					  	   		'userLogin',
+					  	   		array('country', 'cnt'=>'COUNT(country)')
+					  	   )
+					  	   ->group('country')
+					  	   ->order('cnt DESC');
+		$logins = $this->db->fetchAll($select);
+		$data = array();
+		foreach($logins as $login)
+		{
+			$data[] = array(
+				'label' => $login['country'],
+				'data' =>  intval($login['cnt'])
+			);
+		}
+
+		if (count($data) > $topCount)
+		{
+			$others = array_splice($data, $topCount);
+			$otherCount = 0;
+			foreach ($others as $other)
+			{
+				$otherCount += $other['data'];
+			}
+			$data[] = array(
+				'label' => 'Other',
+				'data' => $otherCount
+			);
+		}
+
+		return $data;
+	}
+	
+	/**
+	 * Get top <topCount> users by logins
+	 * @param topCount - the number of users to return
+	 * @access public
+	 * @return array
+	 */
+	public function getTopUsersByLogins($topCount)
+	{
+		$select = $this->db->select()
+							->from(array('a' => 'userLogin'),
+									array('b.email', 'cnt'=>'COUNT(a.userId)'))
+							->joinLeft(array('b' => 'userData'), 'a.userId = b.id', array())
+							->group('userId')
+							->order('cnt DESC')
+							->limit($topCount);
+		$logins = $this->db->fetchAll($select);
+		$data = array();
+		foreach($logins as $login)
+		{
+			$data[] = array(
+					'label' => $login['email'],
+					'data' =>  intval($login['cnt'])
+			);
+		}
+		return $data;
+	}
+	
+	public function getUserData($id)
+	{
+		$select = $this->db->select()
+				->from(array('userData'), 'email')
+				->join(array('microRecruitingActionTracking'), 'userData.id=microRecruitingActionTracking.userId', array('userAgent', 'userId'))
+				->where('userData.id=?', $id);
+				
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Get user id and email by field
+	 * @access public
+	 * @param string $field
+	 * @param string $value
+	 * @return array
+	 */
+	public function getUserDetails($id)
+	{
+		$select = $this->db->select()
+					->from(array('mrsits'=>'microRecruitingSubIdTrackingStep2'), array('mrsits.userId'))
+					->join(array('ud'=> 'userData'), 'ud.id = mrsits.userId', array('ud.email', 'ud.registerType'))
+					->join(array('mrv'=> 'microRecruitingVisits'), 'mrv.id = mrsits.visitorId', array('mrv.userAgent', 'mrv.referer'))
+					->join(array('mrj'=>'microRecruitingJob'), 'mrsits.subId = mrj.id', '')
+					->joinLeft(array('mrjt'=>'microRecruitingJobType'), 'mrjt.id = mrj.jobTypeId', 'jobType')
+					->where('ud.id = ?', $id);
+		
+		$result = $this->db->fetchRow($select);
+		
+		return $result;
+	}
+	
+	/**
+	 * Get user firstName and lastName from facebook by $userId
+	 * @access public
+	 * @param string $userId
+	 * @return array
+	 */
+	public function getFacebookUserDetails($id)
+	{
+		$select = $this->db->select()
+		->from(array('usa'=>'userSocialAccounts'),'')
+		->join(array('fb'=>'facebook'), 'usa.facebookId=fb.facebookId', array('fb.firstName', 'fb.lastName', 'fb.ageRange', 'fb.gender'))
+		->where('usa.userId =?', $id);
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get user firstName and lastName from linkedIn by $userId
+	 * @access public
+	 * @param string $userId
+	 * @return array
+	 */
+	public function getLinkedInUserDetails($id)
+	{
+		$select = $this->db->select()
+		->from(array('usa'=>'userSocialAccounts'),'')
+		->join(array('li'=>'linkedin'), 'usa.linkedinId=li.email', array('li.firstName', 'li.lastName'))
+		->where('usa.userId =?', $id);
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get questions
+	 * @access public
+	 * @param int $id
+	 * @return array
+	 */
+	public function getQuestions($id)
+	{
+		$select = $this->db->select()
+		->from(array('mrca'=>'microRecruitingCategoryAnswered'), '')
+		->join(array('mrc'=>'microRecruitingCategory'), 'mrca.category=mrc.categoryName', 'categoryName')
+		->join(array('mrcq'=>'microRecruitingCategoryQuestion'), 'mrc.id=mrcq.categoryId', 'questionId')
+		->where('mrca.userId =?', $id);
+		$result = $this->db->fetchAll($select);
+		$values = array();
+		foreach($result as $key => $value)
+		{
+			$values[$value['categoryName']][]=$value['questionId'];
+		}
+		return $values;
+	}
+	
+	/**
+	 * Get city and category
+	 * @access public
+	 * @param int $id
+	 * @return array
+	 */
+	public function getQuestionData($id)
+	{
+		$select = $this->db->select()
+		->from(array('mca' => 'microRecruitingCategoryAnswered'), array('city', 'category'))
+		->join(array('mc' => 'microRecruitingCities'), 'mca.city=mc.cityLink', array('name'))
+		->where('userId =?', $id);
+		
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get category answer
+	 * @access public
+	 * @param int $userId
+	 * @return array
+	 */
+	public function getCategoryAnswer($userId)
+	{
+		$registerSurveyId = array('100', '101','102' , '103', '104');
+	    $select = $this->db->select()
+	    ->from(array('mrcq'=>'microRecruitingCategoryQuestion'), '')
+	    ->join(array('sa' => 'surveyAnswers'), 'mrcq.questionId=sa.surveyFieldId', 'answer')
+	    ->join(array('mc' => 'microRecruitingCategory'), 'mc.id=mrcq.categoryId', 'categoryName')
+	    ->join(array('sf' => 'surveyField'), 'sf.id = mrcq.questionId', 'question')
+	    ->where("sa.userId=?", $userId);
+	    
+	   $result = $this->db->fetchAll($select);
+	   return $result;
+	}
+	
+	/**
+	 * Get survey answer
+	 * @access public
+	 * @param int $userId
+	 * @return array
+	 */
+	public function getSurveyAnswers($userId)
+	{
+		$registerSurveyId = array('100', '101','102' , '103', '104' );
+		$select = $this->db->select()
+		->from('userData', '')
+		->join(array('srvans' =>'surveyAnswers'), 'srvans.userId=userData.id', 'answer')
+		->join(array('sf' => 'surveyField'), 'srvans.surveyFieldId=sf.id', array('id', 'question'))
+		->where("userData.id=?", $userId)
+		->where('srvans.surveyId IN (?)', $registerSurveyId);
+		
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get question and answer
+	 * @access public
+	 * @param int $userId 
+	 * @return array
+	 */
+	public function getQuestionSurvey($userId)
+	{
+		$select = $this->db->select('question')
+		->from(array('sF'=>'surveyField'), '')
+		->join(array('mrcq'=>'microRecruitingCategoryQuestion'), 'sF.id=mrcq.questionId', 'sF.question')
+		->join(array('sA'=>'surveyAnswers'), 'sA.surveyFieldId=mrcq.questionId', 'answer')
+		->join(array('mC'=>'microRecruitingCategory'), 'mC.id=mrcq.categoryId')
+		->where('userId=?', $userId);
+		
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get all survey answers for selected user (survey answers regarding the survey flow)
+	 * @param string $userId
+	 * @return array
+	 */
+	
+	public function getAnswersForSurveys($userId)
+	{
+		//get all surveys and their names
+		$select = $this->db->select()
+						->from('survey', array('id', 'name'))
+						->where('id in (?)', $this->surveyList);
+		
+		$result = $this->db->fetchAll($select);
+		
+		//get all survey answers		
+		$surveyList = array();
+		foreach ($result as $survey)
+		{
+			$surveyList[$survey['id']] = $survey['name'];
+		}
+		
+		$select = $this->db->select()
+						->from(array('sa' => 'surveyAnswers'), array('surveyId', 'answer', 'surveyFieldId'))
+						->join(array('sf' => 'surveyField'), 'sa.surveyFieldId=sf.id', array('question'))
+						->where('surveyId in (?)', $this->surveyList)
+						->where('userId =?', $userId);
+		
+		$result = $this->db->fetchAll($select);
+
+		//set the survey name and survey answers in one array / each survey
+		$surveyAnswers = array();
+		foreach ($result as $answer)
+		{
+			if (!isset($surveyAnswers[$answer['surveyId']]))
+			{
+				$surveyAnswers[$answer['surveyId']] = array();
+				$surveyAnswers[$answer['surveyId']]['name'] = $surveyList[$answer['surveyId']];
+			}
+			
+			$surveyAnswers[$answer['surveyId']]['answers'][$answer['question']] = $answer['answer'];
+		}
+
+		return $surveyAnswers;
+	}
+}

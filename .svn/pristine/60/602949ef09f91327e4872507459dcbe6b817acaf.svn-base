@@ -1,0 +1,34 @@
+<script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/menu.js"></script>
+
+<div class="container home_special">
+	<div id="cityMenu">
+		<h1>Jobs in your area. Simple and fast.</h1>
+		<form method="POST" name="cityOption" action="{SITE_URL}/{CITY_ID}/">
+			<select id="homeCitySelect" class="styledBigSel" name="citySelect" style="width: 100%" onchange="optionChanged(this);">
+					<option value="">Select your area of interest...</option>
+				<!-- BEGIN city_menu -->
+					<option value="{CITY_ID}" id="{CITY_ID}">{CITY_NAME}</option>
+				<!-- END city_menu -->
+			</select>	
+		</form>
+		<h2>Browse our locations</h2>
+		<div>
+		<!-- BEGIN list_city_row -->
+			<div class="row">
+				<!-- BEGIN list_city_md -->
+				<div class="col-md-6">
+					<div class="row locations">
+						<!-- BEGIN list_city_sm -->
+						<div class="col-sm-4">
+							<a href="{SITE_URL}/{CITY_URL}/">{CITY_NAME}</a>
+						</div>			
+						<!-- END list_city_sm -->		
+					</div>	
+				</div>
+				<!-- END list_city_md -->
+			</div>
+		<!-- END list_city_row -->
+		</div>
+		
+	</div>
+</div>

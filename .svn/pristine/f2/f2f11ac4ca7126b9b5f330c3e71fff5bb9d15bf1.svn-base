@@ -1,0 +1,39 @@
+<form action="{SITE_URL}/admin/affiliate/update/id/{ID}" method="post" >
+	<div class="box-shadow" style="width: 500px">
+		<div class="box_header">
+			Update Affiliate
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Name<span class="required">*</span></label>
+				<input type="text" name="name" value="{NAME}">
+			</li>
+			<li class="clearfix">
+				<label>Affiliate City Flow<span class="required">*</span></label>
+				<select name = "flow_city">
+						<option value = "{CITY_LINK}">{FLOW_CITY}</option>
+					<!-- BEGIN cities_list -->
+						<option value = "{CITY_LINK}">{CITY_NAME}</option>
+					<!-- END cities_list -->
+				</select>
+			</li>
+			<li class="clearfix">
+				<label>Affiliate Category Flow</label>
+				<select name = "flow_category">
+						<option value = "{CATEGORY}">{FLOW_CATEGORY}</option>
+					<!-- BEGIN category_list -->
+						<option value = "{CATEGORY}">{CATEGORY}</option>
+					<!-- END category_list -->
+				</select>
+			</li>
+			<li class="clearfix">
+				<label>Id</label>
+				<label>{ID}</label>
+			</li>
+			<li class="clearfix">
+				<label>&nbsp;</label>
+				<input type="submit" class="button" value="update">
+			</li>
+		</ul>
+	</div>
+</form>

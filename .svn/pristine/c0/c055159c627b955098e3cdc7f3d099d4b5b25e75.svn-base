@@ -1,0 +1,375 @@
+<?php
+
+/**
+ * 
+ * @author Andrei
+ *
+ */
+class admin_ExportController extends admin_BaseController
+{
+
+	public function doIt()
+	{
+		$this->exportView = new Export_View($this->tpl);
+		$this->exportModel = new Export();
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		
+		
+		switch($this->registry->requestAction)
+		{
+			case 'export-xml':
+				if(isset($_POST) && ! empty($_POST))
+				{
+					$platform = $_POST['platform'];
+					$platformId = $this->exportModel->getPlatformId($platform);
+					$jobsForCategories = $this->exportModel->getJobsForCategories($platformId);
+					//$jobsForKeyWords = $this->exportModel->getJobsForKeyWords($platformId);
+					$jobsCategories = $this->exportModel->appendDataToJobRecords($jobsForCategories, $platform);
+
+					//$jobsKeyWords = $this->exportModel->appendDataToJobRecordsForKeyWords($jobsForKeyWords, $platform);
+					$allJobs = array($jobsCategories);
+                    $go = $this->_verifyDuplicateData($jobsCategories,$platform);
+
+                    if(!empty($go))
+                    {
+                        $this->registry->session->message['txt'] = $go;
+                        $this->registry->session->message['type'] = 'error';
+                        header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/export-xml/');
+                         exit;
+                    }
+					$this->exportModel->exportJobs($allJobs, $platform);
+				}
+				
+				$this->exportView->details('export-xml');
+			break;
+			
+			case 'user-info-export':
+				$data = $this->exportModel->getAllCountryForexport();
+				$this->exportView->userExportView('user-info-export', $data);
+			break;
+			
+			case 'export-csv-global':
+				// 		export all user data with social networks and survay answers
+				// 		$globalUserData = $exportModel->exortUserData();
+                $post = $_POST;
+                $dates = $this->exportModel->setDates($post);
+				ini_set('memory_limit', '512M');
+				$this->exportModel->getAllUsersData($dates);
+				header('{SITE_URL}/admin/export/user-info-export/');
+			break;
+			case 'export-subid':
+				$exportView = $this->exportView->exportSubId('export-csv-subid');
+			break;
+			case 'export-csv-subid':
+                $post = $_POST;
+                $dates = $this->exportModel->setDates($post);
+				$this->exportModel->exportCsvSubId('export' , $dates);
+			break;
+		    case 'export-step1':
+		    	$this->exportView->exportStep1('export-step1');
+		    	break;
+		    case 'export-csv-step1':
+		    	$post = $_POST;
+    			$dates = $this->exportModel->setDates($post);
+		    	$data=$this->exportModel->getUserListStep1($dates);
+		    	$this->exportModel->exportCsvDataStep1($data , $dates);
+		    	break;
+	    	case 'export-step2':
+	    		$this->exportView->exportStep2('export-step2');
+	    		break;
+	    	case 'export-csv-step2':
+	    		$post = $_POST;
+    			$dates = $this->exportModel->setDates($post);
+	    		$userId = $this->exportModel->getUserDetails('id' , $dates);
+	    		$data= $this->exportModel->getSurveyAnswers($userId , $dates);
+	    		$this->exportModel->exportCsvDataStep2($data , $dates);
+	    		break;
+    		case 'export-stats':
+    			$this->exportView->exportStats('export-stats');
+    			break;
+    		case 'export-csv-stats':
+    			$post = $_POST;
+    			$dates = $this->exportModel->setDates($post);
+    			$data = $this->exportModel->getReport($dates);
+    			$this->exportModel->exportCsvStats($data , $dates);
+    			break;
+    		case 'export-subid-stats':
+    			if (isset($_POST) && !empty($_POST))
+    			{
+    				$this->exportModel->exportSubIdsDataPerDate($_POST);
+    			}
+    			$this->exportView->details('export-subid');
+    			break;
+    		case 'export-clicks':
+    			$this->exportView->exportClicks('export-clicks');
+    			break;
+    		case 'export-csv-clicks-by-category':
+    			$post = $_POST;
+    			$dates = $this->exportModel->setDates($post);
+    			$clicks= $this->exportModel->getAllClicks($dates);
+    			$step1Data= $this->exportModel->getClicksByReg1($dates);
+    		 	$step2Data= $this->exportModel->getClicksByReg2($dates);
+    			$this->exportModel->exportAllClicks($clicks,$step1Data,$step2Data,$dates);
+    			break;
+    		case 'export-csv-clicks-by-city':
+    			$post = $_POST;
+    			$dates = $this->exportModel->setDates($post);
+    			$clicks= $this->exportModel->getClicksByCity($dates);
+    			$this->exportModel->exportClicksByCity($clicks,$dates);
+    			break;
+    		case 'export-email':
+    			$this->exportView->exportEmail('export-email');
+    			break;
+    		case 'export-csv-email':
+    			$dates = $this->exportModel->formatDate($_POST);
+    			$data = $this->exportModel->totalRegistrationByEmail($dates);
+    			$this->exportModel->exportCsvEmail($data, $dates);
+    			break;
+    		case 'export-csv-email-by-main-categories':
+    			$dates = $this->exportModel->formatDate($_POST);
+    			
+    			$reg1 = $this->exportModel->getEmailTldByMainCategoriesForStep1($dates);
+    			$reg2 = $this->exportModel->getEmailTldByMainCategoriesForStep2($dates);
+    			
+    			$resultsReg1 = $this->exportModel->totalRegistrationByCategory($reg1);
+    			$resultsReg2 = $this->exportModel->totalRegistrationByCategory($reg2);
+    			
+    			$data = $this->exportModel->emailRegistrationByCategories($resultsReg1, $resultsReg2, $dates);
+    			$this->exportModel->exportCsvEmailForMainCategories($data, $dates);
+    			break;
+    		case 'export-csv-email-by-orphan-categories':
+    			$dates = $this->exportModel->formatDate($_POST);
+    			
+    			$reg1 = $this->exportModel->getEmailTldByOrphanCategoriesForStep1($dates);
+    			$reg2 = $this->exportModel->getEmailTldByOrphanCategoriesForStep2($dates);
+    			
+    			$resultsReg1 = $this->exportModel->totalRegistrationByCategory($reg1);
+    			$resultsReg2 = $this->exportModel->totalRegistrationByCategory($reg2);
+    			
+    			$data = $this->exportModel->emailRegistrationByCategories($resultsReg1, $resultsReg2, $dates);
+    			$this->exportModel->exportCsvEmailForOrphanCategories($data, $dates);
+    			break;
+    		case 'export-category':
+    			$platformName = $this->exportModel->getPlatformName();
+    			$this->exportView->exportDataByCityAndCategory('export-category', $platformName);
+    			break;
+    		case 'export-csv-category':
+    			$platform = $_POST['platform'];
+    			$platformId = $this->exportModel->getPlatformId($platform);
+    			$dates = $this->exportModel->formatDate($_POST);
+    			
+    			if($_POST['platform'] == 'default')
+    			{
+    				$data = $this->exportModel->getTotalClicksForCitiesPerCategory($dates);
+    			}
+    			else 
+    			{
+    				$data = $this->exportModel->getTotalClicksForCitiesPerCategoryAndPlatform($dates, $platformId);
+    			}
+    			
+    			$this->exportModel->exportDataForCityPerCategory($data, $dates, $platform);
+    			break;
+    		case 'export-zero-clicks-subids':
+    			$this->exportView->details('export-zero-clicks-subids');
+    			break;
+    		case 'export-zero-clicks-subids-csv':
+                $post = $_POST;
+                $dates = $this->exportModel->setDates($post);
+    			$this->exportModel->exportZeroClicksSubIds($dates);
+    			break;
+    		case 'export-regtype-category':
+    			$this->exportView->details('export-regtype-category');
+    			if (isset($_POST) && !empty($_POST))
+    			{
+    				$this->exportModel->getRegTypePerCategory($_POST);
+    			}
+    			break;
+    		case 'export-cost-per-platform':
+    			$this->exportView->details('export-cost-per-platform');
+    			break;
+    		case 'export-cost-per-platform-csv':
+    			$this->exportModel->exportCostPerPlatformPerDay($_POST);
+    			break;
+    		case 'export-browser-type-csv':
+    		    $post = $_POST;
+    		    $dates = $this->exportModel->setDates($post);
+                 $this->exportModel->getUserAgentExport($dates);
+    		    break;
+    		case 'export-browser-type':
+    		     $this->exportView->exportBrowserType('export-browser-type');
+    		    break;
+            case 'export-android-ios-type':
+                $this->exportView->exportAndroidIosType('export-android-ios-type');
+                break;
+            case 'export-android-ios-type-csv':
+                $post = $_POST;
+                $dates = $this->exportModel->setDates($post);
+                $this->exportModel->getAndroidIosUserAgent($dates);
+                break;
+            case 'export-subids-answers':
+            	if (isset($_POST) && !empty($_POST))
+            	{
+            		$this->exportModel->exportAnswersForSubIds($_POST);
+            	}
+            	$this->exportView->details('export-subids-answers');
+            	break;
+            case 'export-category-questions-csv':
+            	if (isset($_POST) && !empty($_POST))
+            	{
+            		if ($_POST['category'] == 'orphan')
+            		{
+            			$categoryDisplay = '0';
+            		}
+            		elseif($_POST['category'] == 'main')
+            		{
+            			$categoryDisplay = '1';
+            		}
+            	}
+            	$data = $this->exportModel->groupAnswersToQuestionsByCategory($categoryDisplay, $_POST['category']);
+            	$this->exportModel->exportQuestionsByCategory($_POST['category'], $data);
+            	break;
+            case 'export-category-questions':
+            	$this->exportView->exportQuestions('export-questions');
+            	break;
+            case 'export-browsers':
+           		if (isset($_POST) && !empty($_POST))
+           		{
+           			$this->exportModel->exportBrowserType($_POST);
+           		}
+           		$this->exportView->details('export-browsers');
+           		break;
+            case 'export-reg-email-csv':
+                $post = $_POST;
+                $dates = $this->exportModel->setDates($post);
+                $data = $this->exportModel->getReg1Users($dates);
+                $this->exportModel->exportReg1ToEmailCsv($data , $dates);
+                break;
+            case 'export-reg-email':
+                $this->exportView->exportReg1ToEmail('export-to-email');
+                break;
+            case 'export-reg2-email-csv':
+                $post = $_POST;
+                $dates = $this->exportModel->setDates($post);
+                $this->exportModel->exportReg2ToEmailCsv($dates);
+                break;
+            case 'export-reg2-email':
+                $this->exportView->exportReg1ToEmail('export-to-email');
+                break;
+            case 'export-all-user-agents':
+                $this->exportModel->exportAllUserAgents();
+                break;
+            case 'export-step3-url-stats':
+            	if (isset($_POST) && !empty($_POST))
+            	{
+            		$this->exportModel->exportStep3UsersData($_POST);
+            	}
+            	$this->exportView->details('export-step3-url-stats');
+            	break;
+            case 'export-50q-survey':
+                    if (isset($_POST) && !empty($_POST))
+                    {
+                        $this->exportModel->exportSurveyQA($_POST);
+                    }
+                $this->exportView->details('export-survey-qa');
+                break;
+            case 'export-subid-stats-per-visit':
+                if(isset($_POST) && !empty($_POST))
+                {
+                    $this->exportModel->exportSubIdStatsPerVisit($_POST);
+                }
+                 $this->exportView->details('export-subid-stats-per-visit');
+                break;
+            case 'export-cleaning-assessment':
+                if(isset($_POST) && !empty($_POST))
+                {
+                    $this->exportModel->exportCleaningAssessment($_POST);
+                }
+                 $this->exportView->details('export-cleaning-assessment');
+                break;
+            case 'export-wistia-apply':
+            	if(isset($_POST) && !empty($_POST))
+            	{
+            		$this->exportModel->exportWistiaAppliances($_POST);
+            	}
+            	$this->exportView->details('export-wistia-appliances');
+            	break;
+
+		}
+	}
+    /**
+    *   Verify duplicate data in XML feeds
+    *   Each platform has a different xml structure
+    *   
+    *   @return array
+    *   @author Nicu
+    *   @access private
+    **/
+    private function _verifyDuplicateData($data , $platform)
+    {
+        $valueToCheck = array();
+        $ok = 0;
+        $identicalValues = array();
+
+        $valuesWhereWeCheck = $data;
+
+        foreach ($data as $key => $value) 
+        {
+            $valueToCheck = $data[$key];
+            // unset the value we wanna check for from the array we are checking in, 
+            // we don't want to find the same data we are checking for
+            unset($valuesWhereWeCheck[$key]);
+
+            foreach ($valuesWhereWeCheck as $fields => $details) 
+            {   
+                if($platform == 'VHM')
+                {
+                    if(($details['sponsor'] == $valueToCheck['sponsor']) && ($details['title'] == $valueToCheck['title']) && ($details['categoryid'] == $valueToCheck['categoryid']) && ($details['description'] == $valueToCheck['description']) && ($details['city'] == $valueToCheck['city']) && ($details['state'] == $valueToCheck['state']) && ($details['cpc'] == $valueToCheck['cpc']) && ($details['url'] == $valueToCheck['url']) && ($details['company'] == $valueToCheck['company']))
+                    {
+                        $identicalValues[] =  $details['id'] . " and " . $valueToCheck['id'] . ' are identical';
+                    }             
+                }
+                elseif($platform == 'Jobs2Career')
+                {    
+                    if(($details['title'] == $valueToCheck['title']) && ($details['category'] == $valueToCheck['category']) && ($details['jobtype'] == $valueToCheck['jobtype']) && ($details['description'] == $valueToCheck['description']) && ($details['city'] == $valueToCheck['city']) && ($details['state'] == $valueToCheck['state']) && ($details['cpc'] == $valueToCheck['cpc']) && ($details['date'] == $valueToCheck['date']) && ($details['url'] == $valueToCheck['url']) && ($details['company'] == $valueToCheck['company']))
+                    {
+                        $identicalValues[] = $details['referencenumber'] . " and " . $valueToCheck['referencenumber'] .  ' are identical';
+                    } 
+                }
+                elseif($platform == 'Juju')
+                {
+                    if(($details['sourceurl'] == $valueToCheck['sourceurl']) && 
+                        ($details['jobsourceurl'] == $valueToCheck['jobsourceurl']) && 
+                        ($details['title'] == $valueToCheck['title']) && 
+                        ($details['type'] == $valueToCheck['type']) && 
+                        ($details['source'] == $valueToCheck['source']) && 
+                        ($details['employer'] == $valueToCheck['employer']) && 
+                        ($details['jobsource'] == $valueToCheck['jobsource']) && 
+                        ($details['joburl'] == $valueToCheck['joburl']) && 
+                        ($details['description'] == $valueToCheck['description']) && 
+                        ($details['location']['nation'] == $valueToCheck['location']['nation']) && 
+                        ($details['location']['city'] == $valueToCheck['location']['city']) && 
+                        ($details['location']['state'] == $valueToCheck['location']['state']) && 
+                        ($details['feeddate'] == $valueToCheck['feeddate']) && 
+                        ($details['postingdate'] == $valueToCheck['postingdate']))
+                    {
+                        $identicalValues[] = $details['jobid'] . " and " . $valueToCheck['jobid'] . ' are identical';
+                    }
+                }
+                elseif($platform == 'TopJobsUSA')
+                {
+                    if(($details['JobDate'] == $valueToCheck['JobDate']) && 
+                        ($details['JobTitle'] == $valueToCheck['JobTitle']) && 
+                        ($details['JobDescription'] == $valueToCheck['JobDescription']) && 
+                        ($details['JobCity'] == $valueToCheck['JobCity']) && 
+                        ($details['JobState'] == $valueToCheck['JobState']) && 
+                        ($details['JobUrl'] == $valueToCheck['JobUrl']) && 
+                        ($details['JobCompany'] == $valueToCheck['JobCompany']))
+                    {
+                        $identicalValues[] = $details['JobID'] . " and " . $valueToCheck['JobID'] . ' are identical';
+                    }
+                }
+            }
+        }
+        return $identicalValues;      
+    }
+}

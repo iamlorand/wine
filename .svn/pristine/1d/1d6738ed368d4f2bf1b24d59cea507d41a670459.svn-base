@@ -1,0 +1,286 @@
+<?php
+class Boomtrain_BoomtrainApi
+{
+	private $session;
+	public $registry;
+    private $url;
+    private $properties;
+//     private $client_id = 'FP3iP1blgJbdmmSRYS1I96byb1nXryTs';
+//     private $site_id = 'd0e38e9cdabd2a28e71242d790ccc168';
+//     private $username = 'boomtrain@crowded.com';
+    private $username = 'crowded';
+    private $password = 'CrowdedTrain123!';
+//     private $connection = 'Username-Password-Authentication';
+//     private $grant_type = 'password';
+//     private $scope = 'openid app_metadata name email user_id';
+	private $key = 'f6d431389a62263e59111cfd2d599dbd';
+    private $methodRequest;
+    private $requestType;
+    private $property;
+    private $step;
+    private $boomtrainPropertiesObject;
+    
+    public function __construct()
+    {
+    	$this->session = Zend_Registry::get('session');
+    	$this->boomtrainPropertiesObject = new Boomtrain_BoomtrainProperties();
+    	$this->properties = $this->boomtrainPropertiesObject->boomtrainProperties;
+    }
+    
+    private function sendRequest()
+    {
+    	$auth = 'api:' . $this->key;
+    	$auth = base64_encode($auth);
+		$header = array('Content-Type: application/json', 'Accept: application/json', 'Authorization: Basic ' . $auth);
+    	$ch = curl_init();
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_URL, $this->url);
+        
+        if ($this->methodRequest == 'POST')
+        {
+//         	if ($this->requestType == 'getAccessToken')
+//         	{
+//         		$postFields = array('client_id' =>  $this->client_id,
+//         						'username'  =>  $this->username,
+//         						'password'  =>  $this->password,
+//         						'connection'=>  $this->connection,
+//         						'grant_type'=>  $this->grant_type,
+//         						'scope'     =>  $this->scope);
+//         	}
+        	 
+			if ($this->requestType == 'updateProperty')
+			{
+				$boomtrianStep = new Boomtrain_BoomtrainProperties();
+				$postFields = array('subscriber' => array(	'uid'	=>	$this->session->email,
+															'properties'	=>	array($this->property	=>	$this->step)));
+			}
+
+        	$postFields = json_encode($postFields);
+        	curl_setopt($ch, CURLOPT_POST, 1);
+        	curl_setopt($ch, CURLOPT_POSTFIELDS,$postFields);
+        }
+       
+//         if ($this->methodRequest == 'PUT')
+//         {
+//         	if ($this->requestType == 'updatePerson')
+//         	{
+//         		$postFields = array('attributes'	=>	array(	'firstName'			=>	'Test',
+//         														'Submitted_Email'	=>	'SF-DEL'));
+//         		$postFields = json_encode($postFields);
+        		
+//         		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
+//         		$authorizationHeader = 'Authorization: Bearer ' . $this->session->boomtrainIdToken;
+//         		array_push($header, $authorizationHeader);
+        		
+//         		curl_setopt($ch, CURLOPT_POSTFIELDS,$postFields);
+//         	}
+//         }
+
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $header);
+        
+        $result = curl_exec($ch);
+        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $result = json_decode($result);
+        
+        if ($http_status == 200)
+        {
+        	return $result;
+        }
+        else
+        {
+        	return false;
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Depending if the current property exists in boomtrian for the current user (or if it's a highest step) ,
+     * set the step and call the function which makes the update
+     */
+    
+    public function setUserProperty()
+    {
+	    $data = $this->getPerson();
+	    $this->setProperty();
+	    $checkPropertyExists = $this->checkProperty($data);
+
+	    if ($checkPropertyExists == false)
+	    {
+	    	$this->step =  'step1';
+	    	$this->updatePersonsProperty();
+	    }
+	    else
+	    {
+	    	$this->step = $this->setStep();
+	    	$checkPropertyStep = $this->checkPropertyStep($checkPropertyExists, $data);
+	    	if ($checkPropertyStep == true)
+	    	{
+	    		$this->updatePersonsProperty();
+	    	}
+	    }
+    }
+    
+    /**
+     * Set step for current user action / current page
+     * @return string
+     */
+    
+    private function setStep()
+    {
+    	$controller = $this->registry->requestController;
+    	
+    	if ($controller == 'user')
+    	{
+    		$action = $this->registry->requestAction;
+    		$step = $this->boomtrainPropertiesObject->controllerActionNames[$controller][$action];
+    	}
+    	elseif($controller == 'video' || $controller == 'survey')
+    	{
+			if ($controller == 'survey')
+			{
+				if ($this->registry->requestAction == 'list' || $this->registry->requestAction == 'surveys')
+				{
+					$key = key($this->registry->request);
+					$request = $this->registry->request[$key];
+				}
+                elseif($this->registry->requestAction == 'thank-you')
+                {
+                    $request = $this->registry->requestAction;
+                }
+				else
+				{
+					$request = key($this->registry->request);
+				}
+			}
+			elseif ($controller == 'video')
+			{
+				if ($this->registry->requestAction == 'cleaning')
+				{
+					$request = key($this->registry->request);
+				}
+				else 
+				{
+					$request = $this->registry->requestAction;
+				}
+			}
+			
+			$step = $controller . '-' . $this->boomtrainPropertiesObject->controllerActionNames[$controller][$request];
+    	}
+    	
+    	return $step;
+    }
+    
+    /**
+     * Get data for current user
+     * @return array
+     */
+    
+    public function getPerson()
+    {
+    	$this->url = "https://api.boomtrain.net/201507/subscribers?uid=" . $this->session->email;
+    	$result = $this->sendRequest();
+    	return $result;
+    }
+    
+//     public function getAccessToken()
+//     {
+//     	$this->url = "https://boomtrain.auth0.com/oauth/ro";
+//     	$this->requestType = 'getAccessToken';
+//     	$this->methodRequest = 'POST';
+//     	$result = $this->sendRequest();
+    	
+//     	if ($result != false)
+//     	{
+//     		$this->session->boomtrainIdToken = $result->id_token;
+//     	}
+//     }
+    
+//     public function updatePerson()
+//     {
+//     	$url = "https://people.api.boomtrain.com/v1/person/" . $this->site_id . '/email/' . $this->session->email;
+    	
+//     	$this->url = $url;
+//     	$this->requestType = 'updatePerson';
+//     	$this->methodRequest = 'PUT';
+//     	$this->sendRequest();
+//     }
+    
+	/**
+	 * Check if current property exists in the array data from boomtrain
+	 * @param array $data
+	 * @return array
+	 */
+
+    private function checkProperty($data)
+    {
+    	$data = (array) $data;
+    	$propertyToSearch = $this->property;
+
+    	if (!array_key_exists('properties', $data))
+    	{
+    		return false;
+    	}
+		else 
+		{
+			if (!array_key_exists($propertyToSearch, $data['properties']))
+			{
+				return false;
+			}
+			else
+			{
+				//if property exists, return its value
+				return $data['properties']->$propertyToSearch;
+			}
+		}
+    }
+    
+    /**
+     * Check to see if current step is a further step for the current property
+     * Example: update the property to "thank-you", only if the step from boomtrain is 
+     * @param string $property
+     * @param array $data
+     * @return boolean
+     */
+    
+    private function checkPropertyStep($property, $data)
+    {
+    	$properties = (array) $this->properties;
+    	$keyfromBoomtrain = array_search ($property, $properties);
+    	$currentKey = array_search ($this->step, $properties);
+    	
+    	if ($keyfromBoomtrain < $currentKey)
+    	{
+    		$this->step = $this->properties[$currentKey];
+    		return true;
+    	}
+    	else 
+    	{
+    		return false;
+    	}
+    }
+    
+    /**
+     * Set the property for current city - state combo
+     */
+    
+    private function setProperty()
+    {
+    	$city = str_replace("-","_",$this->session->cityData);
+    	$this->property = $city . '-' . $this->session->categoryData;
+    }
+    
+    /**
+     * Update the property with the current step
+     */
+    
+    private function updatePersonsProperty()
+    {
+    	$this->url = "https://api.boomtrain.net/201507/subscribers/identify";
+    	$this->requestType = 'updateProperty';
+    	$this->methodRequest = 'POST';
+    	$result = $this->sendRequest();
+    }
+}

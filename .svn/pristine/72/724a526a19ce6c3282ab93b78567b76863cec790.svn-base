@@ -1,0 +1,147 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: User.php 5 2015-07-01 08:35:12Z dan $
+ * @author     DotKernel Team <team@dotkernel.com>
+*/
+
+class Console_Model_XMLData extends Dot_Model
+{
+	public function __construct()
+	{
+		parent::__construct();
+	}
+	
+	/* Use this for all insertions in DB */
+	public function insertData($table, $data)
+	{
+		$this->db->insert($table, $data);
+		
+		return $this->db->lastInsertId();
+	}
+
+	//use this for task id in TaskLocation
+	public function getLastAdded($tableName)
+	{
+		$select = $this->db->select()->from($tableName);
+		
+		$sql = $this->db->prepare("SELECT MAX(taskId) as max FROM ".$tableName);
+		$sql->execute();
+		$last = $sql->fetch(PDO::FETCH_ASSOC);
+		return $last;
+	}
+	
+	//use this for zipcode in TaskLocation
+	public function getZipCode($city, $state)
+	{
+		$select = $this->db->select()
+		->from("zipCodeList")
+		->where("city = ?", $city)
+		->where("state = ?", $state);
+		
+		return $this->db->fetchRow($select);
+	}
+	
+	public function getAllZipcodes()
+	{
+		$select = $this->db->select()
+		->from("zipCodeList")->order("RAND()");
+		
+		return $this->db->fetchAll($select);
+	}
+	
+	public function getPlatformId($platformName)
+	{
+		$select = $this->db->select()
+		->from('platform')
+		->where("platformName = ?", $platformName);
+		
+		return $this->db->fetchRow($select);
+	}
+	
+	public function getCategoryId($categoryName)
+	{
+		$select = $this->db->select("categoryId")
+		->from('platformCategory')
+		->where("categoryName = ?", $categoryName);
+		
+		return $this->db->fetchRow($select);		
+	}
+	
+	public function insertNewCategory($categoryName)
+	{
+		$data = array("categoryName" => $categoryName, "parentId"=>0);
+		$this->db->insert("platformcategory_temp", $data);
+		
+		return $this->db->lastInsertId();
+	}
+	
+	public function insertNewPlatform($platformName)
+	{
+		$data = array("platformName"=>$platformName, "url"=>"NA", "mailingStreet"=>"NA", "mailingCity"=>"NA", "mailingState"=>"NA", "mailingZip"=>"NA", "phone"=>"NA",
+						"platformType"=>"NA", "hqCity"=>"NA", "fundsRaised"=>"NA", "ceoName"=>"NA", "ceoEmail"=>"NA", "bizDevName"=>"NA", "bizDevEmail"=>"NA", "twitter"=>"NA",
+						"fb"=>"NA", "linkedIn"=>"NA", "blog"=>"NA", "crunchbase"=>"NA", "crunchbaseCategory"=>"NA"
+		 );
+		$this->db->insert("platform", $data);
+	}
+	
+	public function createTempTables()
+	{
+		$task = "CREATE TABLE IF NOT EXISTS `task_temp` (
+  `taskId` bigint(20) NOT NULL AUTO_INCREMENT,
+  `platformId` int(11) NOT NULL,
+  `taskName` varchar(1000) CHARACTER SET utf8mb4 NOT NULL,
+  `taskDesc` varchar(1000) CHARACTER SET utf8mb4 NOT NULL,
+  `businessTitle` varchar(100) DEFAULT NULL,
+  `payout` text CHARACTER SET utf8mb4,
+  `startTime` time DEFAULT NULL,
+  `endTime` time DEFAULT NULL,
+  `indoor` bit(1) NOT NULL DEFAULT b'0',
+  `url` varchar(200) CHARACTER SET utf8mb4 DEFAULT NULL,
+  `categoryId` int(11) DEFAULT NULL,
+  `virtual` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`taskId`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;";
+		
+		$taskLocation = "CREATE TABLE IF NOT EXISTS `tasklocation_temp` (
+  `taskLocationId` bigint(20) NOT NULL AUTO_INCREMENT,
+  `taskId` bigint(20) NOT NULL,
+  `zipCode` int(11) DEFAULT NULL,
+  `City` varchar(100) CHARACTER SET utf8mb4 NOT NULL DEFAULT '\"\"',
+  `State` char(2) CHARACTER SET utf8mb4 NOT NULL DEFAULT '\"\"',
+  `lat` decimal(9,6) DEFAULT NULL,
+  `lng` decimal(9,6) DEFAULT NULL,
+  PRIMARY KEY (`taskLocationId`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
+		";
+		
+		$platformCategory = "
+CREATE TABLE IF NOT EXISTS `platformcategory_temp` (
+  `categoryId` int(11) NOT NULL AUTO_INCREMENT,
+  `categoryName` varchar(100) NOT NULL,
+  `parentId` int(11) NOT NULL,
+  PRIMARY KEY (`categoryId`)
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4;";
+		
+		$this->db->query($task);
+		$this->db->query($platformCategory);
+		$this->db->query($taskLocation);
+	}
+	
+	public function createSQLFile()
+	{
+		file_put_contents(realpath(APPLICATION_PATH."/../scripts/xmldata.sql"), "--empty_sql");
+	}
+	
+	
+	public function formatStringSQLFriendly($string)
+	{
+		return str_replace(")INSERT",");".PHP_EOL."INSERT", $string);
+	}
+	
+}

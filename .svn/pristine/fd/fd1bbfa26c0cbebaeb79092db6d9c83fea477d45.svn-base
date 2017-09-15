@@ -1,0 +1,313 @@
+<style>
+
+#wistiaVideo {
+	width:100%;
+    height:100%;
+	position:absolute;
+}
+
+.imageWistia{
+    width:100%;
+    height:100%;
+}
+
+.overlayWistia{
+    width:100%;
+    height:100%;
+    display:none;
+    position:fixed;
+    top:0px;
+    left:0px;
+    background-color:black;
+    opacity:0.55;
+	cursor: pointer;
+}
+
+.overlayWistia > * {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    width:100%;
+    height:100%;
+}
+
+.overlayTextContainer {
+	display: none;
+	height: 100%;
+	width: 100%;
+	background-color: #33334d;
+	color: white;
+	font-size: x-large;
+	align-items: center;
+	justify-content: center;
+	padding: 10px 10px 10px 10px;
+	text-align: center;
+}
+
+#wistiaVideo:hover .overlayWistia, .parent .overlayWistia {
+    display:block;
+	background-color:red;
+}
+.highlight
+{
+	text-decoration: underline;
+}
+</style>
+<!--
+<div id="wistiaContent">
+<p class="video_title">{CATEGORY_TITLE}</p>
+
+	<div id="wistia_{PLAYLIST_CATEGORY}" class="wistia_embed" data-video-width="100" data-video-height="100">&nbsp;</div>
+    <div id="overlayWistia" class="overlayWistia">
+    	<div>
+       		<div id="overlayTextContainer" class="overlayTextContainer" onclick="goToOverlayURL()">
+       			<div>
+       				<p>{CALL_TO_ACTION_TEXT}</p>
+      			</div>
+       		</div>
+    	</div>
+    </div>
+</div>
+
+<script charset="ISO-8859-1" src="//fast.wistia.com/assets/external/playlist-v1.js"></script>
+<script>
+	var nextCategoryUrl = "{NEXT_CATEGORY_URL}";
+	var userEmail = "{EMAIL}";
+	var category = "{PLAYLIST_CATEGORY}";
+	wistiaPlaylist = Wistia.playlist(category, {
+	  version: "v1",
+	  theme: "tab",
+	  videoOptions: {
+	    volumeControl: true,
+	    playerColor: "2975cc",
+	    autoPlay: true,
+	    videoWidth: "100%",
+	    videoHeight: "100%"
+	  },
+	  media_0_0: {
+	    autoPlay: true,
+	    controlsVisibleOnLoad: false
+	  },
+	  plugin: {
+	    "socialbar-v1": {
+	      buttons: "twitter-facebook",
+	      logo: "true",
+	      badgeUrl: "http://wistia.com",
+	      badgeImage: "//static.wistia.com/images/badges/wistia_100x96_black.png"
+	    }
+	  }
+	});
+
+	var goToOverlayURL = function()
+	{
+
+		//$.post('{SITE_URL}/user/wistia-tracking', {'url': nextCategoryUrl});
+		window.location.replace(nextCategoryUrl);
+		//window.location.replace('{SITE_URL}/user/wistia-tracking');
+	};
+
+	$(document).ready(function(){
+
+
+
+
+		$(window).scroll(function(){
+			moveOverlay();
+		});
+		$(window).resize(function(eventData){
+			if($(window).width() > 600 &&  $(window).width() < 1200)
+			{
+				$('.wistia_embed').width($(window).width() - 300);
+			}
+
+			if($(window).height() > 500 &&  $(window).height() < 900)
+			{
+				$('.wistia_embed').height($(window).height() - 300);
+			}
+
+			moveOverlay();
+		});
+
+		wistiaPlaylist.bind("afterembed", function(sectionIndex, videoIndex) {
+			wistiaPlaylist.setEmail(userEmail);
+
+			wistiaPlaylist.bind("end", function(sectionIndex, videoIndex) {
+	 			if(wistiaPlaylist.onLastVideo() )
+	 			{
+	 				$('#overlayWistia').css('display', 'block');
+	 				$('#overlayWistia').css('z-index', '9999999');
+	 				$('#overlayTextContainer').css('display', 'flex');
+		 			moveOverlay();
+	 			}
+			});
+
+		  	wistiaPlaylist.bind("play", function(sectionIndex, videoIndex) {
+		  		if($('#overlayWistia').css('display') == 'none')
+  				{
+	  				return;
+	  			}
+
+		  		$('#overlayWistia').css('display', 'none');
+		  		$('#overlayWistia').css('z-index', '-1');
+		  		$('#overlayTextContainer').css('display', 'none');
+		  	});
+		});
+
+
+		var moveOverlay = function(){
+			if($('#overlayWistia').css('display') == 'none')
+			{
+				return;
+			}
+
+			var videoElement = $('#' + $('video')[0].id);
+
+	  		$('#overlayWistia').height(videoElement.height());
+	 		$('#overlayWistia').width(videoElement.width());
+	  		$('#overlayWistia').offset(videoElement.offset());
+	  	};
+	});
+	/*
+	function highlight(text)
+  	{
+  		var inputText = document.getElementById("overlayTextContainer")
+  	    var innerHTML = inputText.innerHTML
+  	    var index = innerHTML.indexOf(text);
+  		console.log(index);
+  	    if ( index >= 0 )
+  	    {
+  	        innerHTML = innerHTML.substring(0,index) + "<span class='highlight'>" + innerHTML.substring(index,index+text.length) + "</span>" + innerHTML.substring(index + text.length);
+  	        inputText.innerHTML = innerHTML
+  	    }
+
+  	}*/
+</script>
+-->
+<!--
+<script charset="ISO-8859-1" src="//fast.wistia.com/assets/external/E-v1.js" async></script>
+<div class="wistia_embed wistia_async_fa40aeqaoc playlistLinks=auto" style="height:360px;width:640px">&nbsp;</div>
+<a href="#wistia_fa40aeqaoc">Make French Toast</a><br/> -->
+
+<script>
+	var categoryViewed = "{CURRENT_CATEGORY}";
+	
+	_btn.track(categoryViewed, {});
+</script>
+
+<script>
+
+$( document ).ready(function() {
+
+	var callToActionText = "{CALL_TO_ACTION_TEXT}";
+	var callToActionRedirect = "{CALL_TO_ACTION_REDIRECT}";
+	var userEmail = "{EMAIL}";
+
+	window._wq = window._wq || [];
+	_wq.push({ '{LAST_VIDEO_HASHED_ID}' : {
+	  plugin: {
+	    "postRoll-v1": {
+    	  autoSize: true,
+	      text: callToActionText,
+	      link: callToActionRedirect,
+	    }
+	  }
+	}});
+
+	//set current view for user's email
+	window._wq = window._wq || [];
+	_wq.push({ "playlist1": function(video) {
+		video.email(userEmail);
+		
+		 var overlay_time_delay = 10;
+		  
+		  video.bind("end", function() {
+			  // delay by 100 ms - letting the overlay generate itself  
+			  setTimeout(function(){
+			  // find a link in div with id="wistia_***_postRoll" 
+			  $(' div[id^=wistia_][id$=_postRoll]').find('a').removeAttr('target');
+				$(' div[id^=wistia_][id$=_postRoll]').find('a').on('click', function(event) {
+			});
+				
+			}, overlay_time_delay);
+		  }
+		);
+		video.ready(function() {
+			var title = $($('.wistia_' + video._hashedId).parent().children()[0]).text();
+			
+			$('#currentVideoTitle').text(title);
+			
+			resizeVideo();
+		});
+	}});
+
+	
+	//sets color for selected video
+	
+	var prev_bg_color;
+	$(".w_content").hover(function(){
+		prev_bg_color = $(this).css("background-color");
+		console.debug(prev_bg_color);
+		if( $(this).attr('videoPlaying') != "true" ){
+			$(this).css("background-color", "#e0ecf0");
+		}
+	},
+	function(){
+		$(this).css("background-color", prev_bg_color);
+	});
+	
+	  $('.w_content').first().css({'background-color': '#619ee4'});
+	  $('.w_content').first().attr("videoPlaying", "true");
+	  $('.w_content').click(function(){
+		
+	    $('.w_content').css({'background-color': '#fff'});
+	    $('.w_content').removeAttr("videoPlaying");
+	    $(this).css({'background-color': '#619ee4'});
+	    $(this).attr("videoPlaying", "true");
+	    prev_bg_color = "#619ee4";
+
+
+	  });
+	
+	  var region; 
+	  $( ".w_content" ).click(function( event ) {
+		$('#playlist1')[0].scrollIntoView({
+			behavior: "smooth",
+		    block: "start"
+		});
+	  });
+
+	
+	
+	
+	$(window).resize(function(eventData){
+		resizeVideo();
+	});
+
+	var resizeVideo = function()
+	{
+		$('.playlist1').height(($('.playlist1').width()/16) * 9);
+	}
+});
+
+</script>
+<script charset="ISO-8859-1" src="//fast.wistia.com/assets/external/E-v1.js" async></script>
+<div id="wistiaContent">
+	<p id='currentVideoTitle' class="video_title" style="margin-top:5%; font-weight:bold; font-size:2.4em">{CURRENT_VIDEO_TITLE}</p>
+</div>
+<div style="width:100%; height:100%">
+<div id="playlist1" class="playlist1 wistia_async_{FIRST_VIDEO_HASHED_ID} wistia_embed playlistLinks=auto autoPlay=true">&nbsp;</div>
+</div>
+<!-- these link to playlist1 -->
+
+<div class="w_playlist">
+<div class="w_border">
+<!-- BEGIN video -->
+<div class="w_content">
+<p class="video_title">{VIDEO_TITLE}</p>
+<a class="wistia_{HASHED_ID}" href="#wistia_{HASHED_ID}"><img src="{THUMBNAIL_URL}" height="100" width="200"></a><br/>
+</div>
+<!-- END video -->
+</div>
+</div>
+

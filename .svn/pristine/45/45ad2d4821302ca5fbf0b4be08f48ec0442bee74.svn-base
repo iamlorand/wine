@@ -1,0 +1,490 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @Platform   DotKernel
+* @package    Admin
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: PlatformController.php 90 2015-07-24 14:23:59Z levi $
+*/
+
+/**
+* Admin Controller
+* @author     Lajos <lajos@dotboost.com>
+*/
+class admin_PlatformController extends admin_BaseController
+{
+	private $platformModel;
+	private $platformView;
+	private $platformCategoryModel;
+
+	public function doIt()
+	{
+		// instantiate classes related to User module: model & view
+		$this->platformModel = new Platform();
+		$this->platformView = new Platform_View($this->tpl);
+		$this->platformCategoryModel = new PlatformCategory();		
+		// all actions MUST set  the variable  $this->pageTitle
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		switch ($this->registry->requestAction)
+		{
+	case 'list':
+		$this->listPlatform();
+	break;
+	case 'view':
+		$this->view();
+	break;
+	case 'add':
+		$this->add();
+	break;
+	case 'update':
+		$this->update();
+	break;
+	case 'delete':
+		$this->delete();
+	break;
+	
+	case 'activate':
+		$this->activate();
+	break;
+	case 'add-zip':
+		$this->addZip();
+	break;
+	case 'update-zip':
+		$this->updateZip();
+		break;
+	case 'delete-zip':
+		$this->deleteZip();
+		break;
+	case 'list-zip':
+		$this->listZip();
+	break;
+
+	case 'add-investor':
+		$this->addInvestor();
+	break;
+	case 'list-investor':
+		$this->listInvestor();
+	break;
+
+	case 'update-investor':
+		$this->updateInvestor();
+	break;
+	
+	case 'delete-investor':
+		$this->deleteInvestor();
+		break;
+		
+	case  'servicearea-auto-complete':
+		$this->serviceAreaAutoComplete();
+		break;
+		
+	case  'investor-auto-complete':
+		$this->investorAutoComplete();
+		break;
+		
+	case 'add-user':
+		$this->addUser();
+		break;
+		}
+	}
+	
+	private function listPlatform()
+	{
+		// list admin users
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$platform = $this->platformModel->getPlatformList($page);
+		$this->platformView->listPlatform('list', $platform, $page);
+	}
+	
+	private function view()
+	{
+	// list admin users
+	$platform = $this->platformModel->getPlatformBy('platformId', $this->registry->request['id']);
+	$platform['platformId'] = $this->registry->request['id'];
+	$this->platformView->viewPlatform('view', $platform);
+	}
+	
+	private function add()
+	{
+		// display form and add new admin
+		$data = $_POST;
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// POST values that will be validated
+			If(!empty($data['platformName']))
+			{
+				$this->platformModel->addPlatform($data);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformAdded;
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->platformName;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$platformCategory = $this->platformCategoryModel->getAllPlatformCategory();
+		$this->platformView->details('add-update',$data, 'add', $platformCategory);
+	}
+	
+	private function update()
+	{
+		// display form and update admin user
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			$data = $_POST;
+			if(!empty($data['platformName']))
+			{
+				$this->platformModel->updatePlatform($data, $this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformUpdated;
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->PlatformName;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$data = $this->platformModel->getPlatformBy('platformId', $this->registry->request['id']);
+		$data['platformId'] = $this->registry->request['id'];
+		$this->pageTitle .= ' "' . $data['platformName'] . '"';
+		$platformCategory = $this->platformCategoryModel->getAllPlatformCategory();
+		$this->platformView->details('add-update',$data, 'update', $platformCategory);
+	}
+	
+	private function delete()
+	{
+		// display confirmation form and delete admin user
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+				
+			if ('on' == $_POST['confirm'])
+			{
+				// delete Platform
+				$this->platformModel->deletePlatform($this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformDeleted;
+				$this->registry->session->message['type'] = 'info';
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->infoMessage->platformNotDeleted;
+				$this->registry->session->message['type'] = 'warning';
+			}
+			header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list/');
+			exit;
+		}
+		$data = $this->platformModel->getPlatformBy('platformId', $this->registry->request['id']);
+		$this->pageTitle .= ' "' . $data['platformName'] . '"';
+		// delete page confirmation
+		$this->platformView->delete('delete', $data);
+	}
+	
+	private function activate() 
+	{
+		// activate/deactivate Platforms
+		// this action is called via Ajax
+		
+		$id = (isset($_POST['id'])) ? (int)$_POST['id'] : 0;
+		$isActive = $this->platformModel->activatePlatform($id);
+		$result = array(
+				"success" => true,
+				"id" => $id,
+				"isActive" => $isActive
+			);
+		echo Zend_Json::encode($result);
+		exit;
+	}
+
+	private function addZip()
+	{
+		// display form and add new admin
+		$data = $_POST;
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// POST values that will be validated
+			If(!empty($data['zipCode']))
+			{
+				if(strlen($data['zipCode'])==5)
+				{
+				$this->platformModel->addZipCode($data);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->zipAdded;
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-zip/');
+				exit;
+				}
+				else 
+				{
+					$this->registry->session->message['txt'] = $this->option->warningMessage->zipTooLong;
+					$this->registry->session->message['type'] = 'warning';
+				}
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->zipNotAdded;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$platform = $this->platformModel->getAllPlatform();
+		$this->platformView->zipDetails('add-update-zip',$data, 'add', $platform);
+	}
+	
+	private function updateZip()
+	{
+		// display form and add new admin
+		$data = $this->registry->request['id'];
+		$error = array();
+		$info = $_POST;
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// POST values that will be validated
+			If(!empty($data['platformLocationId']))
+			{echo '1';exit;
+				if(strlen($data['zipCode'])==5)
+				{
+					$this->platformModel->updateZipCode($info);
+					$this->registry->session->message['txt'] = $this->option->infoMessage->zipUpdated;
+					$this->registry->session->message['type'] = 'info';
+					header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-zip/');
+					exit;
+				}
+				else
+				{
+					$this->registry->session->message['txt'] = $this->option->warningMessage->zipTooLong;
+					$this->registry->session->message['type'] = 'warning';
+				}
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->zipNotUpdated;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$platform = $this->platformModel->getAllPlatform();
+		$this->platformView->zipDetails('add-update-zip',$data, 'update', $platform);
+	}
+	
+	private function deleteZip()
+	{
+		// display confirmation form and delete admin user
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+	
+			if ('on' == $_POST['confirm'])
+			{
+				// delete Platform
+				$this->platformModel->deletePlatformLocation($this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->zipDeleted;
+				$this->registry->session->message['type'] = 'info';
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->warningMessage->zipNotDeleted;
+				$this->registry->session->message['type'] = 'warning';
+			}
+			header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-zip/');
+			exit;
+		}
+		$data = $this->platformModel->getZipById($this->registry->request['id']);
+		$this->pageTitle .= ' "' . $data['zipCode'] . '"';
+		// delete page confirmation
+		$this->platformView->delete('delete-zip', $data);
+	}
+	
+	private function listZip()
+	{
+		// display form and add new admin
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$zipCode = $this->platformModel->getZipList($page);
+		$this->platformView->listZip('list-zip', $zipCode, $page);
+	}
+	
+	private function addInvestor()
+	{
+		// display form and add new admin
+		$data = $_POST;
+		$error = array();
+		
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// POST values that will be validated
+			If(!empty($data['investorName']))
+			{
+				$this->platformModel->addInvestor($data);
+				$this->registry->session->message['txt'] = "Investor Added";
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-investor/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = "Investor not added";
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$platform = $this->platformModel->getAllPlatform();
+		$this->platformView->investorDetails('add-update-investor',$data, 'add', $platform);
+	}
+	
+	private function listInvestor()
+	{
+		// display form and add new admin
+		$page = (isset($this->registry->request['page']) && $this->registry->request['page'] > 0) ? $this->registry->request['page'] : 1;
+		$investor = $this->platformModel->getInvestorList($page);
+		$this->platformView->listInvestor('list-investor', $investor, $page);
+	}
+	
+	private function updateInvestor()
+	{
+		// display form and update admin user
+		$error = array();
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			$data = $_POST;
+			if(!empty($data['investorName']))
+			{
+				$this->platformModel->updateInvestor($data, $this->registry->request['id']);
+				$this->registry->session->message['txt'] = "Investor updated";
+				$this->registry->session->message['type'] = 'info';
+				header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-investor/');
+				exit;
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->errorMessage->PlatformName;
+				$this->registry->session->message['type'] = 'error';
+			}
+		}
+		$data = $this->platformModel->getInvestor($this->registry->request['id']);
+		$this->pageTitle .= ' "' . $data['investorName'] . '"';
+		$platform = $this->platformModel->getAllPlatform();
+		$this->platformView->investorDetails('add-update-investor',$data, 'update', $platform);
+	}
+	
+	private function deleteInvestor()
+	{
+		// display confirmation form and delete admin user
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+		
+			if ('on' == $_POST['confirm'])
+			{
+				// delete Platform
+				$this->platformModel->deleteInvestor($this->registry->request['id']);
+				$this->registry->session->message['txt'] = $this->option->infoMessage->investorDeleted;
+				$this->registry->session->message['type'] = 'info';
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $this->option->warningMessage->investorNotDeleted;
+				$this->registry->session->message['type'] = 'warning';
+			}
+			header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/list-investor/');
+			exit;
+		}
+		$data = $this->platformModel->getInvestor($this->registry->request['id']);
+		$this->pageTitle .= ' "' . $data['investorName'] . '"';
+		// delete page confirmation
+		$this->platformView->delete('delete-investor', $data);
+	}
+	
+	private function serviceAreaAutoComplete()
+	{
+		$key = json_encode($_GET['q']);
+		if(!empty($key))
+		{
+			$param = str_replace('"', '', $key);
+			$result = $this->platformModel->autoCompleteServiceArea($param);
+		}
+		if($result != 'Not found!')
+		{
+			foreach($result as $key=>$city)
+			{
+				echo $city['city'].",".$city['state']."\n";
+			}
+		
+		}
+		else
+		{
+			echo $result;
+		}
+	}
+	
+	private function investorAutoComplete()
+	{
+		$key = json_encode($_GET['q']);
+		if(!empty($key))
+		{
+			$param = str_replace('"', '', $key);
+			$result = $this->platformModel->autoCompleteInvestorName($param);
+		}
+		if($result != 'Not found!')
+		{
+			foreach($result as $key=>$investor)
+			{
+				echo $investor['investorName']."\n";
+			}
+		
+		}
+		else
+		{
+			echo $result;
+		}
+	}
+	
+	//AddPlatformUser
+	private function addUser()
+	{
+		// display form and add new user
+		$data = $_POST;
+		$platformList=$this->platformModel->getAllPlatform();
+		$selectedPlatformId = 0;
+		if($_SERVER['REQUEST_METHOD'] === "POST")
+		{
+			// POST values that will be validated
+			$values = array(
+							'email' => array('email' => $_POST['email']),
+							'password' => array('password' => $_POST['password'],
+												'password2' =>  $_POST['password2'])
+							);
+			
+			$dotValidateUser = new Dot_Validate_User(array('values' => $values));
+			$role= 127;
+			$platformId=$_POST['platformId'];
+			$selectedPlatformId = $platformId;
+			if($dotValidateUser->isValid())
+			{
+				// no error - then add user
+				if($this->platformModel->verifyNewPlatformUserEmail($data['email']))
+				{
+					$this->platformModel->addPlatformUser($dotValidateUser->getData(), $role, $platformId);
+					header('Location: '.$this->registry->configuration->website->params->url. '/' . $this->registry->requestModule . '/' . $this->registry->requestController. '/add-user/');
+					$this->registry->session->message['txt'] = $this->option->infoMessage->platformUserCreated;
+					$this->registry->session->message['type'] = 'info';
+					exit;
+				}
+				else
+				{
+					$this->registry->session->message['txt'] = $this->option->warningMessage->emailAlreadyExists;
+					$this->registry->session->message['type'] = 'warning';
+				}
+			}
+			else
+			{
+				$this->registry->session->message['txt'] = $dotValidateUser->getError();
+				$this->registry->session->message['type'] = 'error';
+			}
+			$data = $dotValidateUser->getData();
+		}
+		$this->platformView->showAddPlatformUser("add-user",$platformList, $selectedPlatformId);
+	}
+}

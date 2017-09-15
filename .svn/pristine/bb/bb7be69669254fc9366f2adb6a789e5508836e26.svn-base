@@ -1,0 +1,153 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: User.php 981 2015-06-11 13:51:41Z gabi $
+ */
+
+/**
+ * Article Model
+ * Here are all the actions related to the Article in Admin
+ * @category   DotKernel
+ * @package    Admin
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class Article extends Dot_Model
+{
+
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+	
+	/**
+	 * Get article list
+	 * @access public
+	 * @param int $page [optional]
+	 * @return array
+	 */
+	public function getArticleList($page = 1)
+	{
+		$select = $this->db->select()
+						   ->from('article')
+						   ->order(array('dateCreated DESC'));
+ 		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+	
+	/**
+	 * Delete article
+	 * @param int $id
+	 * @return void
+	 */
+	public function deleteArticle($id)
+	{
+		$this->db->delete('article', 'id = ' . $id);
+	}
+	
+	
+	/**
+	 * insert an article in Admin
+	 * @param unknown $data
+	 * @access public
+	 */
+	public function addArticleData($data)
+	{
+	    $this->db->insert('article', $data);
+	    return true;
+	}
+
+	/**
+	 * get a certain article (on click)
+	 * @param unknown $id
+	 * @access public
+	 */
+	public function getArticleById($id)
+	{
+		$select = $this->db->select()
+				->from('article')
+				->where('article.id=?', $id);
+		
+		$result = $this->db->fetchRow($select);
+
+		return $result;
+	}
+
+	/**
+	 * update an article (only by owner)
+	 * @param unknown $id
+	 * @param unknown $data
+	 * @access public
+	 */
+	public function updateArticle($id, $data)
+	{
+	    $this->db->update('article', $data, 'id=' . $id);
+	    return true;
+	}
+
+	/**
+	 * Get affiliate by filter
+	 * @access public
+	 * @return array
+	 */
+	public function getArticleByFilter($page = 1, $filters = array())
+	{
+		$select = $this->db->select()
+			->from('article')
+			->order(array('dateCreated DESC'));
+		$filters = $this->_cleanFilters($filters);
+		foreach($filters as $filter)
+		{
+										//    name   			LIKE || = 					"John Doe"
+			$select = $select->where($filter['field'].' '.$filter['operator'] . ' ? ', $filter['value']);
+		}
+			
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	/**
+	 * clean the filters that come from the user
+	 * @access private
+	 * @return array
+	 */
+	private function _cleanFilters($filters)
+	{
+		$allowedOperators = ['=','LIKE','!=','NOT LIKE', '>=', '<='] ;
+		foreach($filters as $filterKey => $filter)
+		{
+			foreach($filter as $key => $value)
+			{
+				if($key =='operator')
+				{
+					$filters[$filterKey][$key] = in_array($value, $allowedOperators) ? $value : '=' ;	
+				}
+			}
+		}
+		return $filters;
+	}
+
+	/**
+	 * Activate Article
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function activateArticle($id)
+	{
+		$data = $this->getArticleById('id', $id);
+		$isActive = ($data['isActive']) ? 0 : 1;
+		$this->db->update('article', array('isActive' => $isActive), 'id = ' . $id);
+		return $isActive;
+	}
+	
+}

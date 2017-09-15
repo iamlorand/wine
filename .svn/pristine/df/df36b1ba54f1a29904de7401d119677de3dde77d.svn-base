@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+			<pageTitle>
+				<action>
+					<cleaning>List Playlist</cleaning>
+				</action>
+			</pageTitle>
+		</variable>
+		<variable option="admin">
+		</variable>
+		<variable option="frontend">
+			<pageTitle>
+				<action>
+					<cleaning>Video Playlist</cleaning>
+				</action>
+			</pageTitle>
+			<errorMessage>
+			</errorMessage>
+			<infoMessage>
+			</infoMessage>
+			<warningMessage>
+			</warningMessage>
+		</variable>	
+	</dots>
+</config>

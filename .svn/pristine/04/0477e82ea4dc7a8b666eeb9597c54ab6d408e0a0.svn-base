@@ -1,0 +1,377 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @Platform   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: PlatformView.php 124 2015-07-30 20:03:48Z levi $
+*/
+
+/**
+* Platform View Class
+* class that prepare output related to User controller 
+* @Platform   DotKernel
+* @package    Admin 
+* @author     Lajos <lajos@dotbosot.com>
+*/
+
+class Platform_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->settings = Zend_Registry::get('settings');
+		$this->session = Zend_Registry::get('session');
+	}
+	/**
+	 * List the admin users
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $list
+	 * @param int $page
+	 * @param bool $ajax - Using ajax, parse only the list content
+	 * @return void
+	 */
+	public function listPlatform($templateFile, $list, $page)
+	{
+		
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->addUserToken();
+		$this->tpl->setVar('PAGE', $page);
+		foreach ($list['data'] as $k => $v)
+		{
+		    $this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('ID', $v['platformId']);
+			$this->tpl->setVar('PLATFORMNAME', $v['platformName']);
+			$this->tpl->setVar('URL', $v['url']);
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+	/**
+	 * Display admin user details. It is used for add and update actions
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data [optional]
+	 * @return void
+	 */
+	public function details($templateFile, $data=array(), $type, $categoryList)
+	{
+
+		$platformData = new Platform();
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setVar('BUTTON_TYPE', $type);
+		$dataHtml = '';
+		$dataHtmlInvestor = '';
+		if(!empty($data['serviceAreaId']))
+		{
+		$serviceAreaData = $platformData->getServiceAreaByPlatformId($data['platformId']);
+		$nrServiceArea = count($serviceAreaData);
+			for($i= 0; $i < $nrServiceArea; $i++)
+			{
+					$this->tpl->setVar('SERVICEAREA', $serviceAreaData[0]['city'].",".$serviceAreaData[0]['state']);
+					$i+1;
+					if ($i >= 1)
+					{
+						switch($serviceAreaData[$i]['serviceAreaId'])
+						{
+							case $serviceAreaData[$i]['serviceAreaId']:
+								$cityStateCombo = $serviceAreaData[$i]['city'].",".$serviceAreaData[$i]['state'];
+								$dataHtml .= "<li class='cleafix serviceAreaClearfix' id='".$i."'><label id='serviceArea'>Location:</label><input name='serviceAreaLocation_".$i."' id='serviceAreaLocation' value='".$cityStateCombo."'></input><a href='#' class='button'  onclick='deleteServiceArea(".$i.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1)'>Move Up</a></li>";
+								break;
+						}
+					}
+			$this->tpl->setVar('SELECTED_SERVICEAREA', $dataHtml);
+			}
+			if(isset($nrServiceArea))
+			{
+				$this->tpl->setVar('TOTAL_SERVICEAREA', $nrServiceArea);
+			}
+			else
+			{
+				$this->tpl->setVar('TOTAL_SERVICEAREA', 0);
+			}
+		}
+		else
+		{
+			$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+			$this->tpl->setVar('BUTTON_TYPE', $type);
+			$dataHtml = '';
+				$this->tpl->setVar('SERVICEAREA', $dataHtml);
+				$this->tpl->setVar('TOTAL_SERVICEAREA', 0);
+		}
+		if(!empty($data['investorId']))
+		{
+			$investorData = $platformData->getInvestorByPlatformId($data['platformId']);
+			$nrInvestor = count($investorData);
+			for($i= 0; $i < $nrInvestor; $i++)
+			{
+				$this->tpl->setVar('INVESTOR_ID', $investorData[0]['investorId']);
+				$this->tpl->setVar('INVESTOR_NAME', $investorData[0]['investorName']);
+				$this->tpl->setVar('CBURL',  $investorData[0]['CBURL']);
+				$i+1;
+				if ($i >= 1)
+				{
+					switch($investorData[$i]['investorId'])
+					{
+						case $investorData[$i]['investorId']:
+							$dataHtmlInvestor .= "<li class='cleafix investorClearfix' id='invId".$i."'><label id='investor'>Investor:</label><input type='text' name='investorName_".$i."'' id='investorName' value='".$investorData[$i]['investorName']."'><label>CBURL</label><label>".$investorData[$i]['CBURL']."</label><br><br><br><br><br><a href='#' class='button'  onclick='deleteElement(".$i.")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1)'>Move Up</a></li>";
+							break;
+					}
+				}
+				$this->tpl->setVar('SELECTED_INVESTOR', $dataHtmlInvestor);
+			}
+			if(isset($nrInvestor))
+			{
+				$this->tpl->setVar('TOTAL_INVESTOR', $nrInvestor);
+			}
+			else
+			{
+				$this->tpl->setVar('TOTAL_INVESTOR', 0);
+			}
+		}
+		else
+		{
+			$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+			$this->tpl->setVar('BUTTON_TYPE', $type);
+			$this->tpl->setVar('INVESTOR_NAME', '');
+			$this->tpl->setVar('CBURL',  '');
+			$this->tpl->setVar('TOTAL_INVESTOR', 0);
+		}
+		if(!empty($data))
+		{
+			foreach($data as $key=>$value)
+			{
+				$this->tpl->setVar(strtoupper($key), $value);
+			}
+			
+		}
+		
+		$this->tpl->setBlock('tpl_main', 'categoryTree', 'categoryTree_block');
+		$this->tpl->setBlock('tpl_main', 'allcategories', 'allcategories_block');
+		foreach($categoryList as $k=>$category)
+		{
+			$this->tpl->setVar('CATEGORY_ID', $category['categoryId']);
+			$this->tpl->setVar('CATEGORY', $category['categoryName']);
+			if(isset($data['categoryId']))
+			if($data['categoryId'] == $category['categoryId'])
+			{
+				$this->tpl->setVar('SELECTED_CATEGORY', 'selected');
+			}
+			else
+			{
+				$this->tpl->setVar('SELECTED_CATEGORY', '');
+			}
+			for($i=1;$i<=$category['level']*2;$i++)
+			{
+				$this->tpl->parse('categoryTree_block', 'categoryTree', true);
+			}
+			$this->tpl->parse('allcategories_block', 'allcategories', true);
+			$this->tpl->parse('categoryTree_block', '');
+		}
+	}
+	public function viewPlatform($templateFile, $data=array())
+	{
+		$platformData = new Platform();
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'allServiceArea', 'allServiceArea_block');
+		$this->tpl->setBlock('tpl_main', 'allInvestor', 'allInvestor_block');
+		if(!empty($data))
+		{
+			foreach($data as $key=>$value)
+			{
+				$this->tpl->setVar(strtoupper($key), $value);
+			}
+			if (!empty( $data['serviceAreaId']))
+			{
+				$serviceArea = $platformData->getServiceAreaByPlatformId($data['platformId']);
+				foreach ($serviceArea as $key=>$detail)
+				{
+					$this->tpl->setVar('SERVICEAREA_ID', $detail['serviceAreaId']);
+					$this->tpl->setVar('SERVICEAREA_CITY', $detail['city']);
+					$this->tpl->setVar('SERVICEAREA_STATE', $detail['state']);
+						
+					$this->tpl->parse('allServiceArea_block', 'allServiceArea', true);
+				}
+			}
+			if(!empty($data['investorId']))
+			{
+				$investor = $platformData->getInvestorByPlatformId($data['platformId']);
+				foreach ($investor as $key=>$details)
+				{
+					$this->tpl->setVar('INVESTOR_ID', $details['investorId']);
+					$this->tpl->setVar('INVESTOR_NAME', $details['investorName']);
+					$this->tpl->setVar('CBURL', $details['CBURL']);
+						
+					$this->tpl->parse('allInvestor_block', 'allInvestor', true);
+				}
+			}
+		}
+	}
+
+	public function delete($templateFile, $data=array())
+	{
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		if(!empty($data))
+		{
+			foreach($data as $key=>$value)
+			{
+				$this->tpl->setVar(strtoupper($key), $value);
+			}
+		}
+	}
+
+	public function zipDetails($templateFile, $data=array(), $type, $platformList)
+	{
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setVar('BUTTON_TYPE', $type);
+		
+		if ($type=='update')
+		{
+			$platformLocationId = $data;
+			$data = new Platform();
+			$info = $data->getZipById($platformLocationId);
+			$this->tpl->setBlock('tpl_main', 'allplatforms', 'allplatforms_block');
+				$this->tpl->setVar('ZIPCODE', $info['zipCode']);
+				$this->tpl->setVar('CITY', $info['city']);
+				$this->tpl->setVar($info['state'].'_SELECTED','selected');
+				$this->tpl->setVar('STATE', $info['state']);
+				$this->tpl->setVar('PLATFORMLOCATIONID',$info['platformLocationId']);
+				foreach($platformList as $k=>$platform)
+					{
+						$this->tpl->setVar('PLATFORM_ID', $platform['platformId']);
+						$this->tpl->setVar('PLATFORM', $platform['platformName']);
+							if(isset($info['platformId']))
+							{
+								if($platform['platformId'] == $info['platformId'])
+								{
+									$this->tpl->setVar('SELECTED_PLATFORM', 'selected');
+								}
+							}
+							else
+							{
+								$this->tpl->setVar('SELECTED_PLATFORM', '');
+							}
+						$this->tpl->parse('allplatforms_block', 'allplatforms', true);
+					}
+				
+			}
+		else 
+		{
+			if(!empty($data))
+			{
+				foreach($data as $key=>$value)
+				{
+					$this->tpl->setVar(strtoupper($key), $value);
+				}
+			}
+			$this->tpl->setBlock('tpl_main', 'allplatforms', 'allplatforms_block');
+			foreach($platformList as $k=>$platform)
+			{
+				$this->tpl->setVar('PLATFORM_ID', $platform['platformId']);
+				$this->tpl->setVar('PLATFORM', $platform['platformName']);
+				if(isset($data['platformId']))
+				{
+					if($data['platformId'] == $platform['platformId'])
+					{
+						$this->tpl->setVar('SELECTED_PLATFORM', 'selected');
+					}
+				}
+				else
+				{
+					$this->tpl->setVar('SELECTED_PLATFORM', '');
+				}
+				
+				$this->tpl->parse('allplatforms_block', 'allplatforms', true);
+			}
+		}
+	}
+
+	public function listZip($templateFile, $list, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->addUserToken();
+		$this->tpl->setVar('PAGE', $page);
+		foreach ($list['data'] as $k => $v)
+		{
+		    $this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('ZIPCODE', $v['zipCode']);
+			$this->tpl->setVar('PLATFORM', $v['platformName']);
+			$this->tpl->setVar('STATE', $v['state']);
+			$this->tpl->setVar('CITY', $v['city']);
+			$this->tpl->setVar('ID', $v['platformId']);
+			$this->tpl->setVar('PLATFORMLOCATIONID', $v['platformLocationId']);
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+
+	public function investorDetails($templateFile, $data=array(), $type, $platformList)
+	{
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setVar('BUTTON_TYPE', $type);
+		if(!empty($data))
+		{
+			if(isset($data['investorId']))
+			{
+				$this->tpl->setBlock('tpl_main', 'allInvestorName', 'allInvestorName_block');
+				$this->tpl->setVar('INVESTORID', $data['investorId']);
+				$this->tpl->setVar('INVESTOR_NAME', $data['investorName']);
+				$this->tpl->setVar('INVESTOR_CBURL',  $data['CBURL']);
+				$this->tpl->parse('allInvestorName_block', 'allInvestorName', true);
+			}
+			
+			foreach($data as $key=>$value)
+			{
+				$this->tpl->setVar(strtoupper($key), $value);
+			}
+		}
+	}
+
+	public function listInvestor($templateFile, $list, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'platform/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->addUserToken();
+		$this->tpl->setVar('PAGE', $page);
+		foreach ($list['data'] as $k => $v)
+		{
+		    $this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('INVESTORID', $v['investorId']);
+			$this->tpl->setVar('INVESTORNAME', $v['investorName']);
+			$this->tpl->setVar('CBURL', $v['CBURL']);
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+	
+	public function showAddPlatformUser($templateFile, $data, $selectedPlatformId = 0) {
+		$this->tpl->setFile ( 'tpl_main', 'platform/' . $templateFile . '.tpl' );
+		$this->tpl->addUserToken ();
+		$this->tpl->setBlock ( 'tpl_main', 'allplatforms', '_allplatforms' );
+		foreach ( $data as $key => $value ) 
+		{
+
+			$this->tpl->setVar ( 'PLATFORM_ID', $value ['platformId'] );
+			$this->tpl->setVar ( 'PLATFORM', $value ['platformName'] );
+			if($value['platformId'] == $selectedPlatformId)
+			{
+				$this->tpl->setVar ( 'SELECTED', 'selected');
+			}
+			else
+			{
+				$this->tpl->setVar ( 'SELECTED', '');
+			}
+			$this->tpl->parse ( '_allplatforms', 'allplatforms', true );
+		}
+	}
+}

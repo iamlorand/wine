@@ -1,0 +1,236 @@
+<?php
+
+/**
+ *
+ * @author Andrei
+ *
+ */
+
+class frontend_VideoController extends frontend_BaseController
+{
+	public function __construct()
+	{
+	
+	}
+	
+	private $playlistsWistiaFlows = array(	'1'	=>	array(	'kitchen'				=>	'tecw3ypvu5',
+															'kitchenappliances'		=>	'39j420dutg',
+															'bathroom'				=>	'zdrpc0fh8t',
+															'bedroom'				=>	'207cddn8fj',
+															'familyroom'			=>	'isj677s74v',
+															'customerservice'		=>	'zwq52jat0p'),
+					
+											'2'	=>	array(	'kitchen'				=>	'3y2o7p8v4q',
+															'kitchenappliances'		=>	'z7hxhrvd5z',
+															'bathroom'				=>	'qe5wqikd9k',
+															'bedroom'				=>	'a6wflzu66n',
+															'familyroom'			=>	'l8qrbszo5f',
+															'customerservice'		=>	'kmy7pnvcca'),
+			
+											'3'	=>	array(	'kitchen'				=>	'3y2o7p8v4q',
+															'kitchenappliances'		=>	'z7hxhrvd5z',
+															'bathroom'				=>	'qe5wqikd9k',
+															'bedroom'				=>	'a6wflzu66n',
+															'familyroom'			=>	'l8qrbszo5f',
+															'customerservice'		=>	'kmy7pnvcca')
+											);
+	
+	private $surveyCleaningList = array('kitchen'				=>	'111',
+										'kitchenappliances'		=>	'112',
+										'bathroom'				=>	'113',
+										'bedroom'				=>	'114',
+										'familyroom'			=>	'115',
+										'customerservice'		=>	'116');
+	
+	private $categoryTitle;
+	private $lastVideoCallToActionText = "Congratulations for completing our video training, you are ready to apply for a job.  Click to proceed to application.";
+	private $handyRedirectUrl = "https://www.handy.com/apply?utm_source=crowded";
+	
+	public function doIt()
+	{
+		$this->videoModel = new Video();
+		$this->videoView = new Video_View($this->tpl);
+		
+		$this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+		$this->session = Zend_Registry::get('session');
+		
+		$this->wistia = new Wistia_WistiaApi();
+		
+		$boom = new Boomtrain_BoomtrainApi();
+		$boom->registry = $this->registry;
+		$boom->setUserProperty();
+		
+		if (!isset($this->session->userId))
+		{
+			if(isset($_COOKIE["email"]) && !empty($_COOKIE["email"]))
+				{
+					$dataFromCookies = $this->setDataFromCookies($_COOKIE["email"]);
+					if($dataFromCookies != false)
+					{
+						$this->session->userId = $dataFromCookies['id'];
+						$this->session->email = $dataFromCookies['email'];
+					}
+				}
+				else
+				{
+					header('Location: '.$this->registry->configuration->website->params->url);
+					exit;
+				}
+		}
+		
+		switch ($this->registry->requestAction)
+		{
+			default:
+			case 'cleaning':
+				if (!empty($this->registry->request))
+				{
+					$category = key($this->registry->request);
+					$this->session->currentCategory = $category;
+					
+					if (array_key_exists($category, $this->playlistsWistiaFlows[$this->session->wistiaFlow]))
+					{
+						$wistiaPlaylist = $this->playlistsWistiaFlows[$this->session->wistiaFlow][$category];
+					}
+					else
+					{
+						header('Location: '.$this->registry->configuration->website->params->url);
+						exit;
+					}
+				}
+
+				$mc = new Micromail_Micromail();
+
+				$projectData = $this->wistia->mediaList($this->playlistsWistiaFlows[$this->session->wistiaFlow][$category]);
+				
+				$videosData = $this->getVideosData($projectData);
+				
+				$surveyData = $this->videoModel->returnSurveyData($this->surveyCleaningList[$category]);
+				$this->categoryTitle = $surveyData['instruction'];
+				$surveyOrderList = array_keys($this->playlistsWistiaFlows[$this->session->wistiaFlow]);
+				
+				$categoryIndex = array_search($category, $surveyOrderList);
+				$categoryIndex += 1;
+
+				$countCategories= count($surveyOrderList);
+				
+				if($this->session->wistiaFlow == '1')
+				{
+				   // we update the step that the user Has landed on
+					$step = 'WISTIA_FLOW1_STEP'.$categoryIndex;
+					// Update the mailchimp
+					$mc->updateUserOptions($this->session->email,$step);
+					if ($category == end($surveyOrderList))
+					{
+						$callToActionText = $this->lastVideoCallToActionText;
+						
+						$this->videoModel->setAndSaveUserWistiaActivity($category, $this->session->userId, $this->session->wistiaFlow);
+						
+						$nextCategoryUrl = $this->registry->configuration->website->params->url . '/user/apply-page';
+					}
+					else 
+					{
+						$nextkey = array_search($category, $surveyOrderList) + 1;
+						$nextCategory = $surveyOrderList[$nextkey];
+						
+						$nextCategoryUrl = $this->registry->configuration->website->params->url . '/video/cleaning/' . $nextCategory;
+						
+					    $this->videoModel->setAndSaveUserWistiaActivity($category, $this->session->userId, $this->session->wistiaFlow);
+						
+						$callToActionText = "Great job completing module " . $categoryIndex . " of " . $countCategories . ". Please click here to watch the next module and learn how to get hired.";
+					}
+				}
+				elseif($this->session->wistiaFlow == '2' || $this->session->wistiaFlow == '3')
+				{
+
+
+					$callToActionText = "Thank you for watching training module " . $categoryIndex . " of " . $countCategories . ". We had a few quick questions that will help you succeed in getting hired. Click here to get started.";
+					
+					if ($category == end($surveyOrderList) && $this->videoModel->checkIfSurveyAnswered($this->session->userId, $this->surveyCleaningList[$category]) != false)
+					{
+					    $this->videoModel->setAndSaveUserWistiaActivity($category, $this->session->userId, $this->session->wistiaFlow);
+					    if($this->session->wistiaFlow == '2')
+						{
+						    $cities = array('dallas-tx', 'plainfield-il', 'louisville-tx', 'frisco-tx', 'fort_worth-tx');
+						    $categories = array('general_cleaner_1c', 'maids_plainfield_1c', 'buckets_and_bows_louisville_1c', 'worldmainclean_1c', 'themaidsfw_1c');
+						    	
+							// categoryData and cityData come from cityStateController so we have it complete with the sufix
+							// no need to substring it so we can just search for the entire url category, even though wistiaflow2 means _1c
+						    if(in_array($this->session->categoryData, $categories) && in_array($this->session->cityData, $cities))
+							{
+								$nextCategoryUrl = $this->registry->configuration->website->params->url . '/survey/thank-you/';
+							}
+							else
+							{
+								$nextCategoryUrl = $this->registry->configuration->website->params->url . '/user/apply-page';
+							}
+						}
+						else
+						{
+							$nextCategoryUrl = $this->registry->configuration->website->params->url . '/user/apply-page';
+						}
+					}
+					else 
+					{
+					    $this->videoModel->setAndSaveUserWistiaActivity($category, $this->session->userId, $this->session->wistiaFlow);
+						$nextCategoryUrl = $this->registry->configuration->website->params->url . '/survey/cleaning/' . $category;
+					}
+
+					// we update the step that the user Has landed on
+					// $step = 'WISTIA_FLOW2_STEP'.$categoryIndex;
+					// Update the mailchimp
+					// $mc->updateUserOptions($this->session->email,$step);
+					$callToActionText = "Thank you for watching training module " . $categoryIndex . " of " . $countCategories . ". We had a few quick questions that will help you succeed in getting hired. Please click here.";
+				}
+				$this->videoView->showPage2('display', $videosData, $this->session->email, $nextCategoryUrl, $callToActionText, $this->categoryTitle);
+			break;
+			case 'day-in-the-life-nocell':
+				$videoHash = 'p4ro2cwezv';
+				$title = 'Day in The Life';
+				$callToActionText = 'You now are ready to APPLY for a Delivery Job! CLICK HERE';
+				$this->videoView->displayPage('display_custom_video', $title, $videoHash, $callToActionText, $this->session->email);
+				break;
+
+			case 'day-in-the-life':
+				// $survey = ''
+				$videoHash = 'izyxcwjg5j';
+				$title = 'Day in The Life';
+				$callToActionText = 'You now are ready to APPLY for a Delivery Job! CLICK HERE';
+				$this->videoView->displayFlow1fPage('display_1f_flow_video', $title, $videoHash, $callToActionText, $this->session->email);
+				break;
+		}
+	}
+
+	/**
+	 * Get desired data for each video from the current project (video's id and thumbnail)
+	 * @param array $projectData => all data for current project
+	 * @return array
+	 */
+	
+	private function getVideosData($projectData)
+	{
+		$videosData = array();
+		
+		foreach ($projectData as $video)
+		{
+			$currentVideoData = array();
+			$currentVideoData['hashed_id'] = $video->hashed_id;
+			$currentVideoData['name'] = $video->name;
+			$currentVideoData['thumbnail'] = $video->thumbnail->url;
+			array_push($videosData, $currentVideoData);
+		}
+		
+		return $videosData;
+	}
+	
+	private function setDataFromCookies($emailCookie)
+	{
+		$userData = $this->videoModel->returnUserData($emailCookie);
+
+		if(!empty($userData))
+		{
+			return $userData;
+		}
+
+		return false;
+	}
+}

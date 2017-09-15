@@ -1,0 +1,100 @@
+<?php
+
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id$
+ */
+
+/**
+ * Loading Settings from database, also set PHP settings from config file
+ * @category   DotKernel
+ * @package    DotLibrary
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class Dot_Ssh
+{
+	/**
+	 * SSH2 Connection object
+	 * @access private
+	 * @var resource $connection
+	 */
+	private $_connection;
+	
+	/**
+	 * Initialize the SSH Connection
+	 * @access public
+	 * @param string $username
+	 * @param string $password
+	 * @param string $server - hostname or ip 
+	 * @param int $port
+	 * @param string $homeDir [optional]
+	 */
+	public function __construct($username, $password, $server, $port='22', $homeDir = '/')
+	{
+		if( !self::extensionExists() )
+		{
+			throw new Exception("SSH2 extension is not present");
+		}
+		
+		$this->_connection = ssh2_connect($server, $port);
+		if(! $this->_connection )
+		{
+			throw new Exception("SFTP Connection has failed");
+		}
+		ssh2_auth_password($this->_connection, $username, $password);
+	}
+	
+	/**
+	 * Custom destruct for closing SFTP connection
+	 * @access public
+	 */
+	public function __destruct()
+	{
+		// close SFTP connection
+		ssh2_exec($this->_connection, 'exit');
+	}
+	
+	/**
+	 * SSH Extension check
+	 * @access public
+	 * @return bool
+	 */
+	public static function extensionExists()
+	{
+		return function_exists('ssh2_connect');
+	}
+	
+	/**
+	 * SCP Send file  
+	 * 
+	 * @access public
+	 * @param string $localFileName - source file (local)
+	 * @param string $remoteFileName - destination file (remote)
+	 * @param number $createMode - permission mode (octal)
+	 *  
+	 */
+	public function scpSend($localFileName, $remoteFileName, $createMode = 0644)
+	{
+		return ssh2_scp_send( $this->_connection , $localFileName , $remoteFileName , $createMode );
+	}
+	
+	/**
+	 * Upload file, alias for $this->scpSend
+	 *
+	 * @access public
+	 * @param string $localFileName - source file (local)
+	 * @param string $remoteFileName - destination file (remote)
+	 * @param number $createMode - permission mode (octal)
+	 */
+	public function upload($localFileName, $remoteFileName, $createMode = 0644)
+	{
+		return $this->scpSend($localFileName, $remoteFileName, $createMode);
+	}
+	
+}

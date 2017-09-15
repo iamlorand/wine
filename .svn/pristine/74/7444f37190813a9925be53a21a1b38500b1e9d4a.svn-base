@@ -1,0 +1,631 @@
+/*Global variables*/
+var boundsArray = [],
+	oldBoundsArray = [],
+	markersCluster = new L.markerClusterGroup({spiderfyDistanceMultiplier: 2,showCoverageOnHover: false, maxClusterRadius: 15, removeOutsideVisibleBounds: true, polygonOptions: {
+		opacity: 1,
+		stroke: true,
+		weight: 5
+	}}),
+	markersArray =[],
+	geojson,
+	mapCenter,
+	oldCenter,
+	platformRequest,
+	platformList,
+	jobListArray = [],
+	showListFlag = false,
+	pageNumber = 1,
+	latestPageNumber,
+	lastPage,
+	showDetail = false,
+	map;
+
+function initializeMap(lat, lon)
+{
+
+	/*map tile layers go here*/
+	var OpenStreetMap_HOT = L.tileLayer.provider('OpenStreetMap.HOT');
+	var Esri_WorldImagery = L.tileLayer.provider('Esri.WorldImagery');
+	var Mapnik = L.tileLayer.provider('OpenStreetMap.Mapnik');
+	var Carto = L.tileLayer.provider('CartoDB.PositronNoLabels');
+	var Thunderforest = L.tileLayer.provider("Thunderforest.Outdoors");
+	var WorldTopoMap = L.tileLayer.provider("Esri.WorldTopoMap");
+
+
+	/*Hide the div where the information is shown*/
+	$(".map-info").hide();
+	$(".marker-list").hide();
+
+	/*creates the map and adds the layers to it*/
+	map = L.map('map', {
+		center: [lat , lon],
+		zoom: 12,
+		maxZoom: 17,
+		minZoom: 8,
+		layers: [Thunderforest],
+		loadingControl: false,
+		'messagebox': true
+	});
+
+	/*This adds the layers*/
+	var baseLayers = {
+		"Simpler 2": WorldTopoMap,
+		"Simple": OpenStreetMap_HOT,
+		"Simpler": Thunderforest,
+		"Simplest": Carto,
+		"Complex": Mapnik,
+		
+	};
+
+	var satelliteLayer = {
+		"Satellite": Esri_WorldImagery
+	};
+
+
+	var overlayCluster = {
+		// "Show Cluster Area ": 
+	};
+
+	/*layers control layer, adds the map layers to the map*/
+	L.control.layers(baseLayers).addTo(map);
+	L.control.layers(satelliteLayer);
+
+	/*Removes the satellite layer when using the */
+	map.on('baselayerchange', function(e){
+		if(e.name != "Satellite")
+		{
+			map.removeLayer(Esri_WorldImagery);
+		}
+	});
+
+	
+
+	
+	/***************Custom satellite control button*******************/
+
+		L.Control.Satellite = L.Control.extend({
+			options: {
+				position: 'topright',
+			},
+
+			onAdd: function(map)
+			{
+				var satelliteDiv = L.DomUtil.create('div', 'satellite-control');
+
+				L.DomEvent.addListener(satelliteDiv, 'click', function(){
+
+				});
+
+				var satelliteUI = L.DomUtil.create('div', 'satellite-control-interior', satelliteDiv);
+				satelliteUI.title = 'Show Satellite View';
+				satelliteUI.href = "#";
+				satelliteUI.name = "Satellite";
+
+
+				/*This works by removing the other layers and adding the satellite tile layer*/
+				L.DomEvent.addListener(satelliteUI, 'click', function(e){
+
+							map.addLayer(Esri_WorldImagery);
+							map.removeLayer(Thunderforest);
+							map.removeLayer(OpenStreetMap_HOT);
+							map.removeLayer(Mapnik);
+							map.removeLayer(Carto);
+							map.removeLayer(WorldTopoMap);
+
+				});
+
+				return satelliteDiv;
+			}
+		});
+
+	L.control.command = function (options) {
+	    return new L.Control.Satellite(options);
+	};
+
+	var satelliteButton = new L.Control.Satellite;
+	map.addControl(satelliteButton);
+
+	/********************************Custome satellite button END**********/
+
+	/***********Coverage Area Control Button aka The Eye Button************/
+	L.Control.Command = L.Control.extend({
+    options: {
+        position: 'topright',
+    },
+
+    onAdd: function (map) {
+        var controlDiv = L.DomUtil.create('div', 'leaflet-control-command');
+        L.DomEvent
+            // .addListener(controlDiv, 'click', L.DomEvent.stopPropagation)
+            // .addListener(controlDiv, 'click', L.DomEvent.preventDefault)
+        .addListener(controlDiv, 'click', function () { 
+
+         });
+
+        var controlUI = L.DomUtil.create('div', 'leaflet-control-command-interior', controlDiv);
+        controlUI.title = 'Toggle Coverage Area';
+        controlUI.href = '#';
+        L.DomUtil.addClass(controlUI, 'control-off');
+
+        L.DomEvent
+        	.addListener(controlUI, 'click', L.DomEvent.stopPropagation)
+            .addListener(controlUI, 'click', L.DomEvent.preventDefault)
+        	.addListener(controlUI, 'click', function(){
+
+        	if(L.DomUtil.hasClass(controlUI, 'control-off'))
+        	{
+        		L.DomUtil.removeClass(controlUI, 'control-off');
+        		L.DomUtil.addClass(controlUI, 'control-on');
+        	}
+        	else
+        	{
+        		L.DomUtil.removeClass(controlUI, 'control-on');
+        		L.DomUtil.addClass(controlUI, 'control-off');
+        	}
+
+        	/*Toggles markers coverage area*/
+        	if(markersCluster.options.showCoverageOnHover == true)
+        	{
+        		markersCluster.off('clustermouseover', null, this);
+				markersCluster.off('clustermouseout', null, this);
+				markersCluster.options.showCoverageOnHover = false;
+        	}
+        	else
+        	{
+        		markersCluster.options.showCoverageOnHover = true;
+        		var shownPolygon = null;
+        		markersCluster.on('clustermouseover', function (a) {
+				if (this._inZoomAnimation) {
+					return;
+				}
+				if (shownPolygon) {
+					map.removeLayer(shownPolygon);
+				}
+				if (a.layer.getChildCount() > 2 && a.layer !== this._spiderfied) {
+					shownPolygon = new L.Polygon(a.layer.getConvexHull(), markersCluster.options.polygonOptions);
+					map.addLayer(shownPolygon);
+				}
+			}, this);
+
+        		markersCluster.on('clustermouseout', function () {
+				if (shownPolygon) {
+					map.removeLayer(shownPolygon);
+					shownPolygon = null;
+				}
+			}, this);
+        	}
+
+        });
+        return controlDiv;
+    	}
+	});
+
+	L.control.command = function (options) {
+	    return new L.Control.Command(options);
+	};
+
+	var button = new L.Control.Command;
+	map.addControl(button);
+
+	
+	/*Map Center, based on user view*/
+	mapCenter = map.getCenter();
+
+	/*Adds loading message to map*/
+	var messageBox = new L.control.messagebox({position:'bottomleft', timeout: 6000}).addTo(map);
+
+	messageBox.show("Finding Local Gigs ...");
+	setTimeout(function(){messageBox.removeFrom(map);},5000);
+
+	/*Initial data fetch, gets data for the pins*/
+	getPlatforms();
+
+	/*Checks if the map has moved, and requests data from db*/
+	map.on('moveend', function(){
+		oldCenter = mapCenter;
+		mapCenter = map.getCenter();
+		if((oldCenter.lat - mapCenter.lat > 0.045 || oldCenter.lat - mapCenter.lat < -0.045) || (oldCenter.lng - mapCenter.lng > 0.045 || oldCenter.lng - mapCenter.lng < -0.045) )
+		{
+
+			getPlatforms();
+		}
+	});
+
+	map.on("click", function(e){
+		if(showDetail == true)
+		{
+			showDetail = false;
+			$(".map-info").hide();
+		}
+		else
+		{
+			showDetail = true;
+			
+		}
+
+	});
+
+	/*Check if the user scrolls down the page*/
+	$(window).scroll(function(){
+    if (($(window).scrollTop() == $(document).height()-$(window).height()) && showListFlag == true){
+        pageNumber++;
+        
+        if(pageNumber == lastPage || lastPage == 1)
+        {
+        	map.zoomOut();
+        	showList();
+        }
+        else
+        {
+	        showList();
+        }
+    }
+
+});
+
+}
+
+/*Returns data from platforms database*/
+function getPlatforms()
+{
+	getBounds();
+
+	/*If the map has moved, the request is aborted*/
+	if(typeof(platformRequest) !== 'undefined' || platformRequest != null)
+	{
+		platformRequest.abort();
+	}
+
+	platformRequest = $.ajax({type: 'POST',
+			dataType: 'json',
+			url: siteUrl + "/map/get-taskdata",
+			data: {lat1: boundsArray['north'], lng1: boundsArray['east'], lat2: boundsArray['south'], lng2: boundsArray['west']},
+			success: function(data){
+				// console.log(data);
+					addToArray(data);
+					displayMarkers(markersArray);
+			},
+	});
+
+	return true;
+}
+
+/*Displays markers on map and adds information regarding each marker*/
+function displayMarkers(data){
+	markersCluster.clearLayers();
+
+	var index = 0;
+	var radius = 0.07;
+	var diameter = radius*2;
+
+	var count = data.length;
+
+	data.forEach(function(val){
+
+		index++;
+		
+		/*Info about markers starts here*/
+		var platformLogoUrl = siteUrl + "/images/frontend/logos/" + val.platformName + ".png";
+
+
+		if(val.businessTitle != null)
+		{
+			var url = "<a href='" + val.url + "' target=\"_blank\"> " + val.businessTitle +"</a>" + " - " + val.taskName;
+		}
+		else
+		{
+			var url = "<a href='" + val.url + "' target=\"_blank\"> " + val.platformName +"</a>" + " - " + val.taskName;
+		}
+
+		if(val.categoryName != null)
+		{
+			var category = "<br><strong>Category: </strong>" + val.categoryName;
+		}
+		else
+		{
+			if(val.platformName == "WorkMarket")
+			{
+				var category = "<br><strong>Category: </strong>" + "On-Site Technology";
+			}
+			else
+			{
+				var category = "<br><strong>Category: </strong>" + "N/A";
+			}
+		}
+		var location = "<br><strong>Location: </strong>" + val.City + ", " + val.State;
+		// var money = "<br><strong>Payment: </strong>" + val.hourly_rate;
+
+		var platformLogo = "<img src='" + platformLogoUrl + "'>";
+
+		var info = platformLogo + url + category + location;
+
+		/*Info ends here*/
+
+		if(val.platformName != 'findfocusgroups' && typeof(val.lat) != "undefined" && typeof(val.lng) != "undefined")
+		{
+			
+		switch(val.platformName) 
+		{
+			case "WorkMarket":
+				var newLat = parseFloat(val.lat);
+				var newLng = parseFloat(val.lng);
+				var iconUrl = siteUrl + '/images/frontend/' + val.platformName + '-icon.png';
+				var shadowUrl = siteUrl + '/images/frontend/' + val.platformName + '-icon-shadow.png';
+				var markerIcon = L.icon({
+						iconUrl: iconUrl,
+						shadowUrl: shadowUrl,
+						iconSize: [32, 32],
+						shadowSize: [32, 32],
+						iconAnchor: [32, 16],
+						shadowAnchor: [28, 16]
+				});
+
+
+				var marky = L.marker([newLat, newLng],{
+				icon: markerIcon,
+				customData: info
+				});
+
+				marky.on('click', showInfo);	
+				markersCluster.addLayer(marky);
+				break;
+
+			case 'Care':
+				var newLat = parseFloat(val.lat)/* + radius*Math.cos(2*Math.PI * (count/index)*7)*/;
+				var newLng = parseFloat(val.lng)/* + radius*Math.sin(2*Math.PI * (count/index)*90)*/;
+
+				var iconUrl = siteUrl + '/images/frontend/' + (val.categoryName).replace(/ /g ,"_" ) + '.png';
+				var shadowUrl = siteUrl + '/images/frontend/' + val.platformName + '-icon-shadow.png';
+				var markerIcon = L.icon({
+						iconUrl: iconUrl,
+						shadowUrl: shadowUrl,
+						iconSize: [32, 32],
+						shadowSize: [32, 32],
+						iconAnchor: [32, 16],
+						shadowAnchor: [28, 16]
+					});
+
+				var marky = L.marker([newLat, newLng],{
+				icon: markerIcon,
+				customData: info
+				});
+
+				marky.on('click', showInfo);	
+				markersCluster.addLayer(marky);
+				break;
+
+
+			/*Shiftgig jobs go here, among others*/
+			default:
+				var newLat = parseFloat(val.lat) + radius*Math.cos(Math.PI * (count/index)*23);
+				var newLng = parseFloat(val.lng) + radius*Math.sin(Math.PI * (count/index)*114);
+
+				var iconUrl = siteUrl + '/images/frontend/' + val.platformName + '.png';
+				var shadowUrl = siteUrl + '/images/frontend/' + val.platformName + '-icon-shadow.png';
+				var markerIcon = L.icon({
+						iconUrl: iconUrl,
+						shadowUrl: shadowUrl,
+						iconSize: [32, 32],
+						shadowSize: [32, 32],
+						iconAnchor: [32, 16],
+						shadowAnchor: [28, 16]
+					});
+
+				var marky = L.marker([newLat, newLng],{
+				icon: markerIcon,
+				customData: info
+				});
+
+				marky.on('click', showInfo);	
+				markersCluster.addLayer(marky);
+					break;
+		}
+
+
+		}
+
+
+	});
+
+	map.addLayer(markersCluster);
+
+	markersArray.length = 0;
+}
+
+/*Checks if a value is in an array*/
+function isInArray(value, array)
+{
+	return array.indexOf(value) > -1;
+}
+
+/*Adds value to array. This function is used when adding workmarket data to the map*/
+function addToArray(value)
+{
+	markersArray.length = 0;
+
+	value.forEach(function(val){
+		if(isInArray(val.City, markersArray) == false)
+		{
+			markersArray.push(val);
+		}
+	});
+}
+
+/*Returns map bounds in lat long coords*/
+function getBounds(e)
+{
+	var bounds = map.getBounds();
+	 boundsArray['north'] = bounds.getNorth();
+	 boundsArray['south'] = bounds.getSouth();
+	 boundsArray['west'] = bounds.getWest();
+	 boundsArray['east'] = bounds.getEast();
+}
+
+/*Binds marker data to a html tag in the page, and scrolls to it if its outside screen*/
+function showInfo(e)
+{
+	// console.log(e);
+	if(showDetail == false)
+	{
+		showDetail = true;
+		$(".map-info").show();
+		$(".map-info").html(e.target.options.customData);
+	}
+	else
+	{
+		$(".map-info").show();
+		$(".map-info").html(e.target.options.customData);
+		showDetail = false;
+	}
+}
+
+/*Fetches data for the jobs list. The data is based on what we see on the map*/
+function showList()
+{
+	showListFlag = true;
+
+	if(showListFlag == true && latestPageNumber != pageNumber)
+	{
+
+		platformRequest.abort();
+
+		$("#map-wrapper").hide();
+		$("#m-list").show();
+
+		var paginatedPlatforms =  $.ajax({type: 'POST',
+									dataType: 'json',
+									url: siteUrl + "/page/get-platformdata-paginated/p/"+pageNumber,
+									data: {lat1: boundsArray['north'], lng1: boundsArray['east'], lat2: boundsArray['south'], lng2: boundsArray['west']},
+									success: function(data){
+										showData(data);
+										lastPage = data.pages.last;
+										latestPageNumber = pageNumber;
+										
+									},
+							});
+	}
+	else
+	{
+		console.log("Already on it, sir!");
+	}
+	// showListFlag = false;
+
+}
+
+/*Populates job list*/
+function showData(data)
+{
+
+	var value = data.data;
+	var page = data.pages.current;
+
+	innerDiv = document.getElementById('m-list');
+
+	value = shuffleArray(value);
+	// innerDiv.innerHTML = '';
+
+	// var info = '';
+
+	$.each(value,function(key, val){
+			var platformLogoUrl = siteUrl + "/images/frontend/logos/" + val.platformName + ".png";
+
+			var url = "<a href='" + val.url + "' target=\"_blank\"> " + val.businessTitle +"</a>";
+			if(val.businessTitle == null)
+			{
+				var url = "<a href='" + val.url + "' target=\"_blank\"> " + val.taskName +"</a>";
+			}
+
+			if(val.category != null)
+			{
+				var category = "<br><strong>Category: </strong>" + val.taskName;
+			}
+			else
+			{
+				if(val.platform == "WorkMarket")
+			{
+				var category = "<br><strong>Category: </strong>" + "On-Site Technology";
+			}
+			else
+			{
+				var category = "<br><strong>Category: </strong>" + "N/A";
+			}
+			}
+			var location = "<br><strong>Location: </strong>" + val.city + ", " + val.state;
+			// var money = "<br><strong>Payment: </strong>" + val.hourly_rate;
+			if(val.type != null)
+			{
+				var workType = "<br><strong>Work Type: </strong>" + val.type;
+			}
+			else
+			{
+				var workType = "<br><strong>Work Type: </strong>" + "N/A";
+			}
+
+			var platformLogo = "<img src=\"" + platformLogoUrl + "\">";
+
+			var info = "<div class=\"mrow\">"  + platformLogo + url + category + location + workType + "</div>";
+
+			innerDiv.innerHTML = innerDiv.innerHTML + info + "<br>";
+			
+	});
+
+}
+
+/*Used to toggle from Job List to Map page*/
+function showMap(){
+		$("#map-wrapper").show();
+		$("#m-list").hide();
+
+		map.invalidateSize();
+
+		showListFlag = false;
+
+		innerDiv.innerHTML = '';
+
+		pageNumber = 1;
+		latestPageNumber = 0;
+}
+
+
+/*Shuffle array using shuffle algorithm*/
+function shuffleArray(array) {
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+    return array;
+}
+
+/*!!!WORK IN PROGRESS!!! BE CAREFUL!!!*/
+function getForRadius(){
+
+	var radiusData =  $.ajax({type: 'POST',
+									dataType: 'json',
+									url: siteUrl + "/page/get-zipcodes-radius/",
+									data: {radius: 100, lat: map.getCenter().lat, lng: map.getCenter().lng},
+									success: function(data){
+										console.log(data);
+
+									},
+							});
+}
+
+function radiusChange(value, lat, lng)
+{
+
+	platformRequest = $.ajax({type: 'POST',
+			dataType: 'json',
+			url: siteUrl + "/map/get-taskdata-radius",
+			data: {latitude: lat, longitude: lng, radius: value},
+			success: function(data){
+				// console.log(data);
+					addToArray(data);
+					displayMarkers(markersArray);
+			},
+	});
+
+	return true;
+
+}

@@ -1,0 +1,103 @@
+<div class="thank-you">
+
+<!-- BEGIN thankyou_company_logo -->
+	<div>
+		<img style = "width:100px; height:100px;" src="data:image/jpeg;base64,{COMPANY_LOGO}"/>
+		<p>{COMPANY_NAME}</p>
+	</div>
+<!-- END thankyou_company_logo -->
+
+<h2>{THANKYOU_TITLE}</h2>
+<h3>{THANKYOU_SUBTITLE}</h3>
+<p>{THANKYOU_DESCRIPTION}</p>
+
+<!-- BEGIN jobs -->
+    {JOBS}
+<!-- END jobs -->
+
+&nbsp;
+<div style="text-align: center;">
+        
+        <style type='text/css'>#indJobContent{padding-bottom:
+        5px;}#indJobContent .company_location{font-size: 11px;overflow:
+        hidden;display:block;}#indJobContent.wide
+        .job{display:block;float:left;margin-right: 5px;width: 135px;overflow:
+        hidden}#indeed_widget_wrapper{position: relative;font-family:
+        'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:
+        13px;font-weight: normal;line-height: 18px;padding: 10px;height:
+        auto;overflow: hidden;}#indeed_widget_header{font-size:18px;
+        padding-bottom: 5px; }#indeed_search_wrapper{clear: both;font-size:
+        12px;margin-top: 0px;padding-top: 2px;}#indeed_search_wrapper
+        label{font-size: 12px;line-height: inherit;text-align: left;
+        margin-right: 5px;}#indeed_search_wrapper input[type='text']{width:
+        100px; font-size: 11px; }#indeed_search_wrapper
+        #qc{float:left;}#indeed_search_wrapper
+        #lc{float:right;}#indeed_search_wrapper.stacked #qc,
+        #indeed_search_wrapper.stacked #lc{float: none; clear:
+        both;}#indeed_search_wrapper.stacked input[type='text']{width:
+        150px;}#indeed_search_wrapper.stacked label{display:
+        block;padding-bottom: 5px;}#indeed_search_footer{width:295px;
+        padding-top: 5px; clear: both;}#indeed_link{position: absolute;bottom:
+        1px;right: 5px;clear: both;font-size: 11px;  }#indeed_link
+        a{text-decoration: none;}#results .job{padding: 1px 0px;}#pagination {
+        clear: both; }</style><style type='text/css'>
+        #indeed_widget_wrapper{ width: 300px; height: 600px; background: #FFFFFF;}
+        #indeed_widget_wrapper{ border: 1px solid #DDDDDD; }
+        #indeed_widget_wrapper, #indeed_link a{ color: #000000;}
+        #indJobContent a { color: #00c; }
+        #indeed_widget_header{ color: #000000; }
+        </style>
+        <script type='text/javascript'>
+        var ind_pub = '9530986612881817';
+        var ind_el = 'indJobContent';
+        var ind_pf = '';
+        var ind_q = '{CATEGORY}';
+        var ind_l = '{URL_CITY}';
+        var ind_chnl = 'Howie Mark';
+        var ind_n = 10;
+        var ind_d = 'http://www.indeed.com';
+        var ind_t = 40;
+        var ind_c = 30;
+        var ind_pgn = 1;
+        var ind_pgnCnt = 10;
+        </script>
+        <script type='text/javascript'
+        src='http://www.indeed.com/ads/jobroll-widget-v3.js'></script>
+        <div id='indeed_widget_wrapper' style="display: inline-block; text-align: left;">
+            <div id='indJobContent' class=""></div>
+
+                <div id='indeed_search_wrapper'>
+                    <script type='text/javascript'>
+                        function clearDefaults() {
+                            var formInputs =
+        document.getElementById('indeed_jobform').elements;
+                            for(var i = 0; i < formInputs.length; i++) {
+                                if(formInputs[i].value == {CATEGORY} ||
+        formInputs[i].value == {URL_CITY}) {
+                                    formInputs[i].value = '';
+                                }
+                            }
+                        }
+                    </script>
+                    <form onsubmit='clearDefaults();' method='get'
+        action='http://www.indeed.com/jobs' id='indeed_jobform' target="_new">
+                        <div id="qc"><label>What:</label><input type='text'
+        onfocus='this.value=""' value='{CATEGORY}' name='q' id='q'></div>
+                        <div id="lc"><label>Where:</label><input type='text'
+        onfocus='this.value=""' value='{URL_CITY}' name='l'
+        id='l'></div>
+                        <div id='indeed_search_footer'>
+                            <div style='float:left'><input type='submit'
+        value='Find Jobs' class='findjobs'></div>
+                        </div>
+                        <input type='hidden' name='indpubnum' id='indpubnum'
+        value='9530986612881817'>
+                    </form>
+                </div>
+            </div>
+</div>
+
+&nbsp;
+
+<h3><span style = "float:left;">{THANKYOU_DESCRIPTION_BOTTOM}</span><a href="http://dev.gigprofits.com/user/continue-registration/id/{USER_ID}">{BUTTON_TEXT}</a></h3>	
+</div>

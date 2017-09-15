@@ -1,0 +1,104 @@
+<?php
+
+/**
+ *
+ * @author Andrei
+ *
+ */
+ 
+class Video extends Dot_Model
+{
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+	
+	/**
+	 * return survey data
+	 * @param string $surveyId
+	 * @return array
+	 */
+	
+	public function returnSurveyData($surveyId)
+	{
+		$select = $this->db->select()
+						->from('survey', array('id', 'name', 'instruction'))
+						->where('id =?', $surveyId);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Check if user answered the survey
+	 * @param string $userId
+	 * @param string $surveyId
+	 * @return false or user's ID
+	 */
+	
+	public function checkIfSurveyAnswered($userId, $surveyId)
+	{
+		$select = $this->db->select()
+		->from('surveyAnswered')
+		->where('userId =?', $userId)
+		->where('surveyId =?', $surveyId);
+	
+		$result = $this->db->fetchOne($select);
+	
+		return $result;
+	}
+
+
+	public function returnUserData($email)
+	{
+		$select = $this->db->select()
+					->from('userData', array('id', 'email'))
+					->where('email = ?', $email);
+
+		return $this->db->fetchRow($select);
+	}
+	
+	/**
+	 * @param unknown $wistiaCategory
+	 * @param unknown $userId
+	 */
+	public function setAndSaveUserWistiaActivity($wistiaCategory = '', $userId, $wistiaFlow)
+	{
+	   if(isset($wistiaCategory))
+	   {
+	       if($wistiaCategory == 'thank-you')
+	       {
+	           $url = $this->config->website->params->url . '/user/' . $wistiaCategory;
+	       }
+	       else 
+	       {
+	           $url = $this->config->website->params->url . '/video/cleaning/' . $wistiaCategory;
+	       }
+	   }
+	   else 
+	   {
+	       $url = '';
+	   }
+	   
+        $trackingData = array( 'userId' => $userId,
+            'wistiaCategory' => $wistiaCategory,
+            'wistiaFlow' => $wistiaFlow,
+            'url' => $url
+        );
+        $this->db->insert('userWistiaTracking', $trackingData);
+	}
+	
+	public function checkUserVideoActivity($userId)
+	{
+	    $select = $this->db->select()
+	                        ->from(array('uat'=>'userWistiaTracking'))
+	                        ->where('userId = ?', $userId)
+	                        ->order('id DESC')
+	                        ;
+	    $result = $this->db->fetchRow($select);
+	    return $result;
+	}
+}

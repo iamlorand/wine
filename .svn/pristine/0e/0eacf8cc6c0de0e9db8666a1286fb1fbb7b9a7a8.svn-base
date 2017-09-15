@@ -1,0 +1,23 @@
+<form action="{SITE_URL}/admin/platform/{BUTTON_TYPE}-investor/id/{INVESTORID}" method="post" >
+	<div class="box-shadow" style="width: 500px">
+		<div class="box_header">
+			Add New Category
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Investor Name</label>
+				<!-- BEGIN allInvestorName -->
+				<input type="text" name="investorName" value="{INVESTORNAME}" id="investorName">
+				<!-- END allInvestorName -->
+			</li>
+			<li class="clearfix">
+				<label>CBURL</label>
+				<input type="text" name="cburl" value="{CBURL}" id="cburl"">
+			</li>
+			<li class="clearfix">
+				<label>&nbsp;</label>
+				<input type="submit" class="button" value="{BUTTON_TYPE}">
+			</li>
+		</ul>
+	</div>
+</form>

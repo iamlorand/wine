@@ -1,0 +1,68 @@
+<?php
+
+class Boomtrain_BoomtrainProperties
+{
+	public $boomtrainProperties = array(
+					10	=>	'step1',
+					20	=>	'step2',
+					30	=>	'thank-you',
+					40	=>	'video-day-in-the-life-nocell',
+					50	=>	'video-day-in-the-life',
+					60	=>	'video-kitchen',
+					70	=>	'survey-kitchen',
+					80	=>	'video-kitchenappliances',
+					90	=>	'survey-kitchenappliances',
+					100	=>	'video-bathroom',
+					110	=>	'survey-bathroom',
+					120	=>	'video-bedroom',
+					130	=>	'survey-bedroom',
+					140	=>	'video-familyroom',
+					150	=>	'survey-familyroom',
+					160	=>	'video-customerservice',
+					170	=>	'survey-customerservice',
+					180	=>	'survey-1',
+					190	=>	'survey-2',
+					200	=>	'survey-3',
+					210	=>	'survey-4',
+					220	=>	'survey-5',
+					230	=>	'survey-6',
+					240	=>	'survey-7',
+					250	=>	'survey-8',
+					260	=>	'survey-thank-you',
+					270	=>	'apply-page',
+					280	=>	'cleaning-job-list'
+	);
+	
+	public $controllerActionNames = array(
+					'user'	=>	array(	'register-first-step'	=>	'step1',
+										'register'				=>	'step2',
+										'thank-you'				=>	'thank-you',
+										'apply-page'			=>	'apply-page',
+										'cleaning-job-list'		=>	'cleaning-job-list'),
+					
+					'video'	=>	array(	'kitchen'			=>	'kitchen',
+										'kitchenappliances'	=>	'kitchenappliances',
+										'bathroom'			=>	'bathroom',
+										'bedroom'			=>	'bedroom',
+										'familyroom'		=>	'familyroom',
+										'customerservice'	=>	'customerservice',
+										'day-in-the-life-nocell'	=>	'day-in-the-life-nocell',
+										'day-in-the-life'	=>	'day-in-the-life'),
+					
+					'survey' =>	array(	'kitchen'			=>	'kitchen',
+										'kitchenappliances'	=>	'kitchenappliances',
+										'bathroom'			=>	'bathroom',
+										'bedroom'			=>	'bedroom',
+										'familyroom'		=>	'familyroom',
+										'customerservice'	=>	'customerservice',
+										'1'	=>	'1',
+										'2'	=>	'2',
+										'3'	=>	'3',
+										'4'	=>	'4',
+										'5'	=>	'5',
+										'6'	=>	'6',
+										'7'	=>	'7',
+										'8'	=>	'8',
+										'thank-you'	=>	'thank-you')
+	);
+}

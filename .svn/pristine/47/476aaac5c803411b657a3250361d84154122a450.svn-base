@@ -1,0 +1,7 @@
+<script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/remove_facebook_hash.js"></script>
+
+<div class="thank-you">
+	<!-- <p>Thank you for filling out the info. We'll be following up shortly.</p> -->
+	<p>Thanks for your application. 
+	We will be in touch shortly.</p>
+</div>	

@@ -1,0 +1,500 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @Platform   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+ * @version    $Id: Platform.php 215 2015-08-07 18:23:25Z levi $
+ */
+
+/**
+ * Platform Model
+ * Here are all the actions related to the admin users
+ * @Platform   DotKernel
+ * @package    Admin 
+ * @author     Lajos <lajos@dotboost.com>
+*/
+
+class Platform extends Dot_Model
+{
+	
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+
+	/**
+	 * Get Platform by field
+	 * @access public
+	 * @param string $field
+	 * @param string $value
+	 * @return array
+	 */
+	public function getPlatformBy($field = '', $value = '')
+	{
+		$select = $this->db->select()
+							->from('platform')
+							->joinLeft('platformCategoryLink','platform.platformId = platformCategoryLink.platformId', array('a'=>'platformId'))
+							->joinLeft('platformCategory','platformCategory.categoryId = platformCategoryLink.categoryId')
+							->joinLeft('platformInvestor','platformInvestor.platformId = platform.platformId')
+							->joinLeft('serviceArea','serviceArea.platformId = platform.platformId')
+							->where('platform.'.$field . ' = ?', $value)
+							->limit(1);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+
+	/**
+	 * Get Platform list
+	 * @access public 
+	 * @param int $page [optional]
+	 * @return array
+	 */
+	public function getPlatformList($page = 1)
+	{
+		$select = $this->db->select()->from('platform');
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	/**
+	 * Get Platform list
+	 * @access public 
+	 * @param int $page [optional]
+	 * @return array
+	 */
+	public function getAllPlatform()
+	{
+		$select = $this->db->select()->from('platform');
+		return $this->db->fetchAll($select);
+	}
+
+	
+	/**
+	 * Add new Platform
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function addPlatform($data)
+	{
+		//Adding Platform to DB
+		$categoryId = $data['category'];
+		unset($data['category']);
+		$serviceArea = explode(",", $data['serviceArea']);
+		unset($data['serviceAreaLocation_0']);
+		$investorName = $data['investorName'];
+		unset($data['investorName_0']);
+		unset($data['cburl']);
+		unset($data['investorId']);
+		$this->db->insert('platform', $data);
+		$platformId = $this->db->lastInsertId();
+		$data = array(
+					'categoryId' => $categoryId,
+					'platformId' =>$platformId);
+		$this->db->insert('platformCategoryLink', $data);
+		
+		$serviceAreaData = array(
+						'platformId' => $platformId,
+						'city' => $serviceArea[0],
+						'state' =>$serviceArea[1]);
+		$this->db->insert('serviceArea', $serviceAreaData);
+		$investorData = $this->db->select()->from('investor')
+										   ->where('investorName = ?', $investorName);
+		$investorRow = $this->db->fetchRow($investorData);
+		$investorArray = array(
+						'investorId' => $investorRow['investorId'],
+						'platformId' =>$platformId);
+		$this->db->insert('platforminvestor', $investorArray);
+	}
+
+	/**
+	 * Update platform service area
+	 * @access public
+	 * @param array $serviceAreaData
+	 * @param array $serviceAreaUpdateData
+	 * @return void
+	 */
+	public function updatePlatformServiceArea($serviceAreaUpdateData,$id)
+	{
+		$this->db->delete('serviceArea', 'platformId = ' . $id);
+		foreach($serviceAreaUpdateData as $typeKey=>$value)
+		{
+			
+			if($value != NULL)
+			{
+			$type = explode("_", $typeKey);
+				$cityState = explode(",", $value);
+				if ($cityState[0] != NULL && $cityState[1] != NULL)
+				{
+					$serviceArea = array(
+									'platformId' =>$id,
+									'city' => $cityState[0],
+									'state' => $cityState[1]);
+					$this->db->insert('serviceArea', $serviceArea);
+				}
+			}
+			
+		}
+	}
+	
+	/**
+	 * Update platform investor
+	 * @access public
+	 * @param array $serviceAreaData
+	 * @param array $serviceAreaUpdateData
+	 * @return void
+	 */
+	public function updatePlatformInvestor($investoUpdateData,$id)
+	{
+		$this->db->delete('platformInvestor', 'platformId = ' . $id);
+		foreach($investoUpdateData as $typeKey=>$value)
+		{
+			if($value != NULL)
+			{
+				$type = explode("_", $typeKey);
+				if ($type[0] == "investorName" && $value != NULL)
+				{
+					$info = $this->getInvestorByName($value);
+					if ($info['investorId'] > '0')
+					{
+						
+					$platformInvestor = array(
+									'platformId' =>$id,
+									'investorId' => $info['investorId']);
+					$this->db->insert('platformInvestor', $platformInvestor);
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Update Platform
+	 * @access public
+	 * @param array $data
+	 * @param integer $id - this is the platform id
+	 * @return void
+	 */
+	public function updatePlatform($data, $id)
+	{
+		$serviceAreaAndInvestorData = array_slice($data,21);
+		
+		if ($serviceAreaAndInvestorData != NULL)
+			{
+			
+				$serviceAreaUpdateData = array();
+				$investoUpdateData = array();
+				
+				foreach($serviceAreaAndInvestorData as $typeKey=>$value)
+				{
+						$type = explode("_", $typeKey);
+						
+						if($type[0] == 'serviceAreaLocation')
+						{
+							if ($value != NULL)
+							{
+								$serviceAreaUpdateData[$typeKey] = $value;
+							}
+						}
+						else
+						{
+							if ($value != NULL)
+							{
+								if ($value != NULL)
+								{
+									$investoUpdateData[$typeKey] = $value;
+								}
+							}
+						}
+				}
+			}
+			
+		$data = array_slice($data,0,21);
+		if ($serviceAreaUpdateData == NULL)
+		{
+			$this->db->delete('serviceArea', 'platformId = ' . $id);
+		}
+		
+		if ($investoUpdateData == NULL)
+		{
+			$this->db->delete('platformInvestor', 'platformId = ' . $id);
+		}
+		
+		if (!empty($serviceAreaUpdateData))
+		{
+			$this->updatePlatformServiceArea($serviceAreaUpdateData,$id);
+			unset($serviceAreaUpdateData);
+		}
+		
+		if (!empty($investoUpdateData))
+		{
+			$this->updatePlatformInvestor($investoUpdateData,$id);
+			unset($investoUpdateData);
+		}
+		
+		$categoryId = $data['category'];
+		unset($data['category']);
+		$this->db->update('platform', $data, 'platformId = ' . $id);
+		$data = array(
+					'categoryId' => $categoryId,
+					'platformId' =>$id);
+		$this->db->delete('platformCategoryLink', 'platformId = ' . $id);
+		$this->db->insert('platformCategoryLink', $data);
+	}
+
+	/**
+	 * Get all servicearea for platform by
+	 * @access public
+	 * @param integer $id
+	 * @return array
+	 */
+	public function getServiceAreaBy($id,$city,$state)
+	{
+		$select = $this->db->select()->from('serviceArea')
+		->where('platformId = ?',$id)
+		->where('city = ?',$city)
+		->where('state = ?',$state);
+		$results = $this->db->fetchRow($select);
+		return $results;
+		
+	}
+	
+	/**
+	 * Delete Platform
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function deletePlatform($id)
+	{
+		$this->db->delete('platform', 'platformId = ' . $id);
+		$this->db->delete('platformCategoryLink', 'platformId = ' . $id);
+	}
+
+	public function addZipCode($data)
+	{
+		//Adding zip to DB
+		$zipCodePlatform['zipCode'] = $data['zipCode'];
+		$zipCodePlatform['city'] = $data['city'];
+		$zipCodePlatform['state'] = $data['state'];
+		$zipCodePlatform['platformId'] = $data['platformId']; 
+		$this->db->insert('platformLocation', $zipCodePlatform);
+	}
+
+	public function updateZipCode($data)
+	{
+		//Adding zip to DB
+		$zipCode = $data['zipCode'];
+		unset($data['zipCode']);
+		$zipCodePlatform['city'] = $data['city'];
+		$zipCodePlatform['state'] = $data['state'];
+		$zipCodePlatform['platformId'] = $data['platformId']; 
+		$zipCodePlatform['platformId'] = $data['platformLocationId'];
+		$this->db->update('platformLocation', $zipCodePlatform, 'zipCode = '.$zipCode);
+	}
+
+	public function getZipList($page)
+	{
+		//list zip codes
+		$select = $this->db->select()->from('platformLocation')
+									 ->join('platform',"platform.platformId = platformLocation.platformId");
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	public function getZipById($platformLocationId)
+	{
+		//list zip codes
+		$select = $this->db->select()->from('platformLocation')
+								->join('platform',"platform.platformId = platformLocation.platformId")
+								->where('platformLocation.platformLocationId =?',$platformLocationId);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Delete platform location
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function deletePlatformLocation($id)
+	{
+		$this->db->delete('platformLocation', 'platformLocationId = ' . $id);
+	}
+	
+	public function addInvestor($data)
+	{
+		//Adding investor to DB
+		$this->db->insert('investor', $data);
+	}
+
+	public function getInvestorList($page)
+	{
+		$select = $this->db->select()->from('investor');
+		$dotPaginator = new Dot_Paginator($select, $page, $this->settings->resultsPerPage);
+		return $dotPaginator->getData();
+	}
+
+	public function getInvestor($id)
+	{
+		$select = $this->db->select()->from('investor')
+									 ->where('investorId = ?', $id);
+		return $this->db->fetchRow($select);
+	}
+	
+	/**
+	 * Get all investor for platform by platform id
+	 * @access public
+	 * @param integer $id
+	 * @return array
+	 */
+	public function getInvestorByPlatformId($id)
+	{
+		$select = $this->db->select()->from('platformInvestor')
+									 ->joinLeft('investor', 'investor.investorId = platformInvestor.investorId')
+									 ->where('platformInvestor.platformId = ?',$id);
+		return $this->db->fetchAll($select);
+	}
+	
+	/**
+	 * Get platform investor by investor name
+	 * @access public
+	 * @param string $name
+	 * @return array
+	 */
+	public function getInvestorByName($name)
+	{
+		$select = $this->db->select()->from('investor')
+		->where('investorName = ?', $name);
+		$result = $this->db->fetchRow($select);
+		if ($result['investorId'] != NULL)
+		{
+			return $result;
+		}
+		else 
+		{
+			return $result['investorId'] = '0';
+		}
+	}
+
+	public function updateInvestor($data,$id)
+	{
+		$platformInvestor = array(
+						'investorId' =>$id,
+						'investorName' => $data['investorName'],
+						'cburl' => $data['cburl']);
+		unset($data['investorId']);
+		
+		$this->db->delete('investor', 'investorId = '.$id);
+		$this->db->insert('investor', $platformInvestor);
+		//Adding investor to DB
+		$investorPlatform['investorId'] = $id;
+		$this->db->update('investor', $data,"investorId = ".$id);
+	}
+	
+	/**
+	 * Delete Investor
+	 * @access public
+	 * @param int $id
+	 * @return void
+	 */
+	public function deleteInvestor($id)
+	{
+		$this->db->delete('investor', 'investorId = ' . $id);
+		$this->db->delete('platformInvestor', 'investorId = ' . $id);
+	}
+	
+	/**
+	 * Get all servicearea for platform by platform id
+	 * @access public
+	 * @param integer $id
+	 * @return array
+	 */
+	public function getServiceAreaByPlatformId($id)
+	{
+		$select = $this->db->select()->from('serviceArea')
+									 ->where('platformId = ?',$id);
+		$restult = $this->db->fetchAll($select);
+		return $restult;
+	}
+	
+	/**
+	 * Get city and state combo for autocomplete input
+	 * @access public
+	 * @param string $city - this is the city name
+	 * @return array
+	 */
+	public function autoCompleteServiceArea($city)
+	{
+		$key = "%".$city."%";
+		$select = $this->db->select()
+							->from('zipCodeList')
+							->where('city LIKE ?', $key)
+							->order('city')
+							->group('city');
+		$result = $this->db->fetchAll($select);
+		
+		if ($result != NULL)
+		{
+			return $result;
+		}
+		else 
+		{
+			return $result = 'Not found!';
+		}
+	}
+	
+	/**
+	 * Get investors for autocomplete input
+	 * @access public
+	 * @param string $investorName - this is the investor name
+	 * @return array
+	 */
+	public function autoCompleteInvestorName($investorName)
+	{
+		$key = "%".$investorName."%";
+		$select = $this->db->select()->from('investor')
+		->where('investorName LIKE ?', $key)
+		->order('investorName');
+		$result = $this->db->fetchAll($select);
+		
+		if ($result != NULL)
+		{
+			return $result;
+		}
+		else
+		{
+			return $result = 'Not found!';
+		}
+	}
+	
+	public function addPlatformUser($data, $role, $platformId) {
+	
+		$passwordModel = new Dot_Password();
+		$data ['password'] = $passwordModel->hashPassword ( $data ['password'], PASSWORD_DEFAULT );
+		$data ['role'] = $role;
+		$this->db->insert ( 'platformuser', $data );
+		$data2 = array ();
+		$data2 ['platformId'] = $platformId;
+		$data2 ['platformUserId'] = $this->db->fetchOne ( 'SELECT id FROM platformuser WHERE email = ?', $data ['email'] );
+		$this->db->insert ( 'platformPermissions', $data2 );
+	
+	}
+	public function verifyNewPlatformUserEmail($email)
+	{
+		$select = $this->db->fetchOne ( 'SELECT email FROM platformuser WHERE email = ?', $email );
+		if($select == '')
+		{
+			return true;
+		}
+		return false;
+	}
+}

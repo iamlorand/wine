@@ -1,0 +1,148 @@
+<?php
+
+class admin_SurveyController extends admin_BaseController
+{
+    private $surveyModel;
+    private $surveyView;
+
+    public function doIt()
+    {
+        // instantiate classes related to User module: model & view
+        $this->surveyModel = new Survey();
+        $this->surveyView = new Survey_View($this->tpl);
+        // all actions MUST set  the variable  $pageTitle
+        $this->pageTitle = $this->option->pageTitle->action->{$this->registry->requestAction};
+        switch ($this->registry->requestAction)
+        {
+            case 'list':
+                {
+                    $this->listSurvey();
+                    break;
+                }
+            case 'update':
+                {
+                    $this->update();
+                    break;
+                }
+            case 'add':
+                {
+                    $this->add();
+                    break;
+                }
+            case 'activate':
+                {
+                    $this->activate();
+                    break;
+                }
+            case 'updaterow':
+            {
+                $this->updateRow();
+                break;
+           	}
+           case 'deleterow':
+           	{
+           		$this->deleteRow();
+           		break;
+           	}
+           case 'updateinstructions':
+           	{
+           		$this->updateInstructions();
+           		break;
+           	}
+        }
+    }
+
+    private function listSurvey()
+    {
+        $data =  $this->surveyModel->getSurveys();
+        $this->surveyView->listSurveys('list', $data);
+    }
+    
+    private function update()
+    {
+        $data = $_POST;
+        $surveyId=(isset($this->registry->request['surveyId'])) ? $this->registry->request['surveyId'] : '';
+        if($_SERVER['REQUEST_METHOD'] === "POST")
+        {
+            foreach ($data as $key => $field)
+            {
+                if ((strpos($key, 'answer') !== false) || $key == 'instructions')
+                {
+                    unset($data[$key]);
+                }
+            }
+            
+            $order = array();
+            $i=1;
+            foreach ($data as $surveyFieldId => $question)
+            {
+                if (is_numeric($surveyFieldId))
+                {
+                    $order[$surveyFieldId]=$i;
+                    $i++;
+                }
+            }
+            
+            $this->surveyModel->addNewFields($data, $surveyId);
+            $this->surveyModel->updateQuestionOrder($order);
+        }
+        $data =  $this->surveyModel->getSurvey($surveyId);
+        $this->surveyView->updateSurvey('update', $data);
+    }
+
+
+    private function add()
+    {
+        $data = $_POST;
+        if($_SERVER['REQUEST_METHOD'] === "POST")
+        {
+            //add survey to DB and redirect to edit page
+            $surveyId =  $this->surveyModel->addSurvey($data);
+            header('Location: '.$registry->configuration->website->params->url. '/' . $registry->requestModule . '/' . $registry->requestController. '/update/surveyId/'.$surveyId);
+            exit;
+        }
+         $this->surveyView->addSurvey('add');
+
+    }
+
+    private function activate()
+    {
+        // activate/deactivate Platforms
+        // this action is called via Ajax
+        
+        $id = (isset($_POST['id'])) ? (int)$_POST['id'] : 0;
+        $isActive =  $this->surveyModel->activateSurvey($id);
+        $result = array(
+            "success" => true,
+            "id" => $id,
+            "isActive" => $isActive
+        );
+        echo Zend_Json::encode($result);
+        exit;
+    }
+    
+    private function updateRow()
+    {
+        if($_SERVER['REQUEST_METHOD'] === "POST")
+        {
+            // file_put_contents('resultData.txt', print_r($_POST, true),FILE_APPEND);
+            $this->registry->session->tmp = $_POST;
+            $this->surveyModel->updateSurveyField($this->registry->session->tmp);
+        }
+    }
+    
+    private function deleteRow()
+    {
+    	if($_SERVER['REQUEST_METHOD'] === "POST")
+    	{
+    		$this->surveyModel->deleteRow($_POST);
+    	}
+    }
+    
+    private function updateInstructions()
+    {
+    	$surveyId=(isset($this->registry->request['surveyId'])) ? $this->registry->request['surveyId'] : '';
+    	$this->surveyModel->updateInstructions($surveyId, $_POST['instructions']);
+    }
+}
+

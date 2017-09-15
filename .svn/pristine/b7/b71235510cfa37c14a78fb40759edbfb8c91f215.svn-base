@@ -1,0 +1,68 @@
+<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="//code.jquery.com/jquery-1.10.2.js"></script>
+<script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+<script src="{SITE_URL}/templates/js/admin/datePicker.js"></script>
+
+<table style="width: 1000px">
+	<tr>
+	<td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				SUBIDS LOGS
+			</div>
+			<form name="form" action="{SITE_URL}/admin/affiliate/subids-logs" method="post">
+			<table class="medium_table no_border-top">
+				<tr>
+				<!-- BEGIN date_block -->
+					<td><input type="text" class="datepicker" name="dateFrom"></td>
+					<td><input type="text" class="datepicker" name="dateUntil"></td>
+				<!-- END date_block -->
+				</tr>
+				<tr>
+					<td>SubIds</td>
+					<td><textarea  name="subIds" rows="20" cols="24"></textarea></td>
+				</tr>
+				<tr>
+					<td></td>
+					<td>
+						<input type="submit" value="Display Logs" class='button'>
+					</td>
+				</tr>
+			</table>
+			</form>
+		</div>
+	</td>
+</table>
+<br>
+
+<!-- BEGIN subids_table -->
+<table style="width: 1000px">
+	<tr>
+	<td>
+		<div class="box-shadow" style="width: 400px">
+			<div class="box_header">
+				SUBIDS LOGS {DATE}
+			</div>
+			<table class="medium_table no_border-top">
+				<tr>
+					<td>subId</td>
+					<td>Platform</td>
+					<td>Visits</td>
+					<td>Reg1</td>
+					<td>Reg2</td>
+				</tr>
+				<!-- BEGIN subId -->
+				<tr>
+					<td>{SUB_ID}</td>
+					<td>{PLATFORM}</td>
+					<td>{VISITS}</td>
+					<td>{REG1}</td>
+					<td>{REG2}</td>
+				</tr>
+				<!-- END subId -->
+			</table>
+		</div>
+	</td>
+	</tr>
+</table>
+<!-- END subids_table -->

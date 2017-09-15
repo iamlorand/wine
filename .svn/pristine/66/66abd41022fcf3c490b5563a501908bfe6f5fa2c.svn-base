@@ -1,0 +1,89 @@
+
+<script>
+
+	var SITE_URL = "{SITE_URL}";
+	var USERTOKEN = "{USERTOKEN}";
+
+	var id_first;
+	var id_last;
+	var name_search;
+
+$(document).ready(function() {
+	var filterLink = SITE_URL + '/admin/article/list/';
+	$(".filterFormButton").click(function(event){
+		// alert("1");
+		// event the form submission 
+		event.preventDefault();
+// alert("2");
+		// get the values from the form 
+		// prop is the actual value, attr means value from initial html
+		id_first = $("#filter_id_first").prop('value');
+		id_last = $("#filter_id_last").prop('value');
+		name_search = $("#filter_name_search").prop('value');
+		alert("3");
+		// only populate link if values are not empty 
+		if(id_first != "") filterLink = filterLink +"idFirst"+"/"+id_first+"/";
+		if(id_last != "") filterLink = filterLink +"idLast"+"/"+id_last+"/";
+		if(name_search != "") filterLink = filterLink +"nameSearch"+"/"+name_search+"/";
+alert("4");
+		// redirect 
+		 window.location.assign(filterLink);
+
+	})
+
+});
+</script>
+
+<form>
+	<table class="g_box">
+		<tr>
+			<td class="g_box_head" width="55px">
+				Filters
+			</td>
+			<td>
+				ID:&nbsp;
+					<input class="filterFormField" type="number" name="idFirst" id="filter_id_first" value="{ID_FIRST}">
+				TO:&nbsp;
+					<input class="filterFormField" type="number" name="idLast"  id="filter_id_last" value="{ID_LAST}">
+				Name:&nbsp;
+					<input class="filterFormField" type="text" name="nameSearch" id="filter_name_search" value="{NAME_SEARCH}">	
+					&nbsp;
+					<input type="submit" class="button filterFormButton" value="update">
+			</td>
+		</tr>
+	</table>
+</form>
+
+{PAGINATION}
+<div id="adminList" class="box-shadow">
+	<table class="big_table" frame="box" rules="all">
+		<thead>
+			<tr>
+				<th>Name</th>
+				<th>Short description</th>
+				<th style="text-align: center;" width="50px;">Status</th>
+				<th style="text-align: center;" width="230px">Action</th>
+			</tr>
+		</thead>
+		<tbody>
+		<!-- BEGIN list -->
+			<tr class="row{ROW}">
+				<td><a href="{SITE_URL}/admin/article/update/id/{ID}">{TITLE}</a></td>
+				<td>{SHORT_TEXT}</td>	
+				<td style="vertical-align: middle;">
+					 <a style="cursor: pointer;" title="Activate / Inactivate" class="{ACTIVE_IMG}_state activeButton"
+					 	id="row_{ID}" data-id="{ID}" data-active="{ISACTIVE}">&nbsp;</a>
+				</td>			
+				<td>
+					<table  class="action_table">
+						<tr>
+							<td width="25%"><a href="{SITE_URL}/admin/article/update/id/{ID}/" title="Edit/Update" class="edit_state">Edit</a></td>
+							<td width="25%"><a href="{SITE_URL}/admin/article/delete/id/{ID}/" title="Delete" class="delete_state">Delete</a></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		<!-- END list -->
+		</tbody>
+	</table>
+</div>

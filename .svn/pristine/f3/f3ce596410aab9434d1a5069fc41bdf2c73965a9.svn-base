@@ -1,0 +1,2057 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php Open Software License (OSL 3.0)
+ * @version    $Id: User.php 981 2015-06-11 13:51:41Z gabi $
+ */
+
+/**
+ * User Model
+ * Here are all the actions related to the user
+ * @category   DotKernel
+ * @package    Frontend
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class User extends Dot_Model_User
+{
+	
+	private $_userAgent;
+	private $_httpReferer;
+	private $surveyTable = 'survey';
+	private $registrationSurvey = '100';
+	private $registration3Survey = '102';
+	private $registrationStep2OrphanSurvey = '103';
+	private $session;
+	
+	/**
+	 * Unset data from Step 1 Register,
+	 * so if we go on step 1, then don't follow the step 2,
+	 * we can still go on step 1 and choose again the register option we want
+	 */
+	
+	public function unsetDataFromStep1Registration()
+	{
+		unset($this->session->socialNetwork);
+		unset($this->session->email);
+		unset($this->session->step1Done);
+	}
+	
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct($userAgent = null, $httpReferer=null)
+	{
+		parent::__construct();
+		// if no userAgent is given on function call mark it as empty - if the userAgent is empty keep it empty
+		// if the userAgent stays empty it can be used for robot detecting or devices with blank UA (usually bots)
+		// HTTP Reffer is optional so mark it empty if there is no HTTP Reffer
+		$this->_userAgent = (!is_null($userAgent)) ? $userAgent : '';
+		$this->_httpReferer = (!is_null($httpReferer)) ? $httpReferer : '';
+		$this->session = Zend_Registry::get('session');
+	}
+
+	/**
+	 * Get user info
+	 * @access public
+	 * @param int $id
+	 * @return array
+	 */
+	public function getUserInfo($id)
+	{
+		$select = $this->db->select()
+						->from('userData')
+						->where('id = ?', $id);
+		return $this->db->fetchRow($select);
+	}
+
+	/**
+	 * Register logins data
+	 * @access public
+	 * @param array $data
+	 * @return void
+	 */
+	public function registerLogin($data)
+	{
+		$this->db->insert('userLogin', $data);
+	}
+
+	/**
+	 * Send a link to reset the  password to user's email
+	 * @access public
+	 * @param string $email
+	 * @return void
+	 */
+	public function forgotPassword($email)
+	{
+		$session = Zend_Registry::get('session');
+		$seo = Zend_Registry::get('seo');
+		$value = $this->getUserBy('email', $email);
+
+		if(!empty($value))
+		{
+			$dotEmail = new Dot_Email();
+			$dotEmail->addTo($email);
+			$subject = str_replace('%SITENAME%', $seo->siteName, $this->option->forgotPassword->subject);
+			$dotEmail->setSubject($subject);
+			$userToken = Dot_Auth::generateUserToken($value['password']);
+			
+			$msg = str_replace(array('%FIRSTNAME%', '%SITE_URL%', '%USERID%', '%TOKEN%'), 
+													array($value['firstName'], $this->config->website->params->url, $value['id'], $userToken), 
+													$this->option->forgotPassword->message);
+			$dotEmail->setBodyText($msg);
+			$succeed = $dotEmail->send();
+			if($succeed)
+			{
+				$session->message['txt'] = $this->option->errorMessage->emailSent . $email;
+				$session->message['type'] = 'info';
+			}
+			else
+			{
+				$session->message['txt'] = $this->option->errorMessage->emailNotSent . $email;
+				$session->message['type'] = 'error';
+			}
+		}
+		else
+		{
+			$session->message['txt'] = $email . $this->option->errorMessage->emailNotFound;
+			$session->message['type'] = 'error';
+		}
+	}
+
+	/**
+	 * Authorize user login
+	 * @access public
+	 * @param array $validData
+	 * @return void
+	 */
+	public function authorizeLogin($validData)
+	{
+		$session = Zend_Registry::get('session');
+		unset($session->userData);
+		// login info are VALID, we can see if is a valid user now 
+		$dotAuth = Dot_Auth::getInstance();
+		$validAuth = $dotAuth->process('userData', $validData);
+		if($validAuth)
+		{
+			//prepare data for register the login
+			$dotGeoip = new Dot_Geoip();
+			$userIp = Dot_Kernel::getUserIp();
+			$userCountry = $dotGeoip->getCountryByIp($userIp);
+			$dataLogin = array( 'ip' => $userIp, 
+								'userId' => $session->userData->id, 
+								'referer' => $this->_httpReferer,
+								'userAgent' => $this->_userAgent,
+								'country' => $userCountry[1]
+								);
+			$this->registerLogin($dataLogin);
+			$link = isset($session->wantUrl) ? $session->wantUrl : $this->config->website->params->url.'/worker/dashboard';
+			header('location: '.$link);
+			exit;
+		}
+		else
+		{
+			$session->message['txt'] = $this->option->errorMessage->login;
+			$session->message['type'] = 'error';
+		}
+	}
+	
+	/**
+	 * Check if email exists in userDataStep1 (step 1 userData table)
+	 * @param string $email
+	 * @return array
+	 */
+	
+	private function checkIfStepOneEmailExists($email)
+	{
+		$select = $this->db->select()
+						->from('userDataStep1')
+						->where('email =?', $email);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Save in database email for Step 1 Registration
+	 * @param array $data
+	 */
+	
+	public function saveStepOneRegister($data)
+	{
+		$emailCheck = $this->checkIfStepOneEmailExists($data['email']);
+		if ($emailCheck == false)
+		{
+			$data['ip'] = $_SERVER['REMOTE_ADDR'];
+			$this->db->insert('userDataStep1', $data);
+			$id=$this->db->lastInsertId('userDataStep1');
+			
+			return $id;
+		}
+		else 
+		{
+			return false;
+		}
+	}
+	
+	/**
+	 * Go For Wistia Flow
+	 */
+	
+	public function goForWistiaFlow($email)
+	{
+		if (isset($this->session->wistiaFlow))
+		{
+			$this->addDataToSecondDatabase($email);
+		}
+	}
+	
+	/**
+	 * Appeal functions which get registration survey details and registration survey fields for display
+	 * @return array
+	 */
+	
+	public function getDataForRegistrationSurvey()
+	{
+		$data=array();
+		$data['survey'] = $this->getSurveyDetails();
+		$data['surveyFields'] = $this->getRegSurveyForMissingData();
+
+		return $data;
+	}
+	
+	/**
+	 * Set reg survey
+	 */
+	
+	public function setRegSurvey()
+	{
+		$posibleClone = substr($this->session->category, -3);
+		if ($posibleClone == "_1b" || $posibleClone == "_1c" || $posibleClone == "_1d" || $posibleClone == "_1e")
+		{
+			$target = substr($this->session->category, 0 ,strlen($this->session->category) - 3);
+		}
+		else
+		{
+			$target = $this->session->category;
+		}
+		if(!in_array($target, $this->possibleCategories()))
+		{
+			$this->registrationSurvey = '103';
+		}
+		if (isset($this->session->wistiaFlow))
+		{
+			$this->registrationSurvey = '104';
+		}
+	}
+	
+	/**
+	 * Get Registration survey data (data about survey, ID, instruction) for display
+	 * @return array
+	 */
+	
+	private function getSurveyDetails()
+	{
+		$this->setRegSurvey();
+
+		$select = $this->db->select()
+					->from($this->surveyTable, array('id' => 'id', 'name' => 'name', 'instruction' => 'instruction'))
+					->where('id =?', $this->registrationSurvey);
+		
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Return all survey fields to display (only their names) (fields that user has to complete on registration) 
+	 * @return array
+	 */
+	
+	public function getAllSurveyFieldsToDisplay($surveyData)
+	{
+		$data = array();
+		foreach ($surveyData as $field)
+		{
+			array_push($data, $field['name']);
+		}
+		
+		return $data;
+	}
+	
+	/**
+	 * Return all survey fields for registration survey
+	 * @return array
+	 */
+	
+	private function getRegSurveyForMissingData()
+	{
+		$select = $this->db->select()
+		->from($this->surveyTable, array())
+		->where('survey.id = ' . $this->registrationSurvey)
+		->joinLeft('surveyField', 'survey.id = surveyField.formId', array('id', 'formId', 'inputType', 'name', 'question', 'value'))
+		->joinLeft('surveyFieldType', 'surveyField.inputType = surveyFieldType.id', array('inputType'=>'surveyFieldType.type'));
+		$result = $this->db->fetchAll($select);
+
+		foreach ($result as $key=>$value)
+		{
+			$result[$value['name']] = $result[$key];
+			unset($result[$key]);
+		}
+
+		return $result;
+	}
+	
+	/**
+	 * Set data for user (data for userData table)
+	 * @param array $validatedData
+	 * @return array
+	 */
+	
+	public function setAddUserData($validatedData)
+	{
+		$userIp = Dot_Kernel::getUserIp();
+		$data = $validatedData;
+		$data['password']='';
+		$data['ip'] = $userIp;
+		//set platform number '2' -> user registered from MicroRecruiting
+		$data['platform'] = '2';
+		$data['registerType'] = $this->setRegisterType();
+		
+		return $data;
+	}
+	
+	/**
+	 * Set / Return registration type
+	 * email 	=> '0'
+	 * facebook => '1'
+	 * linkedin	=> '2'
+	 * @return string
+	 */
+	
+	private function setRegisterType()
+	{
+		if (isset($this->session->socialNetwork))
+		{
+			if ($this->session->socialNetwork == 'facebook')
+			{
+				return '1';
+			}
+			elseif ($this->session->socialNetwork == 'linkedin')
+			{
+				return '2';
+			}
+		}
+		else 
+		{
+			return '0';
+		}
+	}
+	
+	/**
+	 * Add userId and facebookId for the same user
+	 * @access public
+	 * @param array $data
+	 * @return int
+	 */
+	public function addUserIds($data)
+	{
+		$this->db->insert('userSocialAccounts',$data);
+	}
+	
+	/**
+	 * Appeal functions to save survey data
+	 * @param array $values
+	 * @param string $surveyId
+	 * @param string $userId
+	 */
+	
+	public function saveSurveyData($values, $surveyId, $userId)
+	{
+		if(isset($values['phoneNumber']))
+		{
+			// get rid of the characters that we don't need for the number of digits
+			$phoneNumberDigits = str_replace(array('-','+','(',')'), '', $values['phoneNumber']);
+			
+			// find out the number of digits from the phone Number
+			$phoneLength = strlen($phoneNumberDigits);
+
+			// add the Country Code "1" to the existing phone number if the number of digits is 10
+			if($phoneLength == 10)
+			{
+				$newPhoneNumber = '1'.$values['phoneNumber'];
+				$values['phoneNumber'] = $newPhoneNumber;
+			}
+		}
+
+		$this->saveUserSurvey($values, $surveyId, $userId);
+		$this->logSurveyAnswer($surveyId, $userId);
+	}
+	
+	/**
+	 * Save user survey answer in surveyAnsweres table (survey fields answers)
+	 * @param array $data
+	 * @param string $surveyId
+	 * @param string $userId
+	 */
+	
+	public function saveUserSurvey($data, $surveyId, $userId)
+	{
+
+		$unsetValues = array('email', 'password', 'password2');
+		foreach ($unsetValues as $val)
+		{
+			if (isset($data[$val]))
+			{
+				unset($data[$val]);
+			}
+		}
+		
+		$fieldsIds = $this->getRegistrationSurveyFieldsIdsAndNames();
+		foreach ($data as $fieldName => $valueAnswered)
+		{
+			if (is_array($valueAnswered))
+			{
+				foreach ($valueAnswered as $checkedBox)
+				{
+					$answer = array('surveyId' 		=> $surveyId,
+									'surveyFieldId' => $fieldsIds[$fieldName],
+									'userId'		=> $userId,
+									'answer'		=> $checkedBox
+					);
+					$this->db->insert('surveyAnswers', $answer);
+				}
+			}
+			else 
+			{
+				$answer = array('surveyId' 		=> $surveyId,
+								'surveyFieldId' => $fieldsIds[$fieldName],
+								'userId'		=> $userId,
+								'answer'		=> $valueAnswered
+				);
+				$this->db->insert('surveyAnswers', $answer);
+			}
+			
+		}
+	}
+	
+	/**
+	 * Save user survey answer in surveyAnswered table (survey id -> registration survey)
+	 * @param array $data
+	 * @param string $surveyId
+	 * @param string $userId
+	 */
+	
+	public function logSurveyAnswer($surveyId,$userId)
+	{
+		$data = array('surveyId'=>$surveyId,'userId'=>$userId);
+		$this->db->insert('surveyAnswered',$data);
+	}
+	
+	/**
+	 * Get survey fields ids and names for registration survey
+	 * @return array (with this format: array([surveyFieldName] => [surveyFieldId]) ... "surveyFieldName" as key and "surveyFieldId" as value
+	 */
+	
+	private function getRegistrationSurveyFieldsIdsAndNames()
+	{
+		$this->setRegSurvey();
+		
+		$select = $this->db->select()
+					->from('surveyField', array('id', 'name'))
+					->where('formId =?', $this->registrationSurvey);
+
+		$result = $this->db->fetchAll($select);
+		
+		foreach ($result as $value)
+		{
+			$data[$value['name']] = $value['id'];
+		}
+		
+		return $data;
+	}
+	
+	/**
+	 * Set worker data (data for worker table)
+	 * @param string $userId
+	 * @param string $socialNetwork
+	 * @param string $userSocialNetworkId
+	 * @param array $post
+	 * @return array
+	 */
+	
+	public function setWorkerData($userId, $socialNetwork, $userSocialNetworkId, $post)
+	{
+		$session = Zend_Registry::get('session');
+		if (isset($session->socialNetwork))
+		{
+			//set first name and last name from social networks
+			$workerData = $this->getWorkerDataFromSocial($socialNetwork, $userSocialNetworkId);
+		}
+		else
+		{
+			$workerData = array('firstName' => $post['firstName'],
+								'lastName'  => $post['lastName']);
+		}
+		
+		$workerData['workerId'] = $userId;
+		$workerData['address1'] = $post['country'];
+		$zipcodeData = $this->getCityAndStateFromZipcode($post['zipcode']);
+		if ($zipcodeData != false)
+		{
+			$workerData = array_merge($workerData, $zipcodeData);
+		}
+		$workerData['zipCode'] = $post['zipcode'];
+		return $workerData;
+	}
+	
+	/**
+	 * Get city and state data from zipcode table based on zipcode
+	 * @param string $zipcode
+	 */
+	
+	private function getCityAndStateFromZipcode($zipcode)
+	{
+		$select = $this->db->select()
+					->from('zipCodeList', array('state', 'city'))
+					->where('zipCode =?', $zipcode);
+		
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Get data for worker from social networks
+	 * for facebook: firstName and lastName
+	 * return array
+	 */
+	
+	private function getWorkerDataFromSocial($socialNetwork, $userSocialNetworkId)
+	{
+		$select = $this->db->select()
+					->from($socialNetwork, array('firstName', 'lastName'))
+					->where($socialNetwork . 'Id =?', $userSocialNetworkId);
+		
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Add worker to database
+	 * @param array $data
+	 */
+	
+	public function addWorker($data)
+	{
+		$this->db->insert('worker', $data);
+	}
+
+	/**
+	 * insert SubSubIdUrl Tracking As UserId Zero any time someone using an url that contains subSubIds comes to the website
+	 * @param string 
+	 */
+	public function insertSubSubIdUrlTrackingAsUserIdZero()
+	{
+		if(isset($this->session->subId))
+		{
+			if(isset($this->session->subSubId))
+				{
+					$subSubIds = $this->session->subSubId;
+					$subSubIdData = $this->_getSubIdData($subSubIds);
+				}
+
+				if(isset($this->session->subSubId))
+				{		
+					foreach ($subSubIds as $key => $value) 
+					{
+						if(array_key_exists($key, $subSubIdData))
+						{
+							$subSubIdNumber = $subSubIdData[$key];					
+						}
+
+						$subSubIdDataToBeAdded = array ('userId' => 0,
+														'visitId' => $this->session->visitorId,
+														'uniqueId' => $this->session->subId,
+														'subSubId' => $subSubIdNumber,
+														'step' => 0,
+														'platformId' => 2
+														);						
+						$this->db->insert('subSubIdUrlTracking', $subSubIdDataToBeAdded);
+					}
+				}		
+		}
+	}
+
+	/**
+	 * Set and save step one register
+	 * @param string $email
+	 */
+	
+	public function setAndSaveStepOneRegister($email)
+	{
+		$stepOneData = array('email' => $email,
+							'platform' => '2'
+							);
+		$stepOneData['registerType'] = $this->setRegisterType();
+		$id=$this->saveStepOneRegister($stepOneData);
+		if(isset($this->session->affiliateData))
+		{
+			$data=$this->session->affiliateData;
+			$dataToBeAdded = array( 'email' => $email, 
+									'affiliateId' => $data['id'],
+									'subId' => $this->session->affiliateTrackingSubId
+									);
+			$this->db->insert('microRecruitingAffiliateTracking', $dataToBeAdded);
+		}
+
+		if(isset($this->session->subId))
+		{
+			if(isset($this->session->subSubId))
+				{
+					$subSubIds = $this->session->subSubId;
+					$subSubIdData = $this->_getSubIdData($subSubIds);
+				}
+
+			if ($id != false)
+			{
+				$dataToBeAdded = array( 'subId' => $this->session->subId,
+										'userId' => $id,
+										'visitorId' => $this->session->visitorId
+										);
+				$this->db->insert('microRecruitingSubIdTrackingStep1', $dataToBeAdded);
+
+				if(isset($this->session->subSubId))
+				{		
+						$subSubIdDataToBeUpDated = array ('userId' => $id ,
+														'step' => 1,
+														);	
+						$userVisitData = 0;
+						$where = array('userId ='.$userVisitData,'visitId ='.$this->session->visitorId,'step ='.$userVisitData);
+						$this->db->update('subSubIdUrlTracking',$subSubIdDataToBeUpDated,$where);
+				}		
+			}
+		}
+	}
+
+	/**
+	*	Get the Id for each SubSubId
+	*	
+	*	@param $subSubIdNameAnd Value - the name of the SubSubId
+	* 	@return array
+	* 	@author Nicu
+	*/
+	private function _getSubIdData($subSubIds)
+	{
+		$subIdsData = array();
+		foreach ($subSubIds  as $key => $value) 
+		{
+			$key = strtolower($key);
+			//verify if we have the same data stored, if not insert it , oterwise just get the Id for that variable
+			$verifySubSubIdVariableAndValue = $this->_verifySubSubIdVariableAndValue($key,$value);
+
+			if($verifySubSubIdVariableAndValue == False)
+			{
+				$subSubIdDataToBeAdded = array('subSubIdName' => $key,
+										'subSubIdValue' => $value
+										);	
+				$this->db->insert('subSubId', $subSubIdDataToBeAdded);
+				$subIdsData[$key] = $this->db->lastInsertId('subSubId');
+			}
+			else
+			{	
+				$subIdsData[$key] = $verifySubSubIdVariableAndValue;
+			}
+
+		}
+		return $subIdsData;
+	}
+
+
+	/**
+	*	Get the Id for each SubSubId if they already exist in our DB
+	*	
+	*	@param $variable - the name of the SubSubId
+	*	@param $value - the value of the subSubId
+	* 	@return array
+	* 	@author Nicu
+	*/
+	private function _verifySubSubIdVariableAndValue($variable,$value)
+	{
+		$select = $this->db->select()
+							->from('subSubId','id')
+							->where('subSubIdName =?', $variable)
+							->where('subSubIdValue =?', $value);
+		$result = $this->db->fetchOne($select);
+
+		return $result;
+	}
+
+	/**
+	 * 	Get data from each person that visits a certain page
+	 * 
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function addActionTracking($city,$category,$userId)
+	{
+		$session = Zend_Registry::get('session');
+			//prepare data for register the login
+			$dotGeoip = new Dot_Geoip();
+			$userIp = Dot_Kernel::getUserIp();
+			$userCountry = $dotGeoip->getCountryByIp($userIp);
+			$trackingData = array( 'ip' => $userIp, 
+								'userId' => $userId, 
+								'city' => $city,
+								'category' => $category,
+								'userAgent' => $this->_userAgent,
+								'country' => $userCountry[1]
+								);
+
+
+		$this->db->insert('microRecruitingActionTracking', $trackingData);
+	}
+
+	public function getCategoriesQuestions($category, $platformId = "2")
+	{
+		$select=$this->db->select()
+							->from(array('mrcq'=>'microRecruitingCategoryQuestion'),array())
+							->join(array('sf'=>'surveyField'),'mrcq.questionId=sf.id',array('name'))
+							->join(array('mrc'=>'microRecruitingCategory'),'mrc.id=mrcq.categoryId' ,'mrc.categoryName')
+							->where('platformId =?',$platformId);
+							$result=$this->db->fetchAll($select);
+							$result=$this->returnUsersIdsAsKey($result);
+
+		foreach ($result as $questionName => $questionCategory) {
+			if ($questionCategory['categoryName'] == $category) {
+				unset($result[$questionName]);
+			}
+		}
+
+		$questionNames = array();
+
+		foreach ($result as $questionName => $questionCategory) {
+			array_push($questionNames, $questionName);
+		}
+		return  $questionNames;
+	}
+
+
+		private function returnUsersIdsAsKey($usersArray) 
+		{ 
+			$newData = array(); 
+			foreach ($usersArray as $key => $user) 
+			{ 
+				$newData[$user['name']] = $user; 
+				unset($newData[$user['name']]['name']); 
+			} 
+
+			return $newData; 
+		}
+
+		public function unsetQuestions($fieldsData, $questionsNames)
+		{
+			foreach ($questionsNames as $question)
+			{
+				unset($fieldsData['surveyFields'][$question]);
+			}
+
+			return $fieldsData;
+		}
+
+	public function getCategoryQuestions($category, $platformId = '2')
+	{
+		if ($this->registrationSurvey == '104')
+		{
+			$select = $this->db->select()
+							->from(array('sf' => 'surveyField'), array('name'))
+							->where('formId =?', $this->registrationSurvey)
+							->where('name !=?', 'country');
+		}
+		else 
+		{
+			$select=$this->db->select()
+							->from(array('mrcq'=>'microRecruitingCategoryQuestion'),array())
+							->join(array('sf'=>'surveyField'),'mrcq.questionId=sf.id',array('name'))
+							->join(array('mrc'=>'microRecruitingCategory'),'mrc.id=mrcq.categoryId' ,'mrc.categoryName')
+							->where('platformId =?',$platformId)
+							->where('mrc.categoryName =?', $category);
+		}
+		
+		$result=$this->db->fetchAll($select);
+		$questions = array();
+		foreach ($result as $key => $data) {
+			array_push($questions, $data['name']);
+		}
+
+		return $questions;
+	}
+
+	public function verifyEmailUserData($email)
+	{
+		$select=$this->db->select()
+						->from('userData')
+						->where('userData.email =?',$email);
+		$result=$this->db->fetchRow($select);
+
+		if(isset($result['email']))
+		{
+			return $result;
+		}
+		else
+		{
+			return FALSE;
+		}
+	}
+
+	/**
+	*	get the userId fron step 1 to use for the SubSubIdTracking before we delete the step1 tracking and add it to step2 
+	*	because userId from step1 is different from userId from step2
+	*	@author Nicu
+	*	@param email - the user email
+	* 	@return array 
+	*/
+	public function getUserIdStep1($email)
+	{
+		$select=$this->db->select()
+						->from('userDataStep1')
+						->where('userDataStep1.email =?',$email);
+		$result=$this->db->fetchRow($select);
+
+		if(isset($result['email']))
+		{
+			return $result;
+		}
+		else
+		{
+			return FALSE;
+		}
+
+	}
+	
+	public function verifyUserAnsweredOrphanSurvey($userId)
+	{	
+		//$surveyIds = array('103', '104')
+		$select=$this->db->select()
+					->from('surveyAnswered')
+					->where('surveyAnswered.userId =?',$userId)
+					->where('surveyAnswered.surveyId =?', $this->registrationSurvey);
+		
+		$result=$this->db->fetchRow($select);
+		return $result;
+	}
+	
+	public function verifyUserAnsweredSurvey($userId)
+	{
+		$reg2surveys = array('100', '103', '104');
+		
+		if(($key = array_search($this->registrationSurvey, $reg2surveys)) !== false) {
+			unset($reg2surveys[$key]);
+		}
+		
+		$select=$this->db->select()
+						->from('surveyAnswered')
+						->where('surveyAnswered.userId =?',$userId)
+						->where('surveyAnswered.surveyId IN (?)', $this->registrationSurvey);
+		
+		$result=$this->db->fetchRow($select);
+
+		if($result == FALSE)
+		{
+			$select=$this->db->select()
+			->from('surveyAnswered')
+			->where('surveyAnswered.userId =?',$userId)
+			->where('surveyAnswered.surveyId IN (?)', $reg2surveys);
+			
+			$result=$this->db->fetchRow($select);
+
+			return $result;
+		}
+		
+	 	return $result;
+	}
+	
+	public function verifyUserAnsweredSurveyStep3($userId)
+	{
+		$select=$this->db->select()
+		->from('surveyAnswered')
+		->where('surveyAnswered.userId =?',$userId)
+		->where('surveyAnswered.surveyId =?', $this->registration3Survey);
+	
+		$result=$this->db->fetchRow($select);
+		 
+		return $result;
+	}
+
+	/**
+	 * 	Verify which categories have been answered to by the user
+	 * 	Show him only the ones he has not answered yet
+	 *  @param $userId
+	 *	@param $category
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function verifyUserAnsweredCategory($userId,$category)
+	{
+		$select=$this->db->select()
+						->from(array('mca'=>'microRecruitingCategoryAnswered'))
+						->where('mca.userId =?',$userId)
+						->where('mca.category =?', $category);
+		$result=$this->db->fetchRow($select);
+		return $result;
+	}
+
+	/**
+	 * 	Get only the question from the DB and save them all into one array
+	 * 	
+	 *	@param $categoryName
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function getOnlyOneCategoryQuestions($categoryName)
+	{
+		$select=$this->db->select()
+						->from(array('mrc'=>'microRecruitingCategory'),'')
+						->join(array('mrcq'=>'microRecruitingCategoryQuestion'),'mrcq.categoryId = mrc.id','')
+						->join(array('svf'=>'surveyField'),'svf.id = mrcq.questionId','name')
+						->where('mrc.categoryName=?',$categoryName);
+		               // ->order('svf.name ASC');
+		$result=$this->db->fetchAll($select);
+
+		$categoryQuestionNames=array();
+
+		foreach ($result as $key => $arrayName) 
+		{
+			array_push($categoryQuestionNames, $arrayName['name']);
+		}
+
+		return $categoryQuestionNames;
+	}
+
+	/**
+	 * 	Get the answers for each question
+	 * 	
+	 *	@param $categoryName
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function getOnlyOneCategoryQuestionsData($categoryName)
+	{
+		$this->setRegSurvey();
+		
+		$select=$this->db->select()
+						->from(array('mrc'=>'microRecruitingCategory'),'')
+						->join(array('mrcq'=>'microRecruitingCategoryQuestion'),'mrcq.categoryId = mrc.id','')
+						->join(array('svf'=>'surveyField'),'svf.id = mrcq.questionId',array('name', 'svf.formId'))
+						->where('mrc.categoryName=?',$categoryName)
+						->where('svf.formId=?', $this->registrationSurvey)
+						->order('svf.name ASC');
+		$result=$this->db->fetchAll($select);
+		return $result;
+	}
+
+	/**
+	 * 	Insert the answeres , the user gaved into the DB
+	 * 	
+	 *	@param $answeredData
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function addCategoryAnswered($answeredData)
+	{
+		$this->db->insert('microRecruitingCategoryAnswered', $answeredData);
+	}
+
+
+
+	/**
+	 * 	Get the subId from the Url for future tracking
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function setAndSaveMicroRecruitingSubIdTrackingStep2($userId)
+	{	
+		$microrecruiting = 2;
+			$dataToBeAdded = array( 'subId' => $this->session->subId, 
+								'userId' => $userId,
+								'visitorId' => $this->session->visitorId
+								);
+
+			$this->db->insert('microRecruitingSubIdTrackingStep2', $dataToBeAdded);
+			$this->db->delete('microRecruitingSubIdTrackingStep1', 'userId = '.$this->session->step1UserId['id']);
+			
+			$userDataTrackedInStep1 = $this->_getuserDataTrackedInPreviousStep($this->session->step1UserId['id']);
+
+			if(isset($this->session->subSubId))
+			{
+					$subSubIds = $this->session->subSubId;
+					$subSubIdData = $this->_getSubIdData($subSubIds);
+
+				foreach ($subSubIds as $key => $value) 
+					{
+						if(array_key_exists($key, $subSubIdData))
+						{
+							$subSubIdNumber = $subSubIdData[$key];					
+						}
+
+						$subSubIdDataToBeAdded = array ('userId' => $userId ,
+														'visitId' => $this->session->visitorId,
+														'uniqueId' => $this->session->subId,
+														'subSubId' => $subSubIdNumber,
+														'step' => 2,
+														'platformId' => 2
+														);						
+						$this->db->insert('subSubIdUrlTracking', $subSubIdDataToBeAdded);
+					}
+
+					$dataToBeUpdated = array ('userId' => $userId ,
+														'step' => 2
+														);
+
+				foreach ($userDataTrackedInStep1 as $key => $value)
+				{
+						$where = array('userId ='.$value['userId'],'step ='.$value['step']);
+						$this->db->update('subSubIdUrlTracking',$dataToBeUpdated,$where);
+				}
+			}
+	}
+
+
+	private function _getuserDataTrackedInPreviousStep($userId)
+	{
+		$select = $this->db->select()
+						->from('subSubIdUrlTracking')
+						->where('subSubIdUrlTracking.userId =?', $userId);
+		$result = $this->db->fetchAll($select);
+
+		return $result;
+	}
+
+
+	/**
+	 * 	Get data from each person that visits a certain page
+	 * 
+	 * 	@return array
+	 *  @author Nicu
+	 */
+	public function trackPeopleVisits()
+	{
+			//prepare data for register the login
+			$dotGeoip = new Dot_Geoip();
+			$userIp = Dot_Kernel::getUserIp();
+			
+			if(isset($_POST['referer'])) 
+			{
+			  $l_sReferer = trim($_POST['referer']);
+			} 
+			elseif (isset($_SERVER['HTTP_REFERER'])) 
+			{
+			  $l_sReferer = $_SERVER['HTTP_REFERER'];
+			} 
+			else 
+			{
+			  $l_sReferer = "";
+			}
+			
+			$userCountry = $dotGeoip->getCountryByIp($userIp);
+			$trackingData = array( 'ip' => $userIp, 
+								'userAgent' => $_SERVER['HTTP_USER_AGENT'],
+								'country' => $userCountry[1],
+								'subId' => $this->session->subId,
+								'referer' => $l_sReferer
+								);
+
+			if($trackingData['userAgent']==NULL)
+			{
+				$trackingData['userAgent'] = '';
+			}
+
+		$this->db->insert('microRecruitingVisits', $trackingData);
+		$id=$this->db->lastInsertId('microRecruitingVisits');
+		$this->session->visitorId = $id;
+	}
+
+	public function urlSubIdIsGenuine($subId)
+	{
+		if(!is_numeric($subId))
+		{
+			return False;
+		}
+
+		$select = $this->db->select()
+						->from('microRecruitingJob')
+						->where('microRecruitingJob.id =?', $subId);
+		$result = $this->db->fetchOne($select);
+
+		return $result;
+	}
+	
+	public function getVhmPlatformId($subId)
+	{
+		$select = $this->db->select()
+						->from('microRecruitingJob', array('platformId'))
+						->where('platformId =?', '1')
+						->where('id =?', $subId);
+		
+		$result = $this->db->fetchOne($select);
+		
+		if ($result == false)
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
+	
+	/**
+	 * Check if selected category is orphan category
+	 * @param string $category
+	 * @return boolean
+	 */
+	
+	public function checkIfOrphanCategory($category)
+	{
+		$clonesArray = array('_1b', '_1c', '_1d', '_1e');
+		$checkClone = substr($this->session->category, -3);
+		if(in_array($checkClone, $clonesArray))
+		{
+			$category = str_replace($checkClone, '', $category);
+		}
+		
+		$select = $this->db->select()
+						->from('microRecruitingCategory', 'display')
+						->where('categoryName =?', $category);
+		
+		$result = $this->db->fetchOne($select);
+
+		if($result == 0)
+		{
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public function userHasAnsweredTheSurveyReg3($emailData)
+	{
+		$select=$this->db->select()
+		->from(array('ud'=>'userData'))
+		->joinLeft(array('sa'=>'surveyAnswered'),'sa.userId=ud.id')
+		->where('ud.email =?',$emailData)
+		->where('sa.surveyId =?', $this->registration3Survey);
+	
+		$result=$this->db->fetchRow($select);
+	
+		return $result;
+	}
+	
+	public function getQuestionListForStep3Registration()
+	{
+		$select = $this->db->select()
+		->from(array('svf'=>'surveyField'),array('svf.name','svf.formId'))
+		->where('svf.formId =?',$this->registration3Survey);
+		$result=$this->db->fetchAll($select);
+	
+		return $result;
+	}
+	
+	public function getUserIdForReg3($email)
+	{
+		$select = $this->db->select()
+		->from(array('ud'=>'userData'),'id')
+		->where('ud.email =?', $email);
+		$result = $this->db->fetchOne($select);
+	
+		return $result;
+	}
+	
+	/**
+	* 	Tracking Step3 data
+	*
+	*	@param userId
+	* 	@param subId (from the URL)
+	*	@author Nicu
+	*/
+	public function trackSubIdStep3SurveyDone($userId, $subId)
+	{
+		$dataToBeAdded = array( 'subId' => $subId,
+				'userId' => $userId,
+				'visitorId' => $this->session->visitorId
+		);
+		$this->db->insert('microRecruitingSubIdTrackingStep3', $dataToBeAdded);
+
+		$this->db->delete('microRecruitingSubIdTrackingStep2', 'userId ='.$userId);
+
+		$userDataTrackedInStep1 = $this->_getuserDataTrackedInPreviousStep($userId);
+
+
+		if(isset($this->session->subSubId))
+			{
+					$subSubIds = $this->session->subSubId;
+					$subSubIdData = $this->_getSubIdData($subSubIds);
+
+				foreach ($subSubIds as $key => $value) 
+					{
+						if(array_key_exists($key, $subSubIdData))
+						{
+							$subSubIdNumber = $subSubIdData[$key];					
+						}
+
+						$subSubIdDataToBeAdded = array ('userId' => $userId ,
+														'visitId' => $this->session->visitorId,
+														'uniqueId' => $this->session->subId,
+														'subSubId' => $subSubIdNumber,
+														'step' => 3,
+														'platformId' => 2
+														);						
+						$this->db->insert('subSubIdUrlTracking', $subSubIdDataToBeAdded);
+					}
+
+					$dataToBeUpdated = array ('step' => 2
+														);
+																		
+				foreach ($userDataTrackedInStep1 as $key => $value)
+				{
+						$where = array('userId ='.$value['userId'],'step ='.$value['step']);
+						$this->db->update('subSubIdUrlTracking',$dataToBeUpdated,$where);
+				}
+			}
+	}
+	
+	public function saveSurveyDataStep3($values, $surveyId, $userId)
+	{
+		$this->saveUserSurveyReg3($values, $surveyId, $userId);
+		$this->logSurveyAnswer($surveyId, $userId);
+	}
+	
+	public function saveUserSurveyReg3($data, $surveyId, $userId)
+	{
+	
+		$unsetValues = array('email', 'password', 'password2');
+		foreach ($unsetValues as $val)
+		{
+			if (isset($data[$val]))
+			{
+				unset($data[$val]);
+			}
+		}
+	
+		$fieldsIds = $this->getRegistrationSurveyFieldsIdsAndNamesForReg3();
+		foreach ($data as $fieldName => $valueAnswered)
+		{
+			if (is_array($valueAnswered))
+			{
+				foreach ($valueAnswered as $checkedBox)
+				{
+					$answer = array('surveyId' 		=> $surveyId,
+							'surveyFieldId' => $fieldsIds[$fieldName],
+							'userId'		=> $userId,
+							'answer'		=> $checkedBox
+					);
+					$this->db->insert('surveyAnswers', $answer);
+				}
+			}
+			else
+			{
+				$answer = array('surveyId' 		=> $surveyId,
+						'surveyFieldId' => $fieldsIds[$fieldName],
+						'userId'		=> $userId,
+						'answer'		=> $valueAnswered
+				);
+				$this->db->insert('surveyAnswers', $answer);
+			}
+				
+		}
+	}
+	
+	private function getRegistrationSurveyFieldsIdsAndNamesForReg3()
+	{
+		$select = $this->db->select()
+		->from('surveyField', array('id', 'name'))
+		->where('formId =?', $this->registration3Survey);
+	
+		$result = $this->db->fetchAll($select);
+	
+		foreach ($result as $value)
+		{
+			$data[$value['name']] = $value['id'];
+		}
+	
+		return $data;
+	}
+	
+	public function getDataForRegistrationSurveyForReg3()
+	{
+		$data=array();
+		$data['survey'] = $this->getSurveyDetailsForReg3();
+		$data['surveyFields'] = $this->getRegistration3QuestionSurvey();
+		return $data;
+	}
+	
+	private function getSurveyDetailsForReg3()
+	{
+		$select = $this->db->select()
+		->from('survey', array('id' => 'id', 'name' => 'name', 'instruction' => 'instruction'))
+		->where('id =?', $this->registration3Survey);
+	
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	public function getRegistration3QuestionSurvey()
+	{
+		$select=$this->db->select()
+		->from(array('sf'=>'surveyField'))
+		->join(array('sft'=>'surveyFieldType'),'sft.id=sf.inputType', array('inputType' => 'type'))
+		->where('sf.formId =?', $this->registration3Survey);
+	
+		$result=$this->db->fetchAll($select);
+	
+		return $result;
+	}
+	
+	public function getAllSurveyFieldsToDisplayOnReg3($surveyData)
+	{
+		$data = array();
+		foreach ($surveyData as $field)
+		{
+			array_push($data, $field['name']);
+		}
+	
+		return $data;
+	}
+	
+	public function getUserZipCodeFOrUserAlreadyRegistered($email, $zipcodeId=array('156', '177', '301', '309', '711'))
+	{
+		if(!in_array($this->session->categoryData, $this->possibleCategories()))
+		{
+			$reg2surveys = array('103', '104', '100');
+			$zipcodeId[] = '650';
+		}
+		else 
+		{
+			$reg2surveys = array($this->registrationSurvey);
+		}
+		
+		$select = $this->db->select()
+		->from(array('sa'=>'surveyAnswers'), array('sa.answer'))
+		->join(array('ud'=>'userData'),'ud.id=sa.userId')
+		->where('sa.surveyFieldId IN (?)', $zipcodeId)
+		->where('ud.email =?', $email)
+		->where('sa.surveyId IN (?)', $reg2surveys);
+		
+		$result=$this->db->fetchOne($select);
+		return $result;
+	}
+	
+	public function getCoordinatesByZipCode($zipCode)
+	{
+		$select = $this->db->select()
+						->from('zipcode', array('zipCode','Latitude', 'Longitude'))
+						->where('zipCode =?', $zipCode);
+	
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	public function calculateDistance($locations, $zipCodeCoordinates)
+	{
+		$distances = array();
+		foreach ($locations as $city => $coordinates)
+		{
+			$theta = $coordinates['long'] - $zipCodeCoordinates['Longitude'];
+			$dist = sin(deg2rad($coordinates['lat'])) * sin(deg2rad($zipCodeCoordinates['Latitude'])) +  cos(deg2rad($coordinates['lat'])) * cos(deg2rad($zipCodeCoordinates['Latitude'])) * cos(deg2rad($theta));
+			$dist = acos($dist);
+			$dist = rad2deg($dist);
+			$miles = $dist * 60 * 1.1515;
+				
+			$distances[$city] = $miles;
+		}
+		return $distances;
+	}
+	
+	public function setAndSaveMicroRecruitingSubIdTrackingRedirect($userId,$number,$redirect= 'NULL')
+	{
+		$userIp = Dot_Kernel::getUserIp();
+		$data = array('userId' => $userId,
+				'subId' => $number,
+				'urlRedirect' => $redirect,
+				'ip' => $userIp);
+	
+		$this->db->insert('microRecruitingSubIdTrackingRedirect', $data);
+	}
+	
+	public function randomRedirect($city, $display='1')
+	{
+		$select=$this->db->select('url')
+		->from(array('cwr'=>'microRecruitingRedirect'))
+		->where('cwr.city =?',$city)
+		->where('cwr.display =?', $display);
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	public function possibleCategories($display = '1')
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCategory', 'categoryName')
+		->where('microRecruitingCategory.display=?', $display);
+		$category = $this->db->fetchAll($select);
+	
+		$categories = array();
+		foreach ($category as $value)
+		{
+			array_push($categories, $value['categoryName']);
+		}
+		return $categories;
+	}
+	
+	//add data into phpMelody database (add user on Microrecruiting registration)
+	public function addDataToSecondDatabase($email)
+	{
+		$this->session->urlVariable = $email;
+
+		$textToEncrypt = $email;
+		$encryptionMethod = 'AES-128-CBC';
+		$secretHash = "wistiaaaaaaflowkeyhasabercimasdn";
+		
+		$iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_256, MCRYPT_MODE_CBC);
+		$iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+		$encryptedMessage = openssl_encrypt($textToEncrypt, $encryptionMethod, $secretHash, 0, $iv);
+		
+		$textForUrl = $iv.$encryptedMessage;
+		$textForUrl = urlencode($textForUrl);
+
+		$this->session->urlVariable = $textForUrl;
+	}
+	
+	/**
+	 * Check if email exists in userData table
+	 * @param string $email
+	 * @return array
+	 */
+	
+	private function checkIfEmailExistsForWistiaFlow($email)
+	{
+		$select = $this->db->select()
+						->from('userData')
+						->where('email =?', $email);
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	public function trackSurveyFlow($userId, $subId, $flow)
+	{
+		$userIp = Dot_Kernel::getUserIp();
+		$data = array(	'userId'	=>	$userId,
+						'subId'		=>	$subId,
+						'ip'		=>	$userIp,
+						'flow'		=>	$flow
+		);
+		
+		$this->db->insert('microRecruitingFlowTrackingRedirect', $data);
+	}
+	
+	public function trackWistiaClick($userId, $subId, $flow, $applyAnswer)
+	{
+		$userIp = Dot_Kernel::getUserIp();
+		
+		$data = array(	'userId'	=>	$userId,
+						'subId'		=>	$subId,
+						'ip'		=>	$userIp,
+						'flow'		=>	$flow,
+						'redirect'	=>	$applyAnswer
+		);
+		$this->db->insert('microRecruitingTrackingRedirectWistia', $data);
+	}
+
+
+	/**
+	* Store the entire URL that was used to get to our website, no matter if it's a genuine one or not
+	* 
+	*/
+	public function storeSubIdLog()
+	{
+		$url = $_SERVER['HTTP_HOST'].$_SERVER["REQUEST_URI"];
+		$encodedUrl = urlencode($url);
+
+		$dotGeoip = new Dot_Geoip();
+		$userIp = Dot_Kernel::getUserIp();
+
+			if(isset($_POST['referer'])) 
+			{
+			  $l_sReferer = trim($_POST['referer']);
+			} 
+			elseif (isset($_SERVER['HTTP_REFERER'])) 
+			{
+			  $l_sReferer = $_SERVER['HTTP_REFERER'];
+			} 
+			else 
+			{
+			  $l_sReferer = "";
+			}
+			
+			$userCountry = $dotGeoip->getCountryByIp($userIp);
+			$trackingData = array( 'subIdUrl' => $encodedUrl,
+								'ip' => $userIp,
+								// 'visitorId' => $this->session->visitorId,
+								'userAgent' => $_SERVER['HTTP_USER_AGENT'],
+								'country' => $userCountry[1],
+								'referer' => $l_sReferer,
+								'platformId' => 2
+								);
+
+			if($trackingData['userAgent']==NULL)
+			{
+				$trackingData['userAgent'] = '';
+			}
+	
+		$this->db->insert('subSubIdLog', $trackingData);
+	}
+	
+	/**
+	 * Remove part of string that shows us that is a "cloned" category and return the category
+	 * @param string $urlCategory
+	 * @return string
+	 */
+	
+	public function returnCategoryName($urlCategory)
+	{
+		if (strpos($urlCategory, '_1b') !== false)
+		{
+			$urlCategory = str_replace("_1b", "", $urlCategory);
+		}
+		elseif (strpos($urlCategory, '_1c') !== false)
+		{
+			$urlCategory = str_replace("_1c", "", $urlCategory);
+		}
+		elseif (strpos($urlCategory, '_1e') !== false)
+		{
+			$urlCategory = str_replace("_1e", "", $urlCategory);
+		}
+		elseif (strpos($urlCategory, '_1g') !== false)
+		{
+			$urlCategory = str_replace("_1g", "", $urlCategory);
+		}
+		return $urlCategory;
+	}
+	
+	/**
+	 * Get videoCategory (category that will appear in url in video controller) for the requested category 
+	 * @param string $category
+	 * @return string
+	 */
+	
+	public function getVideoCategory($category)
+	{
+		$category = $this->returnCategoryName($category);
+		$select = $this->db->select()
+						->from('microRecruitingVideoCategory', array('videoCategory'))
+						->where('category =?', $category);
+		
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Delete not necessary questions if we already have the user data (first name, last name, phone number etc)
+	 * We are eliminating those fields and keep only the questions
+	 * @param array $displayFields
+	 * @return array
+	 */
+	
+	public function deleteNotNeededFieldsForWistiaFlow($displayFields)
+	{
+		$newFields = array();
+		
+		foreach ($displayFields as $field)
+		{
+			if (strpos($field, 'orphanWistiaFlow') !== false)
+			{
+				array_push($newFields, $field);
+			}
+		}
+		
+		return $newFields;
+	}
+	
+	/**
+	 * Get data for Boomtrain for social users who doesn't complete First Name and Last Name on register step 2 page
+	 * @param string $socialNetwork
+	 * @param string $email
+	 * @return array
+	 */
+	
+	public function getDataForSocialUser($socialNetwork, $email)
+	{
+		if ($socialNetwork == 'facebook')
+		{
+			$select = $this->db->select()
+						->from(array('u' => 'userData'), '')
+						->join(array('usa' => 'userSocialAccounts'), 'u.id=usa.userId', '')
+						->join(array('f' => 'facebook'), 'usa.facebookId=f.facebookId', array('firstName', 'lastName'))
+						->where('u.email =?', $email);
+		}
+		elseif ($socialNetwork == 'linkedin')
+		{
+			$select = $this->db->select()
+						->from(array('u' => 'userData'), '')
+						->join(array('usa' => 'userSocialAccounts'), 'u.id=usa.userId', '')
+						->join(array('l' => 'linkedin'), 'usa.linkedinId=l.email', array('firstName', 'lastName'))
+						->where('u.email =?', $email);
+		}
+		
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Get questions based on their names from the form (questions from surveyField table)
+	 * @param array $questionNames
+	 * @return array
+	 */
+	
+	public function getQuestionsBaseOnNames($questionNames)
+	{
+		$select = $this->db->select()
+					->from('surveyField', array('name', 'question'))
+					->where('name IN (?)', $questionNames);
+		
+		$result = $this->db->fetchAll($select);
+		
+		$data = array();
+		foreach ($result as $question)
+		{
+			$data[$question['name']] = $question['question'];
+		}
+		
+		return $data;
+	}
+	
+	/**
+	 * Get data for subId (unique ID)
+	 * @param int $subId
+	 * @return array
+	 */
+	
+	public function getSubIdData($subId)
+	{
+	    $select = $this->db->select()
+	                   ->from(array('mj' => 'microRecruitingJob'), '')
+	                   ->join(array('mcat' => 'microRecruitingCategory'), 'mj.categoryId=mcat.id', array('category' => 'categoryName'))
+	                   ->join(array('mc' => 'microRecruitingCities'), 'mj.cityId=mc.id', array('city' => 'name'))
+	                   ->joinLeft(array('mjp' => 'microRecruitingJobPlatform'), 'mj.platformId=mjp.id', array('platform' => 'name'))
+	                   ->where('mj.id=?', $subId);	                   
+	                   
+	    $result = $this->db->fetchRow($select);
+	    $result['uniqueId'] = $subId;
+
+	    return $result;
+	}
+	
+	/**
+	 * @param unknown $userId
+	 * @return Ambiguous
+	 */
+	public function checkIfUserIdExists($userId)
+	{
+	    $select = $this->db->select()
+                	    ->from('userData')
+                	    ->where('id =?', $userId);
+	    $result = $this->db->fetchRow($select);
+	
+	    return $result;
+	}
+	
+	/**
+	 * @param unknown $userId
+	 * @return Ambiguous
+	 */
+	public function checkIfSurveyAnswered($userId)
+	{
+	   $wistiaSurveyIds = $this->getWistiaSurveyIds();
+	   
+	   $select = $this->db->select()
+	   ->from('surveyAnswered', array('id','userId','surveyId' =>new Zend_Db_Expr('MAX(surveyId)'), 'date'))
+	   ->where('userId =?', $userId)
+	   ->where('surveyId IN (?)', $wistiaSurveyIds);
+	   
+	   $result = $this->db->fetchRow($select);
+	   
+	   return $result;
+	}
+	
+	/**
+	 * 
+	 */
+	private function getWistiaSurveyIds()
+	{
+	    $select = $this->db->select()
+	    ->from(array('srv' => 'survey'), 'id')
+	    ->where('instruction LIKE ?', 'Training Videos%');
+	    
+	    $result = $this->db->fetchAll($select);
+	    
+	    $wistiaSurveyIds = array();
+	    foreach($result as $key)
+	    {
+	        array_push($wistiaSurveyIds, $key['id']);
+	    }
+	    
+	    return $wistiaSurveyIds;
+	}
+	
+	/**
+	 * @param unknown $userId
+	 * @return Ambiguous
+	 */
+	public function getUserEmail($userId)
+	{
+	    $select = $this->db->select()
+	    ->from(array('mat'=>'microRecruitingActionTracking'))
+	    ->join(array('ud'=>'userData'), 'mat.userId=ud.id', array('email'))
+	    ->where('mat.userId=?', $userId);
+	    $result = $this->db->fetchAll($select);
+	
+	    $category = array();
+	    foreach($result as $key)
+	    {
+	        $email = $key['email'];
+	    }
+	    return $email;
+	}
+	
+	/**
+	 * @param unknown $action
+	 * @param unknown $flowId
+	 * @param string $urlCity
+	 * @param string $urlCategory
+	 * @return Ambiguous
+	 */
+	public function getContentForThankYouPage($action, $flowId, $urlCity = '', $urlCategory = '')
+	{
+	    if(isset($urlCity))
+	    {
+	        $cityId = $this->getCityId($urlCity);
+	    }
+	    else 
+	    {
+	        $cityId = NULL;
+	    }
+	    
+	    if(isset($urlCategory))
+	    {
+	        $categoryId = $this->getCategoryId($urlCategory);
+	    }
+	    else 
+	    {
+	        $categoryId = NULL;
+	    }
+	    
+	    if(!isset($flowId))
+	    {
+	        $flowId = NULL;
+	    }
+
+	    $select = $this->db->select()
+	    ->from(array('mty'=>'microRecruitingThankYou'), array('thankYouPage'=>'link'))
+	    ->join(array('mtyc'=>'microRecruitingThankYouContent'), 'mty.id=mtyc.thankYouId')
+	    ->join(array('mrcit'=>'microRecruitingCategoryInfoType'), 'mrcit.id=mtyc.inputType', 'type')
+	    ->joinLeft(array('mc'=>'microRecruitingCompany'), 'mc.id=mtyc.companyId', array('companyName', 'logo'))
+	    ->where('mty.link=?', $action)
+	    ->where('mtyc.flowId=?', $flowId)
+	    ->where('mtyc.categoryId=?', $categoryId)
+	    ->where('mtyc.cityId=?', $cityId)
+	    ->order('mtyc.order ASC');
+	    $result = $this->db->fetchAll($select);
+	    
+	    if(empty($result))
+	    {
+	        $select = $this->db->select()
+	        ->from(array('mty'=>'microRecruitingThankYou'), array('thankYouPage'=>'link'))
+	        ->join(array('mtyc'=>'microRecruitingThankYouContent'), 'mty.id=mtyc.thankYouId')
+	        ->join(array('mrcit'=>'microRecruitingCategoryInfoType'), 'mrcit.id=mtyc.inputType', 'type')
+	        ->joinLeft(array('mc'=>'microRecruitingCompany'), 'mc.id=mtyc.companyId', array('companyName', 'logo'))
+	        ->where('mty.link=?', $action)
+	        ->where('mtyc.flowId=?', $flowId)
+	        ->where('mtyc.categoryId=?', $categoryId)
+	        ->where('mtyc.cityId IS NULL')
+	        ->order('mtyc.order ASC');
+	        $result = $this->db->fetchAll($select);
+	        
+	        if(empty($result))
+	        {
+	            $select = $this->db->select()
+	            ->from(array('mty'=>'microRecruitingThankYou'), array('thankYouPage'=>'link'))
+	            ->join(array('mtyc'=>'microRecruitingThankYouContent'), 'mty.id=mtyc.thankYouId')
+	            ->join(array('mrcit'=>'microRecruitingCategoryInfoType'), 'mrcit.id=mtyc.inputType', 'type')
+	            ->joinLeft(array('mc'=>'microRecruitingCompany'), 'mc.id=mtyc.companyId', array('companyName', 'logo'))
+	            ->where('mty.link=?', $action)
+	            ->where('mtyc.flowId=?', $flowId)
+	            ->where('mtyc.cityId=?', $cityId)
+	            ->where('mtyc.categoryId IS NULL')
+	            ->order('mtyc.order ASC');
+	            $result = $this->db->fetchAll($select);
+	            
+	            if(empty($result))
+	            {
+	                $select = $this->db->select()
+	                ->from(array('mty'=>'microRecruitingThankYou'), array('thankYouPage'=>'link'))
+	                ->join(array('mtyc'=>'microRecruitingThankYouContent'), 'mty.id=mtyc.thankYouId')
+	                ->join(array('mrcit'=>'microRecruitingCategoryInfoType'), 'mrcit.id=mtyc.inputType', 'type')
+	                ->joinLeft(array('mc'=>'microRecruitingCompany'), 'mc.id=mtyc.companyId', array('companyName', 'logo'))
+	                ->where('mty.link=?', $action)
+	                ->where('mtyc.flowId=?', $flowId)
+	                ->where('mtyc.cityId IS NULL')
+	                ->where('mtyc.categoryId IS NULL')
+	                ->order('mtyc.order ASC');
+	                $result = $this->db->fetchAll($select);
+	                
+	                if(empty($result))
+	                {
+	                    $select = $this->db->select()
+	                    ->from(array('mty'=>'microRecruitingThankYou'), array('thankYouPage'=>'link'))
+	                    ->join(array('mtyc'=>'microRecruitingThankYouContent'), 'mty.id=mtyc.thankYouId')
+	                    ->join(array('mrcit'=>'microRecruitingCategoryInfoType'), 'mrcit.id=mtyc.inputType', 'type')
+	                    ->joinLeft(array('mc'=>'microRecruitingCompany'), 'mc.id=mtyc.companyId', array('companyName', 'logo'))
+	                    ->where('mty.link=?', $action)
+	                    ->where('mtyc.flowId IS NULL')
+	                    ->where('mtyc.categoryId IS NULL')
+	                    ->where('mtyc.cityId IS NULL')
+	                    ->order('mtyc.order ASC');
+	                    $result = $this->db->fetchAll($select);
+	                }
+	            }
+	        }
+	    }
+	    
+	    return $result;
+	}
+	
+	/**
+	 * Get categoryId from category list by $urlCategory
+	 * @param $urlCategory
+	 * @param $category - return category name if it is clone
+	 * @return $categoryId
+	 */
+	private function getCategoryId($urlCategory)
+	{
+	    $category = $this->returnCategoryNameWithoutClone($urlCategory);
+	    
+	    $select = $this->db->select()
+	                       ->from(array('mrc'=>'microRecruitingCategory'), 'id')
+	                       ->where('mrc.categoryName=?', $category);
+	    $categoryId = $this->db->fetchRow($select);
+	    return $categoryId;
+	}
+	
+	/**
+	 * Get cityId from city list by $urlCity
+	 * @param $urlCity
+	 * @return $cityId
+	 */
+	private function getCityId($urlCity)
+	{
+	    $select = $this->db->select()
+	    	                ->from(array('mrc'=>'microRecruitingCities'), 'id')
+	    	                ->where('mrc.cityLink=?', $urlCity);
+	    $cityId = $this->db->fetchRow($select);
+        return $cityId;	    
+	}
+	
+	/**
+	 * Get list of clones
+	 * return $clones array
+	 */
+	private function getClones()
+	{
+        $select = $this->db->select()
+                    	    ->from(array('clone'), 'name');
+        $result = $this->db->fetchAll($select);
+        
+        $clones = array();
+        foreach($result as $clone)
+        {
+            if(!in_array($clone['name'], $clones))
+            {
+                array_push($clones, $clone['name']);
+            }
+        }
+        return $clones;
+	}
+	
+	/**
+	 * Remove part of string that shows us that is a "cloned" category and return the category
+	 * @param string $urlCategory
+	 * @return string
+	 */
+	
+	public function returnCategoryNameWithoutClone($urlCategory)
+	{
+	    $clones = $this->getClones();
+	    
+	    //get last 3 chars of URL category and check if is in clones array
+	    $getLast3Chars = substr($urlCategory, -3);
+	    
+	    if (in_array($getLast3Chars, $clones))
+	    {
+	        $urlCategory = str_replace($getLast3Chars, "", $urlCategory);
+	    }
+	
+	    return $urlCategory;
+	}
+	
+	/**
+	 * @return string
+	 */
+	public function curPageURL()
+	{
+	    $pageURL = 'http';
+	    $pageURL .= "://";
+	    if(isset($_SERVER['SERVER_NAME']) && isset($_SERVER['REQUEST_URI']))
+	    {
+	        $pageURL .= $_SERVER["SERVER_NAME"].$_SERVER["REQUEST_URI"];
+	    }
+	    else
+	    {
+	        $pageURL = '';
+	    }
+	    return $pageURL;
+	}
+	
+	/**
+	 * 
+	 */
+	public function setAndSaveUserActivityOnPage()
+	{
+	    $dotGeoip = new Dot_Geoip();
+	    $userIp = Dot_Kernel::getUserIp();
+	    
+	    $this->cityStateModel = new CityState();
+	    
+        $url = $this->curPageURL();
+        
+        if(isset($this->session->cityData))
+        {
+            $cityId = $this->cityStateModel->getCityId($this->session->cityData);
+        }
+         
+        if(isset($this->session->categoryData))
+        {
+            $categoryId = $this->cityStateModel->getCategoryId($this->session->categoryData);
+        }
+        
+        $userId = (isset($this->session->userId)) ? $this->session->userId : 0;
+        $visitorId = (isset($this->session->visitorId)) ? $this->session->visitorId : 0;
+        $uniqueId = (isset($this->session->subId)) ? $this->session->subId : 0;
+        $flowId = (isset($this->session->flowId)) ? $this->session->flowId : 0;
+        $cityId = (isset($cityId)) ? $cityId : 0;
+        $categoryId = (isset($categoryId)) ? $categoryId : 0;
+        
+	    // set up referer url 
+	    if(isset($_POST['referer']))
+	    {
+	        $referer = trim($_POST['referer']);
+	    }
+	    elseif (isset($_SERVER['HTTP_REFERER']))
+	    {
+	        $referer = $_SERVER['HTTP_REFERER'];
+	    }
+	    else
+	    {
+	        $referer = "";
+	    }
+	    
+	    if(isset($_SERVER['HTTP_USER_AGENT']))
+	    {
+	        $userAgent = $_SERVER['HTTP_USER_AGENT'];
+	    }
+	    else 
+	    {
+	        $userAgent = '';
+	    }
+	    
+	    $trackingData = array( 'userId' => $userId,
+	        'visitorId' => $visitorId,
+	        'uniqueId' => $uniqueId,
+	        'flowId' => $flowId,
+	        'cityId' => $cityId,
+	        'categoryId' => $categoryId,
+	        'referer' => $referer,
+	        'url' => $url,
+	        'userAgent' => $userAgent,
+	        'ip' => $userIp
+	    );
+	    $this->db->insert('userActivityTracking', $trackingData);
+	}
+	
+	public function getUserActivity($email)
+	{
+		$select = $this->db->select()
+						->from(array('u' => 'userData'), '')
+						->join(array('ua' => 'userActivityTracking'), 'u.id=ua.userId', array('url'))
+						->where('u.email =?', $email)
+						->order('ua.id DESC');
+		
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	public function getDataForSession($email)
+	{
+// 		if ($urlData['controller'] == 'user')
+// 		{
+// 			if ($urlData['action'] == 'thank-you')
+// 			{
+				$select = $this->db->select()
+								->from(array('ua' => 'userActivityTracking'), '')
+								->join(array('u' => 'userData'), 'ua.userId=u.id', '')
+// 								->join(array('mc' => 'microRecruitingCategory'), 'ua.categoryId=mc.id', array('category' => 'categoryName'))
+								->join(array('ma' => 'microRecruitingActionTracking'), 'u.id=ma.userId', array('category' => 'category'))
+								->join(array('mcity' => 'microRecruitingCities'), 'ua.cityId=mcity.id', array('city' => 'cityLink'))
+								->where('u.email =?', $email);
+// 			}
+// 		}
+// 		elseif ($urlData['controller'] == 'video')
+// 		{
+// 			$select = $this->db->select()
+// 							->from(array('ua' => 'userActivityTracking'), '')
+// 							->join(array('u' => 'userData'), 'ua.userId=u.id', '')
+// // 							->join(array('mc' => 'microRecruitingCategory'), 'ua.categoryId=mc.id', array('category' => 'categoryName'))
+// 							->join(array('ma' => 'microRecruitingActionTracking'), 'u.id=ma.userId', array('category' => 'category'))
+// 							->join(array('mcity' => 'microRecruitingCities'), 'ua.cityId=mcity.id', array('city' => 'name'))
+// 							->where('u.email =?', $email);
+// 		}
+		
+		$result = $this->db->fetchRow($select);
+		
+		return $result;
+	}
+	
+	public function getUniqueId($userId)
+	{
+		$select = $this->db->select()
+						->from('microRecruitingSubIdTrackingStep2', 'subId');
+		
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	public function getStepOneUserApplyInfo($email)
+	{
+		$select = $this->db->select()
+						->from(array('u' => 'userDataStep1'), '')
+						->join(array('msts1' => 'microRecruitingSubIdTrackingStep1'), 'u.id=msts1.userId', array('subId' => 'subId', 'userId' => 'userId'))
+						->join(array('mj' => 'microRecruitingJob'), 'msts1.subId=mj.id', '')
+						->join(array('mcity' => 'microRecruitingCities'), 'mj.cityId=mcity.id', array('city' => 'cityLink'))
+						->join(array('mc' => 'microRecruitingCategory'), 'mj.categoryId=mc.id', array('category' => 'categoryName'))
+						->where('u.email =?', $email);
+
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+}

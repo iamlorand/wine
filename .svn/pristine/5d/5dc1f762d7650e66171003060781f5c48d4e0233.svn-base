@@ -1,0 +1,325 @@
+<?php
+
+// */5 * * * * php /home/bogdan/www/maho/library/Mailchimp/registerUsers.php > /home/bogdan/www/maho/library/Mailchimp/register.log
+
+var_dump(date('Y-m-d H:i:s'));
+
+define('APPLICATION_PATH', dirname(dirname(__DIR__)));
+
+$htaccessFile = APPLICATION_PATH . '/.htaccess';
+
+if(file_exists($htaccessFile))
+{
+    // STEP 2 survey, please change if survey ID has changed!!!!!!!
+    define('SURVEY_ID', 3);
+
+    $htaccess = file($htaccessFile);
+
+    $line = "SetEnv APPLICATION_ENV";
+    $pattern = "@^SetEnv APPLICATION_ENV (.*)@";
+
+    foreach ($htaccess as $line) {
+            if(preg_match($pattern,$line,$matches))
+            {
+                define('APPLICATION_ENV', $matches[1]);
+                break;
+            }
+    }
+
+    // Define PATH's (absolute paths)  to configuration, controllers, DotKernel, templates  directories
+    define('CONFIGURATION_PATH', APPLICATION_PATH . '/configs');
+
+	// set_include_path(implode(PATH_SEPARATOR, array(APPLICATION_PATH . '/library/Mailchimp',  get_include_path())));
+
+    // Load Zend Framework
+    require_once 'Zend/Loader/Autoloader.php';
+    $zendLoader = Zend_Loader_Autoloader::getInstance();
+
+    //Load configuration settings from application.ini file and store it in registry
+    $config = new Zend_Config_Ini(CONFIGURATION_PATH.'/application.ini', APPLICATION_ENV);
+
+    $db = Zend_Db::factory('Pdo_Mysql', $config->database->params->toArray());
+
+    require_once 'Mailchimp.php';
+
+    $publicKey = 'df189cd1451d2407e3521b20afa37f42-us11';
+        // Mailchimp object and public key
+    $mc = new Mailchimp($publicKey);
+
+    // this is the list of the users who have NOT answered the survey from step 2
+    $listNotAnsweredId = '28a461b6b9';
+    // this is the list of the users who have answered the survey from step 2
+    $listAnsweredId = 'd9f003251a';
+
+	$select = $db->select()
+	->from(array('u' => 'userDataStep1'))
+	->join(array('ud' => 'userData'),
+		'u.email = ud.email')
+	->where("u.platform = '2'")
+	->limit(50, 0);
+
+	$result = $db->fetchAll($select);
+
+	foreach($result as $row)
+	{
+		$email = $row['email'];
+		$id = $row['id'];
+		if($email == '')
+		{
+			continue;
+		}
+
+		if(userExists($db, $email))
+		{
+			if(!isUserInMailingList($db, $email))
+			{
+				$fname = getUserFName($db, $email, $id);
+
+				if(sendUserToMailChimp($db, $mc, $listAnsweredId, $fname, $email))
+				{
+					deleteUser($db, $email);
+					updateUserToAnswered($db, $email);
+				}
+				//$fname = getUserFName($db, $email, $id);
+				//sendUserToMailChimp($mc, $listAnsweredId, $fname, $email);
+			}
+			else
+			{
+				$fname = getUserFName($db, $email, $id);
+				if(moveUserToSubscribed($db, $mc, $email, $fname, $listNotAnsweredId, $listAnsweredId))
+				{
+					deleteUser($db, $email);
+					updateUserToAnswered($db, $email);
+				}
+				//$fname = getUserFName($db, $email, $id);
+				//moveUserToSubscribed($mc, $email, $fname, $listNotAnsweredId, $listAnsweredId);
+			}
+		}
+		else
+		{
+			if(!isUserInMailingList($db, $email))
+			{
+				if(sendUserToMailChimp($db, $mc, $listNotAnsweredId, '', $email))
+				{
+					updateUserToAnsweredStep1($db, $email);
+				}
+				//sendUserToMailChimp($mc, $listNotAnsweredId, '', $email);
+			}
+		}
+	}
+
+	$selectStage1 = $db->select()
+        ->from('userDataStep1', 'email')
+		->joinLeft('userData', 'userDataStep1.email = userData.email', '')
+		->where("userData.email IS NULL")
+		->where("userDataStep1.isInMailListNotAnsw = '0'")
+		->where("userDataStep1.platform = '2'");
+
+    $resultStage1 = $db->fetchAll($selectStage1);
+
+    foreach($resultStage1 as $row)
+    {
+		$email = $row['email'];
+		if($email == '')
+        {
+            continue;
+        }
+
+		updateUserToAnsweredStep1($db, $email);
+		sendUserToMailChimp($db, $mc, $listNotAnsweredId, '', $email);
+	}
+
+	// get the user who registered to microrecruting, completed user register step 2
+	// get the categorie and city for which he registered for and add those options as merge vars
+	// to mailchimp
+	$select = $db->select()
+				->from(array('m' => 'microRecruitingCategoryAnswered'), array('m.city', 'm.category'))
+				->join(array('u' => 'userData'), 'm.userId = u.id', array('u.email'))
+				->where('m.isInMailingList = 0');
+
+	$result = $db->fetchAll($select);
+
+	foreach($result as $row)
+	{
+		$email = $row['email'];
+		$city = $row['city'];
+		$category = $row['category'];
+
+		updateUserOptions($db, $mc, $email, $city, $category, $listAnsweredId);
+		updateUserCategoryAnswered($db, $email);
+	}
+
+	exit;
+}
+
+function deleteUser($db, $email)
+{
+    $where['`email` = ?'] = $email;
+    $db->delete('userDataStep1', $where);
+}
+
+function userExists($db, $email)
+{
+    $select = $db->select()
+                            ->from(array('u' => 'userDataStep1'))
+                            ->join(array('ud' => 'userData'),
+                                    'u.email = ud.email')
+                            ->where('u.email=?', $email);
+    $result = $db->fetchRow($select);
+    return $result;
+}
+
+function isUserInMailingList($db, $email)
+{
+	$select = $db->select()
+				->from('userDataStep1')
+				->where('email = ?', $email)
+				->where("isInMailListNotAnsw = '1'")
+				->where("platform = '2'");
+
+	$result = $db->fetchRow($select);
+	return $result;
+}
+
+function updateUserToAnswered($db, $email)
+{
+    $where['`email` = ?'] = $email;
+    $db->update('userData', array('isInMailList' => '1'), $where);
+}
+
+function updateUserToAnsweredStep1($db, $email)
+{
+    $where['`email` = ?'] = $email;
+    $db->update('userDataStep1', array('isInMailListNotAnsw' => '1'), $where);
+}
+
+function updateUserCategoryAnswered($db, $email)
+{
+	$where['`email` = ?'] = $email;
+    $db->update('microRecruitingCategoryAnswered', array('isInMailingList' => '1'), $where);
+}
+
+function getUserFName($db, $email, $id)
+{
+	$select = $db->select()
+				->from('facebook')
+				->where('email = ?', $email);
+	$result = $db->fetchRow($select);
+
+	if($result !== false)
+	{
+		return $result['firstname'];
+	}
+
+	$select = $db->select()
+				->from('linkedin')
+				->where('email = ?', $email);
+	$result = $db->fetchRow($select);
+
+	if($result !== false)
+	{
+		return $result['firstName'];
+	}
+
+	$select = $db->select()
+				->from('surveyAnswers')
+				->where('userId = ?', $id)
+				->where('surveyId=100')
+				->where('surveyFieldId=133');
+	$result = $db->fetchRow($select);
+
+	if($result !== false)
+	{
+		return $result['answer'];
+	}
+
+	return '';
+}
+
+function sendUserToMailChimp($db, $mc, $listId, $fname, $email)
+{
+	$merge_vars = array('FNAME' => $fname);
+var_dump('sending to ' . $listId . ' email: ' . $email);
+    try
+    {
+        $result = $mc->lists->subscribe($listId, array('email' => $email), $merge_vars, 'html', false, false, false, false);
+        return true;
+    }
+    catch(Exception $e)
+    {
+var_dump($e->getMessage(), $email, $listId);
+
+		if(strpos($e->getMessage(), 'is already subscribed to the list.'))
+        {
+			if($listId == 'bd28e8a62a')
+			{
+				deleteUser($db, $email);
+			}
+			else
+			{
+		        	updateUserToAnsweredStep1($db, $email);
+			}
+        }
+		return false;
+    }
+
+    sleep(2);
+}
+
+function moveUserToSubscribed($db, $mc, $email, $fname, $listFrom, $listTo)
+{
+    try
+    {
+    	$merge_vars = array('FNAME' => $fname);
+
+var_dump('moving from ' . $listFrom . ' to: ' . $listTo . ' email: ' . $email);
+
+        $result = $mc->lists->unsubscribe($listFrom, array('email' => $email));
+
+        $result = $mc->lists->subscribe($listTo, array('email' => $email), $merge_vars, 'html', false, true, true, false);
+        return true;
+    }
+    catch(Exception $e)
+    {
+		if(strpos($e->getMessage(), 'is not subscribed to list'))
+		{
+var_dump($e->getMessage(), $email, $listFrom, $listTo);
+		    return sendUserToMailChimp($db, $mc, $listTo, $fname, $email);
+		}
+		else
+		{
+var_dump($e->getMessage(), $email, $listFrom, $listTo);
+		    return false;
+		}
+    }
+
+    sleep(2);
+}
+
+function updateUserOptions($db, $mc, $email, $city, $category, $listId)
+{
+	try
+    {
+var_dump('adding to email: ' . $email . ' city and category: city ' . $city . ' category ' . $category);
+
+    	$merge_vars = array('CITY' => $city, 'CATEGORY' => $category);
+    	$result = $mc->lists->updateMember($listId, $email, $merge_vars);
+
+    	return true;
+    }
+	catch(Exception $e)
+    {
+		if(strpos($e->getMessage(), 'is not subscribed to list'))
+		{
+var_dump($e->getMessage(), $email, $listFrom, $listTo);
+		    return sendUserToMailChimp($db, $mc, $listTo, $fname, $email);
+		}
+		else
+		{
+var_dump($e->getMessage(), $email, $listFrom, $listTo);
+		    return false;
+		}
+    }
+
+    sleep(2);
+}

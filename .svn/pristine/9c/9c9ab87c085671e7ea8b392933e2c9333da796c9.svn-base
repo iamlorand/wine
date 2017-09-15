@@ -1,0 +1,34 @@
+<script>
+	var userToken = "{USERTOKEN}",
+		SITE_URL = "{SITE_URL}",
+		FLAG_TOGGLE_URL = SITE_URL + "/admin/survey/activate/";
+
+	$(document).ready(function(){
+		$(".activeButton").activeFlags({
+			targetUrl:FLAG_TOGGLE_URL,
+		});
+	})
+</script>
+
+{PAGINATION}
+<div id="formList" class="box-shadow">
+	<table class="big_table" frame="box" rules="all">
+		<thead>
+			<tr>
+				<th style="text-align: center; width: 20px;"><span>#</span></th>
+				<th><span>Name</span></th>
+				<th><span>Enabled</span></th>
+			</tr>
+		</thead>
+		<tbody>
+		<!-- BEGIN list -->
+			<tr class="row{ROW}">
+				<td style="text-align: center;">{ID}</td>
+				<td><a href = "{SITE_URL}/admin/survey/update/surveyId/{ID}">{NAME}</a></td>
+				<td><a style="cursor: pointer;" title="Activate / Inactivate" class="{ACTIVE_IMG}_state activeButton"
+					 	id="row_{ID}" data-id="{ID}" data-active="{ACTIVE_IMG}">&nbsp;</a></td>
+			</tr>
+		<!-- END list -->
+		</tbody>
+	</table>
+</div>

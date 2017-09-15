@@ -1,0 +1,212 @@
+<?php
+
+/**
+ *
+ * @author Andrei
+ *
+ */
+class Survey extends Dot_Model
+{
+	
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+		$this->session = Zend_Registry::get('session');
+	}
+	
+	/**
+	 * Get survey data (and survey fields) for current survey
+	 * @param string $surveyId
+	 * @return array
+	 */
+	
+	public function getSurveyData($surveyId)
+	{
+		$surveyData = array();
+		$select = $this->db->select()
+					->from('survey')
+					->where('id =?', $surveyId);
+		
+		$surveyData['survey'] = $this->db->fetchRow($select);
+		
+		$selectFields = $this->db->select()
+						->from(array('sf' => 'surveyField'))
+						->join(array('sft' => 'surveyFieldType'), 'sf.inputType=sft.id', array('inputType' => 'type'))
+						->where('formId =?', $surveyId)
+						->order('indexField');
+		
+		$surveyData['surveyFields'] = $this->db->fetchAll($selectFields);
+		
+		return $surveyData;
+		
+	}
+	
+	/**
+	 * Set orderIds in session for current and last surveys
+	 * @param array $surveyList
+	 * @param string $surveyId
+	 */
+	
+	public function getCurrentAndLastSurveyIdsOrder($surveyList, $surveyId)
+	{
+		$this->session->currentSurveyIdOrder = $surveyId;
+		end($surveyList);
+		$this->session->lastSurveyIdOrder = key($surveyList);
+	}
+	
+	/**
+	 * Check if user answered the survey
+	 * @param string $userId
+	 * @param string $surveyId
+	 * @return false or user's ID
+	 */
+	
+	public function checkIfSurveyAnswered($userId, $surveyId)
+	{
+		$select = $this->db->select()
+						->from('surveyAnswered')
+						->where('userId =?', $userId)
+						->where('surveyId =?', $surveyId);
+		
+		$result = $this->db->fetchOne($select);
+
+		return $result;
+	}
+	
+	/**
+	 * Save survey answers for user
+	 * @param array $values
+	 * @param string $surveyId
+	 * @param string $userId
+	 */
+	
+	public function saveSurveyData($values, $surveyId, $userId)
+	{
+		$this->saveUserSurvey($values, $surveyId, $userId);
+		$this->logSurveyAnswer($surveyId, $userId);
+	}
+	
+	/**
+	 * Save user survey answer in surveyAnsweres table (survey fields answers)
+	 * @param array $data
+	 * @param string $surveyId
+	 * @param string $userId
+	 */
+	
+	public function saveUserSurvey($data, $surveyId, $userId)
+	{
+	
+		$unsetValues = array('email', 'password', 'password2');
+		foreach ($unsetValues as $val)
+		{
+			if (isset($data[$val]))
+			{
+				unset($data[$val]);
+			}
+		}
+	
+		$fieldsIds = $this->getRegistrationSurveyFieldsIdsAndNames($surveyId);
+		foreach ($data as $fieldName => $valueAnswered)
+		{
+			if (is_array($valueAnswered))
+			{
+				foreach ($valueAnswered as $checkedBox)
+				{
+					$answer = array('surveyId' 		=> $surveyId,
+									'surveyFieldId' => $fieldsIds[$fieldName],
+									'userId'		=> $userId,
+									'answer'		=> $checkedBox
+					);
+					$this->db->insert('surveyAnswers', $answer);
+				}
+			}
+			else
+			{
+				$answer = array('surveyId' 		=> $surveyId,
+								'surveyFieldId' => $fieldsIds[$fieldName],
+								'userId'		=> $userId,
+								'answer'		=> $valueAnswered
+				);
+				$this->db->insert('surveyAnswers', $answer);
+			}
+				
+		}
+	}
+	
+	/**
+	 * Save user survey answer in surveyAnswered table (survey id -> registration survey)
+	 * @param array $data
+	 * @param string $surveyId
+	 * @param string $userId
+	 */
+	
+	public function logSurveyAnswer($surveyId,$userId)
+	{
+		$data = array('surveyId'=>$surveyId,'userId'=>$userId);
+		$this->db->insert('surveyAnswered',$data);
+	}
+	
+	/**
+	 * Get survey fields ids and names for registration survey
+	 * @return array (with this format: array([surveyFieldName] => [surveyFieldId]) ... "surveyFieldName" as key and "surveyFieldId" as value
+	 */
+	
+	private function getRegistrationSurveyFieldsIdsAndNames($surveyId)
+	{
+		$select = $this->db->select()
+		->from('surveyField', array('id', 'name'))
+		->where('formId =?', $surveyId);
+	
+		$result = $this->db->fetchAll($select);
+	
+		foreach ($result as $value)
+		{
+			$data[$value['name']] = $value['id'];
+		}
+		
+		return $data;
+	}
+	
+	/**
+	 * Check if user answered all questions. If yes, return TRUE. If no, return FALSE.
+	 * @param array $answers
+	 * @param string $surveyId
+	 * @return boolean
+	 */
+	
+	public function checkIfAllQuestionsAnswered($answers, $surveyId)
+	{
+		$select = $this->db->select()
+						->from('surveyField', array('name', 'value'))
+						->where('formId =?', $surveyId);
+		
+		$result = $this->db->fetchAll($select);
+		
+		$possibleAnswers = array();
+		foreach ($result as $question)
+		{
+			$answersPossible = explode(PHP_EOL, $question['value']);
+			
+			foreach ($answersPossible as $key => $answer)
+			{
+				$answersPossible[$key] = trim($answer);
+			}
+			
+			$possibleAnswers[$question['name']] = $answersPossible;
+		}
+		
+		foreach ($possibleAnswers as $questionName => $answersPossible)
+		{
+			if (!array_key_exists($questionName, $answers) || !in_array(trim($answers[$questionName]), $answersPossible))
+			{
+				return false;
+			}
+		}
+		
+		return true;
+	}
+}

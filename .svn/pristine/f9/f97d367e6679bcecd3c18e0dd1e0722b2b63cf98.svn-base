@@ -1,0 +1,124 @@
+	<div class="box-shadow" style="width: 50%">
+		<div class="box_header">
+			Add New Category
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Platform Name</label>
+				<label style="width: 70%">{PLATFORMNAME}</label>
+			</li>
+			<li class="clearfix">
+				<label>URL</label>
+				<label style="width: 70%">{URL}</label>
+			</li>
+			<li class="clearfix">
+				<label>Platform Category</label>
+				<label style="width: 70%">{CATEGORYNAME}</label>
+			</li>
+			<li class="clearfix">
+				<label>Mailing Street</label>
+				<label style="width: 70%">{MAILINGSTREET}</label>
+			</li>
+			<li class="clearfix">
+				<label>Mailing City</label>
+				<label style="width: 70%">{MAILINGCITY}</label>
+			</li>
+			<li class="clearfix">
+				<label>Mailing State</label>
+				<label style="width: 70%">{MAILINGSTATE}</label>
+			</li>
+			<li class="clearfix">
+				<label>Mailing Zip</label>
+				<label style="width: 70%">{MAILINGZIP}</label>
+			</li>
+			<li class="clearfix">
+				<label>Phone</label>
+				<label style="width: 70%">{PHONE}</label>
+			</li>
+			<li class="clearfix">
+				<label>Platform Type</label>
+				<label style="width: 70%">{PLATFORMTYPE}</label>
+			</li>
+			<li class="clearfix">
+				<label>HQ City</label>
+				<label style="width: 70%">{HQCITY}</label>
+			</li>
+			<li class="clearfix">
+				<label>Funds Raised</label>
+				<label style="width: 70%">{FUNDSRAISED}</label>
+			</li>
+			<li class="clearfix">
+				<label>CEO Name</label>
+				<label style="width: 70%">{CEONAME}</label>
+			</li>
+			<li class="clearfix">
+				<label>CEO Email</label>
+				<label style="width: 70%">{CEOEMAIL}</label>
+			</li>
+			<li class="clearfix">
+				<label>Biz Dev Name</label>
+				<label style="width: 70%">{BIZDEVNAME}</label>
+			</li>
+			<li class="clearfix">
+				<label>Biz Dev Email</label>
+				<label style="width: 70%">{BIZDEVEMAIL}</label>
+			</li>
+			<li class="clearfix">
+				<label>Twitter</label>
+				<label style="width: 70%">{TWITTER}</label>
+			</li>
+			<li class="clearfix">
+				<label>FB</label>
+				<label style="width: 70%">{FB}</label>
+			</li>
+			<li class="clearfix">
+				<label>LinkedIn</label>
+				<label style="width: 70%">{LINKEDIN}</label>
+			</li>
+			<li class="clearfix">
+				<label>Blog</label>
+				<label style="width: 70%">{BLOG}</label>
+			</li>
+			<li class="clearfix">
+				<label>Crunchbase</label>
+				<label style="width: 70%">{CRUNCHBASE}</label>
+			</li>
+			<li class="clearfix">
+				<label>Crunchbase Category</label>
+				<label style="width: 70%">{CRUNCHBASECATEGORY}</label>
+			</li>
+			<li class="clearfix">
+				<label>Singup URL </label>
+				<label style="width: 70%">{SINGUPURL}</label>
+			</li>
+			<li class="clearfix">
+				<label>Service area</label>
+			</li>
+			<li class="clearfix">
+			<!-- BEGIN allServiceArea -->
+					<label>Location</label>
+					<label style="width: 70%" value="{CATEGORY_ID}" > {SERVICEAREA_CITY}, {SERVICEAREA_STATE}</label>
+			<!-- END allServiceArea -->
+			</li>
+			<li class="clearfix">
+				<label>Investor list</label>
+			</li>
+			<li class="clearfix">
+			<!-- BEGIN allInvestor -->
+					<label>Investor name</label>
+					<label style="width: 70%" value="{INVESTOR_ID}" > {INVESTOR_NAME}</label>
+					<label>CBURL</label>
+					<label style="width: 70%" value="{INVESTOR_ID}" > {CBURL}</label>
+					<br><br><br><br>
+					<!-- <label style="width: 70%" value="{INVESTOR_ID}" > sfecla</label><br> -->
+					
+			<!-- END allInvestor -->
+			</li>
+			</li>
+			<li>
+				<a href="{SITE_URL}/admin/platform/update/id/{PLATFORMID}/" class="button platform_view">Edit</a>
+				<a href="{SITE_URL}/admin/platform/delete/id/{PLATFORMID}/" class="button ">Delete</a>
+			</li>
+			</label>
+		</ul>
+	</div>

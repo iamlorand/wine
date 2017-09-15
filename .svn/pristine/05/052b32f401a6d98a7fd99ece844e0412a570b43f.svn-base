@@ -1,0 +1,31 @@
+<script>
+	var flow = "{BOOMTRAIN_FLOW}";
+	var flowTextApply = flow.concat('apply_page');
+
+	function applyYes(){
+		_btn.track(flowTextApply, {'interested' : "yes"});
+	}
+	
+	function applyNo(){
+		_btn.track(flowTextApply, {'interested' : "no"});
+	}
+</script>
+
+<div class="apply_page">
+
+    <!-- BEGIN thankyou_company_logo -->
+    	<div>
+    		<img style = "width:100px; height:100px;" src="data:image/jpeg;base64,{COMPANY_LOGO}"/>
+    		<p>{COMPANY_NAME}</p>
+    	</div>
+    <!-- END thankyou_company_logo -->
+    <!-- BEGIN thankyou_page_text -->
+        <h2>{THANKYOU_TITLE}</h2>
+        <h3>{THANKYOU_SUBTITLE}</h3>
+	<!-- END thankyou_page_text -->	
+	
+	<p> {PAGE_TEXT}</p>
+
+	<a href="{SITE_URL}/user/apply" name = "submit" class="button apply_button" style="width:40%;" onclick="applyYes()">APPLY FOR CLEANING POSITION</a>
+	<a href="{SITE_URL}/user/apply-not-interested" name = "submit" class="button apply_button" style="width:55%;" onclick="applyNo()">Not Interested in the Cleaning Position</a>
+</div>

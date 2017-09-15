@@ -1,0 +1,23 @@
+{PAGINATION}
+<div id="adminList" class="box-shadow">
+	<table class="big_table" frame="box" rules="all">
+		<thead>
+			<tr>
+				<th style="text-align: center; width: 20px;"><span>#</span></th>
+				<th><span>Email</span></th>
+				<th><span>Platform</span></th>
+				<th><span>Date</span></th>
+			</tr>
+		</thead>
+		<tbody>
+		<!-- BEGIN list_users -->
+			<tr>
+				<td style="text-align: center;">{USER_STEP1_ID}</td>
+				<td>{USER_STEP1_EMAIL}</td>
+				<td><a href="{SITE_URL}/admin/affiliate/referal-details/id/{SUB_ID}">{USER_STEP1_PLATFORM}</td>
+				<td>{USER_STEP1_DATE}</td>
+			</tr>
+		<!-- END list_users -->
+		</tbody>
+	</table>
+</div>

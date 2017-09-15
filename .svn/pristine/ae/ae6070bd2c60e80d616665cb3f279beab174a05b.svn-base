@@ -1,0 +1,188 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: PageView.php 235 2015-08-14 07:33:35Z costin $
+*/
+
+/**
+* LandingPage View Class
+* functions that prepare output related to Page controller 
+* @category   DotKernel
+* @package    Frontend
+* @author     DotKernel Team <team@dotkernel.com>
+*/
+
+class CityState_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+	}
+	public function showPage($templateFile = '',$urlCategory,$urlCity,$possibleStateWithoutCity)
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'blog/' . $this->templateFile . '.tpl');
+
+
+		if(array_key_exists($urlCity, $possibleStateWithoutCity))
+		{
+			$cityView=ucwords(str_replace('_',' ', substr($possibleStateWithoutCity[$urlCity],0,-2)));
+			$stateView=strtoupper(substr($possibleStateWithoutCity[$urlCity],-2));
+
+		}
+		else
+		{
+			$cityView=ucwords(str_replace('_',' ', substr($urlCity,0,-2)));
+			$stateView=strtoupper(substr($urlCity,-2));
+		}
+		$this->tpl->setVar('CATEGORY', ucfirst($urlCategory));
+		$this->tpl->setVar('URL_CITY', $cityView.$stateView);
+
+	}
+
+	public function showCategories($templateFile = '', $data = array(), $urlCity = '')
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'blog/' . $this->templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'category_list_sm', 'category_list_sm_block');
+		$this->tpl->setBlock('tpl_main', 'category_list_md', 'category_list_md_block');
+		$this->tpl->setBlock('tpl_main', 'category_list_row', 'category_list_row_block');
+		$this->tpl->setVar('CITY', $urlCity);
+
+		$count = 0;
+		foreach ($data as $key => $value) 
+		{
+			$count++;
+		    $this->tpl->setVar('CATEGORY', $value);
+			$this->tpl->parse('category_list_sm_block', 'category_list_sm', true);
+			
+			if (($count % 2 ==0) || ($count == count($data)))
+			{
+			    $this->tpl->parse('category_list_md_block', 'category_list_md', true);
+			    $this->tpl->parse('category_list_sm_block', '');
+			}
+			
+			if (($count % 4 ==0) || ($count == count($data)))
+			{
+			    $this->tpl->parse('category_list_row_block', 'category_list_row', true);
+			    $this->tpl->parse('category_list_md_block', '');
+			}
+		}
+	}
+	
+	public function showOrphanPages($templateFile = '', $categoryInfo)
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'cityState/' . $this->templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'category_info_text', 'category_info_text_block');
+		$this->tpl->setBlock('category_info_text', 'category_info_ol', 'category_info_ol_block');
+		$this->tpl->setBlock('category_info_text', 'category_info_ul', 'category_info_ul_block');
+		$this->tpl->setBlock('category_info_text', 'category_info_ul_none', 'category_info_ul_none_block');
+		$this->tpl->setBlock('category_info_text', 'category_info_image', 'category_info_image_block');
+		$this->tpl->setBlock('category_info_ol', 'ol_list', 'ol_list_block');
+		$this->tpl->setBlock('category_info_ul', 'ul_list', 'ul_list_block');
+		$this->tpl->setBlock('category_info_ul_none', 'ul_none_list', 'ul_none_list_block');
+		$this->tpl->setBlock('category_info_text', 'category_info_p', 'category_info_p_block');
+
+	
+		foreach($categoryInfo as $key => $value)
+		{
+			$this->tpl->setVar('CATEGORY_TITLE', nl2br($value['title']));
+			$this->tpl->setVar('CATEGORY_SUBTITLE', nl2br($value['subTitle']));
+			$this->tpl->setVar('CATEGORY_DESCRIPTION', nl2br($value['description']));
+				
+			if($value['type'] == 'ul')
+			{
+				$values = explode(PHP_EOL, $value['description']);
+				
+				foreach($values as $k => $description)
+				{
+					$this->tpl->setVar('CATEGORY_SUBTITLE', nl2br($value['subTitle']));
+					$this->tpl->setVar('CATEGORY_DESCRIPTION', $description);
+						
+					$this->tpl->parse('ul_list_block', 'ul_list', true);
+				}
+				$this->tpl->parse('category_info_ul_block', 'category_info_ul', true);
+				$this->tpl->parse('ul_list_block', '');
+				// $this->tpl->parse('category_info_image_block', '');
+
+			}
+			elseif($value['type'] == 'ol')
+			{
+				$values = explode(PHP_EOL, $value['description']);
+					
+				foreach($values as $k => $description)
+				{
+					$this->tpl->setVar('CATEGORY_SUBTITLE', nl2br($value['subTitle']));
+					$this->tpl->setVar('CATEGORY_DESCRIPTION', $description);
+						
+					$this->tpl->parse('ol_list_block', 'ol_list', true);
+				}
+				$this->tpl->parse('category_info_ol_block', 'category_info_ol', true);
+				$this->tpl->parse('ol_list_block', '');
+				// $this->tpl->parse('category_info_image_block', '');
+
+			}
+			elseif($value['type'] == 'p')
+			{
+				$this->tpl->setVar('CATEGORY_SUBTITLE', nl2br($value['subTitle']));
+				$this->tpl->setVar('CATEGORY_DESCRIPTION', nl2br($value['description']));
+			
+				$this->tpl->parse('category_info_p_block', 'category_info_p', true);
+				// $this->tpl->parse('category_info_image_block', '');
+
+			}
+			elseif($value['type'] == 'ulNone')
+			{
+				$values = explode(PHP_EOL, $value['description']);
+			
+				foreach($values as $k => $description)
+				{
+					$this->tpl->setVar('CATEGORY_SUBTITLE', nl2br($value['subTitle']));
+					$this->tpl->setVar('CATEGORY_DESCRIPTION',  $description);
+						
+					$this->tpl->parse('ul_none_list_block', 'ul_none_list', true);
+				}
+				$this->tpl->parse('category_info_ul_none_block', 'category_info_ul_none', true);
+				$this->tpl->parse('ul_none_list_block', '');
+				// $this->tpl->parse('category_info_image_block', '');
+			}
+			elseif($value['type'] == 'img')
+			{
+				$this->tpl->setVar('CATEGORY_SUBTITLE', nl2br($value['subTitle']));
+				$this->tpl->setVar('CATEGORY_DESCRIPTION', nl2br($value['description']));
+				$this->tpl->parse('category_info_image_block', 'category_info_image', true);
+				
+			}
+			
+			$this->tpl->parse('category_info_text_block', 'category_info_text', true);
+			
+			$this->tpl->parse('category_info_ul_block', '');
+			$this->tpl->parse('category_info_ul_none_block', '');
+			
+			$this->tpl->parse('category_info_ol_block', '');
+			$this->tpl->parse('category_info_p_block', '');
+
+			$this->tpl->parse('category_info_image_block', '');
+		}
+	}
+
+	public function showSpecialOrphanPage($templateFile = '')
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'cityState/' . $this->templateFile . '.tpl');
+		
+	}
+
+
+}

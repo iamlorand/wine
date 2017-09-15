@@ -1,0 +1,56 @@
+<div class="category_det">
+	<h2>{CATEGORY_TITLE}</h2>
+
+	<!-- BEGIN category_info_text -->	
+		<!-- BEGIN category_info_ul -->	
+		<div class="category_det_align">
+			<h3>{CATEGORY_SUBTITLE}</h3>
+			<ul>
+				<!-- BEGIN ul_list -->	
+					<li>{CATEGORY_DESCRIPTION}</li>
+				<!-- END ul_list -->	
+			</ul>
+		</div>
+		<!-- END category_info_ul -->	
+		
+		<!-- BEGIN category_info_ul_none -->	
+		<div class="category_det_align">
+			<h3>{CATEGORY_SUBTITLE}</h3>
+			<ul style="list-style-type:none">
+				<!-- BEGIN ul_none_list -->	
+					<li>{CATEGORY_DESCRIPTION}</li>
+				<!-- END ul_none_list -->	
+			</ul>
+		</div>
+		<!-- END category_info_ul_none -->	
+		
+		<!-- BEGIN category_info_ol -->	
+			<div class="category_det_align">
+				<h3>{CATEGORY_SUBTITLE}</h3>
+				<ol>
+					<!-- BEGIN ol_list -->	
+						<li>{CATEGORY_DESCRIPTION}</li>
+					<!-- END ol_list -->	
+				</ol>
+			</div>
+		<!-- END category_info_ol -->	
+		
+		<!-- BEGIN category_info_p -->	
+		<div class="category_det_align">
+			<h3>{CATEGORY_SUBTITLE}</h3>
+			<p>{CATEGORY_DESCRIPTION}</p>
+		</div>
+		
+		<!-- END category_info_p -->	
+
+		<!-- BEGIN category_info_image -->
+		<div class="category_det_align">
+			<h3>{CATEGORY_SUBTITLE}</h3>
+			<img src="{SITE_URL}/templates/frontend/cityState/image/{CATEGORY_DESCRIPTION}.png">
+			<!-- <img src="{SITE_URL}/templates/frontend/cityState/image/housecleaning1.png"> -->
+		</div>
+		<!-- END category_info_image -->
+
+	<!-- END category_info_text -->
+	<a href="{SITE_URL}/user/register-first-step" class="button" style="width:200px;">APPLY NOW</a>
+</div>

@@ -1,0 +1,593 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @package    Frontend
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: IndexController.php 897 2015-02-24 18:04:40Z gabi $
+*/
+
+/**
+ * Frontend Module - Index Controller
+ * Is doing all the job for specific frontend control stuff
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class frontend_IndexController extends frontend_BaseController
+{
+
+	public function doIt()
+	{
+		$this->initSession();
+
+		$this->tplInit();
+
+		$this->controllerAction();
+
+		$this->tplParse();
+	}
+
+	private function initSession()
+	{
+		// initialize the session
+		// if you don't use the session object in this module, feel free to remove this line
+		Dot_Session::start();
+
+		if(Dot_UserAgent_Utilities::isMobile(Dot_Request::getUserAgent()))
+		{
+			if(!$this->registry->session->visitId)
+			{
+				$this->registry->session->visitId = Dot_Statistic::registerVisit();
+			}
+			
+			// if the Statistic module is integrate, record the deviceInfo too, and record TRUE in $session->mobile 
+			if(!$this->registry->session->mobile)
+			{
+				$this->registry->session->mobile = Dot_Statistic::registerMobileDetails($this->registry->session->visitId, array());
+				
+				//redirect to mobile controller , only if the session is not set. 
+				//Otherwise will trap the user in mobile controller
+				if( isset($this->registry->configuration->settings->mobile->redirect) && $this->registry->configuration->settings->mobile->redirect == true )
+				{
+					
+					header('location: '.$this->registry->configuration->website->params->url.'/mobile');
+					exit;
+				}
+			}
+		}
+	}
+
+	private function tplInit()
+	{
+		// start the template object, empty for the moment
+		require(DOTKERNEL_PATH . '/' . $this->registry->requestModule . '/' . 'View.php');
+		$this->tpl = View::getInstance(TEMPLATES_PATH . '/' . $this->registry->requestModule);
+		$this->tpl->init();
+
+		// assign Index Template file
+		$this->tpl->setViewFile();
+
+		// set paths in templates
+		$this->tpl->setViewPaths();
+
+		/** 
+		 * each Controller  must load its own specific models and views
+		 */
+		Dot_Settings :: loadControllerFiles($this->registry->requestModule);
+
+		/**
+		 * Load option(specific configuration file for current dot) file
+		 */
+		$this->option = Dot_Settings::getOptionVariables($this->registry->requestModule, $this->registry->requestControllerProcessed);
+		$this->registry->option = $this->option;
+
+		/**
+		 * Start the variable for Page Title, this will be used as H1 tag too 
+		 */
+		$this->pageTitle = 'Overwrite Me Please !';
+	}
+
+	private function controllerAction()
+	{
+		/**
+		 * From rev 833
+		 * DotAuth::checkUserToken() will be given at least one parameter
+		 * $userToken - mandatory
+		 * $userType - optional - by default 'admin'
+		 *
+		 * To simplify it, we will put the variable $userToken
+		 * If we do not have the token, it will be marked with NULL
+		 *
+		 * NULL - user does not have a token
+		 * ''   - user have an empty token
+		 * Any other (string) value - the token
+		 *
+		 * See Dot_Auth::checkUserToken()
+		 */
+		$userToken = (isset($_POST['userToken'])) ? $_POST['userToken'] : null;
+
+		/**
+		 * From this point , the control is taken by the Action specific controller
+		 * call the Action specific file, but check first if exists 
+		 */
+		
+		// instantiate classes related to module: model & view
+		$this->userModel = new User();
+		$this->cityStateModel = new CityState();
+		$this->videoModel = new Video();
+		
+		if (isset($_GET['email']) && !empty($_GET['email']))
+		{
+			$email = explode('@', $_GET['email']);
+			$email[0] = urlencode($email[0]);
+			$email = implode('@', $email);
+
+			$this->redirectUserToLastStep($email);
+		}
+		
+		//check userId for Wistia Flow
+		if(isset($_GET['userId']) && !empty($_GET['userId']))
+		{
+		   $this->wistiaUserActivity($_GET['userId']);
+		}
+		
+		$urlCity=strtolower($this->registry->requestController);
+		$urlCategory=strtolower($this->registry->requestAction);
+		// caution if it doesnt work its from here maybe
+		// $urlCategory=substr($urlCategory, 0, strpos($urlCategory, '?'));
+		if(!isset($_GET['id']))
+		{
+		    $this->setAndSaveUserActivityOnPage();
+		}
+		
+		// verify if the category is a clone or not
+		if (substr($urlCategory, -3) == "_1b")
+				{	
+					$urlCategory = substr($urlCategory, 0 ,strlen($urlCategory) - 3);
+				}	
+
+		// Check if flow is _1f 
+		if (substr($urlCategory, -3) == "_1f")
+		{
+			$this->_flow1f($urlCategory);
+			$urlCategory = substr($urlCategory, 0 ,strlen($urlCategory) - 3);
+		}
+
+		// check new flow test	
+		if (substr($urlCategory, -3) == "_1g" && ($urlCity == 'Plainfield-il' || $urlCity == 'Lewisville-tx'))
+		{
+			$test = $this->newFlowTest($urlCategory);
+			$urlCategory = substr($urlCategory, 0 ,strlen($urlCategory) - 3);
+		}
+
+
+		$urlCityVerify = $this->cityStateModel->verifyUrlCity($urlCity);
+		$urlCategoryVerify=$this->cityStateModel->verifyUrlCategory($urlCategory);
+
+		// if there is a link made of  {SITE_URL}/CityState/Category send it to the controller and lett it do the action
+		if($urlCategoryVerify == TRUE && $urlCityVerify == TRUE)
+		{
+				$actionControllerPath = CONTROLLERS_PATH . '/' . $this->registry->requestModule . '/' . 'CityState' . 'Controller.php';
+				$this->registry->requestControllerProcessed = 'CityState';
+
+		}
+		// if there is a link made of  {SITE_URL}/CityState/ but no category, send it to the Controller but show him the categories
+		elseif($urlCityVerify == TRUE && $urlCategoryVerify == FALSE )
+		{
+			$actionControllerPath = CONTROLLERS_PATH . '/' . $this->registry->requestModule . '/' . 'CityState' . 'Controller.php';
+			$this->registry->requestControllerProcessed = 'CityState';
+
+		}
+		else
+		{
+			$actionControllerPath = CONTROLLERS_PATH . '/' . $this->registry->requestModule . '/' . $this->registry->requestControllerProcessed . 'Controller.php';
+		
+		}
+
+		if(file_exists($actionControllerPath))
+		{
+			$dotAuth = Dot_Auth::getInstance();
+			$dotAuth->checkIdentity('user');
+
+			require($actionControllerPath);
+
+			
+			$newObject = 'frontend_' . $this->registry->requestControllerProcessed . 'Controller';
+			$reflection = new ReflectionClass($newObject);
+			$controller = $reflection->newInstanceArgs();
+
+			$controller->tpl = $this->tpl;
+			$controller->registry = $this->registry;
+			$controller->option = $this->option;
+			$controller->pageTitle = $this->pageTitle;
+
+			$controller->doIt();
+			$this->tpl = $controller->tpl;
+			$this->option = $controller->option;
+			$this->registry = $controller->registry;
+			$this->pageTitle = $controller->pageTitle;
+		}
+		else
+		{
+			Dot_Route::pageNotFound();
+		}
+	}
+
+	private function tplParse()
+	{
+		// set menus
+		$this->tpl->setMenu();
+
+		// set SEO html tags from dots/seo.xml file
+		$this->tpl->setSeoValues($this->pageTitle);
+
+		// display message (error, warning, info)	
+		$this->tpl->displayMessage();
+
+		// parse the main content block
+		$this->tpl->parse('MAIN_CONTENT', 'tpl_main');
+
+		// show debugbar 
+		$debug = new Dot_Debug($this->tpl);
+		$debug->show();
+
+		// parse and print the output
+		$this->tpl->pparse('OUTPUT', 'tpl_index');
+	}
+
+	/**
+	*	Verify if we have the _1f flow for Delivery
+	* 	If we do, make it so that we show the corect video and survey
+	*	@author Nicu
+	*/
+	private function _flow1f($urlCategory)
+	{
+		// verify if the category is a clone or not
+		if (substr($urlCategory, -3) == "_1f" && substr($urlCategory, 0 ,strlen($urlCategory) - 3) == "delivery")
+		{	
+			// In case we will need it in the future
+			$this->registry->session->flow1fsufix = "_1f";
+			$this->registry->session->flow1fcategory = "delivery";
+			// $urlCategory = substr($urlCategory, 0 ,strlen($urlCategory) - 3);
+			// $this->registry->session->flow1f= TRUE;
+		}
+	}
+	
+	private function wistiaUserActivity($userId)
+	{
+	    if(isset($this->registry->session->wistiaFlow))
+	    {
+	        unset($this->registry->session->wistiaFlow);
+	    }
+	    
+	    $this->registry->session->userId = $userId;
+	    
+	    $checkIfUserIdExists = $this->userModel->checkIfUserIdExists($userId);
+	    $wistiaSurveyUserIdAnswered = $this->userModel->checkIfSurveyAnswered($userId);
+	    $urlCategory = $this->cityStateModel->getOrphanCategoryForUser($userId);
+	    $checkIfOrphan = $this->cityStateModel->setWistiaFlow($urlCategory);
+	    $cleaningAuthority = 'cleaning_authority_or1_1e';
+	    
+	    $email = $this->userModel->getUserEmail($userId);
+	     
+	    $this->registry->session->email = $email;
+	    
+	    if ($checkIfOrphan == false)
+	    {
+	        header('Location: ' . $this->registry->configuration->website->params->url);
+	        exit;
+	    }
+	    else
+	    {
+	        $category = substr($urlCategory, -3);
+	    
+	        if (!in_array($category, array("_1b", "_1c", "_1d", "_1e")))
+	        {
+	            header('Location: ' . $this->registry->configuration->website->params->url);
+	            exit;
+	        }
+	        if(!isset($this->registry->session->wistiaFlow))
+	        {
+	            switch ($category)
+	            {
+	                case '_1b':
+	                    $this->registry->session->wistiaFlow = '1';
+	                    $this->registry->session->conversionTag = '1';
+	                    break;
+	                case '_1c':
+	                    $this->registry->session->wistiaFlow = '2';
+	                    $this->registry->session->conversionTag = '1';
+	                    break;
+	                case '_1e':
+	                    $this->registry->session->wistiaFlow = '3';
+	                    $this->registry->session->conversionTag = '1';
+	                    break;
+	            }
+	        }
+	    }
+	    
+	    if($checkIfUserIdExists != FALSE)
+	    {
+	        if($wistiaSurveyUserIdAnswered['surveyId'] == NULL)
+	        {
+	            $checkVideoActivity = $this->videoModel->checkUserVideoActivity($userId);
+	             
+	            if($this->registry->session->wistiaFlow == '1')
+	            {
+	                if($checkVideoActivity != FALSE)
+	                {
+	                    header('Location: ' . $checkVideoActivity['url']);
+	                    exit();
+	                }
+	                else
+	                {
+	                    header('Location: ' . $this->registry->configuration->website->params->url);
+	                    exit;
+	                }
+	            }
+	            else
+	            {
+	                header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/kitchen');
+	                exit();
+	            }
+	        }
+	        else
+	        {
+	            switch ($wistiaSurveyUserIdAnswered['surveyId'])
+	            {
+	                case '111':
+	                    header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/kitchenappliances');
+	                    exit();
+	                    break;
+	                case '112':
+	                    header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/bathroom');
+	                    exit();
+	                    break;
+	                case '113':
+	                    header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/bedroom');
+	                    exit();
+	                    break;
+	                case '114':
+	                    header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/familyroom');
+	                    exit();
+	                    break;
+	                case '115':
+	                    header('Location: ' . $this->registry->configuration->website->params->url . '/video/cleaning/customerservice');
+	                    exit();
+	                    break;
+	                case '116':
+	                    if($urlCategory == $cleaningAuthority)
+	                    {
+	                        $this->registry->session->cleaningAuthority = true;
+	                    }
+	                    else
+	                    {
+	                        $this->registry->session->cleaningAuthority = false;
+	                    }
+	                    header('Location: ' . $this->registry->configuration->website->params->url . '/user/apply-page/');
+	                    exit();
+	                    break;
+	            }
+	        }
+	    }
+	    else
+	    {
+	        header('Location: ' . $this->registry->configuration->website->params->url);
+	        exit;
+	    }
+	}
+	
+	/**
+	 * 
+	 */
+	private function setAndSaveUserActivityOnPage()
+	{
+	    $url = $this->userModel->curPageURL();
+	    
+        if(isset($this->registry->session->cityData))
+        {
+          $cityId = $this->cityStateModel->getCityId($this->registry->session->cityData);
+        }
+	    
+        if(isset($this->registry->session->categoryData))
+        {
+            $categoryId = $this->cityStateModel->getCategoryId($this->registry->session->categoryData);
+        }
+
+       $userId = (isset($this->registry->session->userId)) ? $this->registry->session->userId : 0;
+	   $visitorId = (isset($this->registry->session->visitorId)) ? $this->registry->session->visitorId : 0;
+	   $uniqueId = (isset($this->registry->session->subId)) ? $this->registry->session->subId : 0;
+	   $flowId = (isset($this->registry->session->flowId)) ? $this->registry->session->flowId : 0;
+	   $cityId = (isset($cityId)) ? $cityId : 0;
+	   $categoryId = (isset($categoryId)) ? $categoryId : 0;
+	   
+	   
+	   $this->userModel->setAndSaveUserActivityOnPage($userId, $visitorId, $uniqueId, $flowId, $cityId, $categoryId, $url);
+	}
+	
+	
+	/**
+	*	Verify if we have the _XXXX flow for Delivery
+	* 	If we do, make it so that we show the corect video and survey
+	*	@author Nicu
+	*/
+	private function newFlowTest($city, $category)
+	{
+		// verify if the category is a clone or not
+		if (substr($category, -3) == "_1g")
+		{	
+			// In case we will need it in the future
+			$this->registry->session->flow1fsufix = "_1g";
+			// $this->registry->session->flow1fcategory = "delivery";
+			// $urlCategory = substr($urlCategory, 0 ,strlen($urlCategory) - 3);
+			// $this->registry->session->flow1f= TRUE;
+		}
+	}
+	
+	/**
+	 * Redirect the user to last step where he left
+	 * @param string $email
+	 */
+	
+	private function redirectUserToLastStep($email)
+	{
+		$userActivity = $this->userModel->getUserActivity($email);
+		if ($userActivity != false)
+		{
+			$data = $this->userModel->getDataForSession($email);
+			$furthestUrl = $this->getFurthestStep($userActivity);
+			
+			$this->setSessions($data, $email);
+				
+			header('Location: ' . $furthestUrl);
+			exit;
+		}
+		else 
+		{
+			$this->setSessionForStepOneDone($email);
+			
+			header('Location: ' . $this->registry->configuration->website->params->url . '/user/register');
+			exit;
+		}
+	}
+	
+	/**
+	 * Set session for step 1 user
+	 * @param string $email
+	 */
+	
+	private function setSessionForStepOneDone($email)
+	{
+		$categoryClonesDifferentFlow = array('general_cleaner_co1', 'maids_denver_s1');
+		$stepOneUserData = $this->userModel->getStepOneUserApplyInfo($email);
+
+		$checkIfOrphan = $this->cityStateModel->setWistiaFlow($stepOneUserData['category']);
+		
+		if ($checkIfOrphan != false)
+		{
+			$stepOneUserData['category'] = $stepOneUserData['category'] . '_1c';
+		}
+		
+		$this->registry->session->city = $stepOneUserData['city'];
+		$this->registry->session->category = $stepOneUserData['category'];
+		
+		$this->registry->session->cityData = $this->registry->session->city;
+		$this->registry->session->categoryData = $this->registry->session->category;
+		
+		$this->registry->session->email = $email;
+// 		$this->registry->session->userId = $stepOneUserData['userId'];
+		
+		$this->registry->session->subId = (isset($stepOneUserData['subId'])) ? $this->registry->session->subId : '0';
+		
+		$formattedCategory = $this->cityStateModel->returnCategoryName($this->registry->session->categoryData);
+		$checkIfHaveVideosForCategory = $this->cityStateModel->getVideoCategory($formattedCategory);
+		
+		$this->cityStateModel->setWistiaFlowSession($checkIfOrphan, $formattedCategory, $checkIfHaveVideosForCategory, $this->registry->session);
+		
+		$this->registry->session->flowId = $this->cityStateModel->getIdForSpecificFlow($this->registry->session->cityData, $this->registry->session->categoryData, $categoryClonesDifferentFlow);
+		
+	}
+	
+	/**
+	 * Set session for step 2 user
+	 * @param array $data
+	 * @param string $email
+	 */
+	
+	private function setSessions($data, $email)
+	{
+		$categoryClonesDifferentFlow = array('general_cleaner_co1', 'maids_denver_s1');
+		$userId = $this->userModel->getUserIdForReg3($email);
+		
+		//we need to set both city and category + cityData and categoryData in order to not mess anything in the system logic
+		$this->registry->session->cityData = $data['city'];
+		$this->registry->session->categoryData = $data['category'];
+		$this->registry->session->city = $data['city'];
+		$this->registry->session->category = $data['category'];
+		
+		$this->registry->session->email = $email;
+		$this->registry->session->userId = $userId;
+		
+		$this->registry->session->stepToBeDone = 1;
+		
+		$subId = $this->userModel->getUniqueId($userId);
+		
+		$this->registry->session->subId = (isset($subId)) ? $this->registry->session->subId : '0';
+
+		$checkIfOrphan = $this->cityStateModel->setWistiaFlow($this->registry->session->categoryData);
+		$formattedCategory = $this->cityStateModel->returnCategoryName($this->registry->session->categoryData);
+		$checkIfHaveVideosForCategory = $this->cityStateModel->getVideoCategory($formattedCategory);
+		
+		$this->cityStateModel->setWistiaFlowSession($checkIfOrphan, $formattedCategory, $checkIfHaveVideosForCategory, $this->registry->session);
+		
+		$this->registry->session->flowId = $this->cityStateModel->getIdForSpecificFlow($this->registry->session->cityData, $this->registry->session->categoryData, $categoryClonesDifferentFlow);
+	}
+	
+	/**
+	 * Get the furthest possible URL from our Boomtrain API mapper for flows
+	 * (the last page where the user left the flow)
+	 * @param array $urls
+	 */
+	
+	private function getFurthestStep($urls)
+	{
+		$boomtrainProperties = new Boomtrain_BoomtrainProperties();
+		
+		$properties = $boomtrainProperties->boomtrainProperties;
+		$controllerActions = $boomtrainProperties->controllerActionNames;
+		
+		$furthestUrl = '';
+		$furthestStep = '';
+		
+		foreach ($urls as $url)
+		{
+			$explodedUrl = explode("/", $url['url']);
+			
+			//$explodedUrl[3] should tell us the controller name
+			if (isset($explodedUrl[3]) && !empty($explodedUrl[3]))
+			{
+				if ($explodedUrl[3] == 'user')
+				{
+					$boomTrainStep = $explodedUrl[3] . '-' . $controllerActions[$explodedUrl[3]][$explodedUrl[4]];
+					
+					if ($explodedUrl[4] == 'apply-page')
+					{
+						$boomTrainStep = 'apply-page';
+					}
+					
+					$depth = array_search($boomTrainStep, $properties);
+					
+					if ($furthestStep == '' || $furthestStep < $depth)
+					{
+						$furthestStep = $depth;
+						$furthestUrl = $this->registry->configuration->website->params->url . "/" . 'user' . "/" . $explodedUrl[4];
+					}
+				}
+				elseif (($explodedUrl[3] == 'video' || $explodedUrl[3] == 'survey'))
+				{
+					if (isset($explodedUrl[5]) && !empty($explodedUrl[5]))
+					{
+						$boomTrainStep = $explodedUrl[3] . '-' . $controllerActions['video'][$explodedUrl[5]];
+					}
+					else
+					{
+						$boomTrainStep = $explodedUrl[3] . '-' . $controllerActions['survey'][$explodedUrl[4]];
+					}
+					
+					$depth = array_search($boomTrainStep, $properties);
+
+					if ($furthestStep == '' || $furthestStep < $depth)
+					{
+						$furthestStep = $depth;
+						$furthestUrl = $this->registry->configuration->website->params->url . "/" . $explodedUrl[3] . "/" . $explodedUrl[4] . "/" . $explodedUrl[5];
+					}
+				}
+			}
+		}
+		
+		return $furthestUrl;
+	}
+}

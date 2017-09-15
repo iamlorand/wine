@@ -1,0 +1,215 @@
+<script type="text/javascript">
+var total = {TOTAL_BOXES};
+function appendNumberBox() {
+	total = total + 1;
+    var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Input Number, set question</label><textarea rows='4' cols='50' name='number_"+total+"''></textarea></li></div><br><label for='required'>Required</label><input id='"+total+"_r' type='checkbox' name='required' value='required' checked><br><br><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+    $("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendTextBox() {
+	total = total + 1;
+    var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Input TextBox, set question:</label><textarea rows='4' cols='50' name='text_"+total+"'></textarea></li></div><br><label for='required'>Required</label><input id='"+total+"_r' type='checkbox' name='required' value='required' checked><br><br><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+    $("#surveyForms").append(txt1);     // Append new elements
+}
+function appendCheckBox() {
+	total = total + 1;
+    var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Input CheckBox, please set question:</label><textarea rows='4' cols='50' name='checkbox_"+total+"''></textarea><label id='surveyLabel' >CheckBox Values, new line separated</label><textarea rows='4' cols='50' name='checkboxValue_"+total+"' class='surveyAnswers'></textarea></li></div><br><label for='required'>Required</label><input id='"+total+"_r' type='checkbox' name='required' value='required' checked><br><br><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+    $("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendRadioBox() {
+	total = total + 1;
+    var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Input RadioButton, please set question:</label><textarea rows='4' cols='50' name='radiobox_"+total+"''></textarea><label id='surveyLabel' >Radio Button Values, new line separated</label><textarea rows='4' cols='50' name='radioboxValue_"+total+"' class='surveyAnswers'></textarea></li></div><br><label for='required'>Required</label><input id='"+total+"_r' type='checkbox' name='required' value='required' checked><br><br><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+    $("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendDropdownBox() {
+	total = total + 1;
+    var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Input DropdownMenu, please set question:</label><textarea rows='4' cols='50' name='dropdown_"+total+"''></textarea><label id='surveyLabel' >Dropdown Values, new line separated</label><textarea rows='4' cols='50' name='dropdownValue_"+total+"' class='surveyAnswers'></textarea></li></div><br><label for='required'>Required</label><input id='"+total+"_r' type='checkbox' name='required' value='required' checked><br><br><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+    $("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendTextareaBox() {
+	total = total + 1;
+    var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Input TextArea, set question:</label><textarea rows='4' cols='50' name='textarea_"+total+"'></textarea></li></div><br><label for='required'>Required</label><input id='"+total+"_r' type='checkbox' name='required' value='required' checked><br><br><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+    $("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendFacebookLoginButton(){
+	total = total + 1;
+	var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Facebook Log in button</label><button type='submit' class='facebook_login' name='facebookButton' value='facebook' disabled><img src='{SITE_URL}/library/SocialAuth/Images/facebookButton.png' alt='Log in with Facebook' height='40' width='180'></button><input type='hidden' name ='facebookButton' value='facebook'></li></div><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+	$("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendGooglePlusLoginButton(){
+	total = total + 1;
+	var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>GooglePlus Log in button</label><button type='submit' name='googlePlusButton' value='googleplus' disabled><img src='{SITE_URL}/library/SocialAuth/Images/googlePlusButton.png' alt='Log in with Facebook' height='40' width='180'></button><input type='hidden' name ='googlePlusButton' value='googlePlus'></li></div><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+	$("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendLinkedinLoginButton(){
+	total = total + 1;
+	var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Linkedin Log in button</label><button type='submit' name='linkedinButton' value='linkedin' disabled><img src='{SITE_URL}/library/SocialAuth/Images/linkedinButton.png' alt='Log in with Facebook' height='40' width='180'></button><input type='hidden' name ='linkedinButton' value='linkedin'></li></div><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+	$("#surveyForms").append(txt1);     // Append new elements
+}
+
+function appendTwitterLoginButton(){
+	total = total + 1;
+	var txt1 = "<div class='suveryClearfix'><div class='clearfix'><li class='cleafix' id='"+total+"'><label id='surveyLabel'>Twitterk Log in button</label><button type='submit' name='twitterButton' value='twitter' disabled><img src='{SITE_URL}/library/SocialAuth/Images/twitterButton.png' alt='Log in with Facebook' height='40' width='180'></button><input type='hidden' name ='twitterButton' value='twitter'></li></div><a href='#' class='button'  onclick='deleteElement("+total+")'>Remove</a><a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1); return false;'>Move Up</a></div>";
+	$("#surveyForms").append(txt1);     // Append new elements
+}
+
+function deleteElement(id)
+{
+	var surveyFieldId = document.getElementById(id+'_q').name;
+	$( "#"+id ).remove();
+	$.post('{SITE_URL}/admin/survey/deleterow', {'surveyFieldId': surveyFieldId});
+}
+
+function grey(row)
+{
+	if(document.getElementById(row+"_q"))
+	{
+		document.getElementById(row+"_q").removeAttribute('disabled');
+	}
+	if(document.getElementById(row+"_a"))
+	{
+		document.getElementById(row+"_a").removeAttribute('disabled');
+	}
+}
+
+function update(row)
+{
+	questionName = document.getElementById(row+"_q").name;
+	questionValue = document.getElementById(row+"_q").value;
+		
+	if(document.getElementById(row+"_a") && document.getElementById(row+"_a")){
+		answerName = document.getElementById(row+"_a").name;
+		answerValue = document.getElementById(row+"_a").value;
+	}
+	else
+	{
+		answerName = "";
+		answerValue = "";
+	}
+	
+	required = document.getElementById(row+"_r").checked;
+
+
+	if(document.getElementById(row+"_q"))
+	{
+		document.getElementById(row+"_q").setAttribute('disabled', true);
+	}
+	if(document.getElementById(row+"_a"))
+	{
+		document.getElementById(row+"_a").setAttribute('disabled', true);
+	}
+
+	$.post('{SITE_URL}/admin/survey/updateRow', {'questionId': questionName, 'answerId': answerName, 'questionValue': questionValue, 'answerValue': answerValue, 'required':required});
+}
+
+function updateInstructions(instructions)
+{
+	instructionsText = document.getElementById("-1_a").value;
+	$.post('{SITE_URL}/admin/survey/updateinstructions/surveyId/{ID}', {'instructions': instructionsText});
+}
+
+function updateSurveyOrder()
+{
+	$("#survey textarea").each(function(){
+		var input = $(this);
+		this.disabled = false;
+		console.log(input);
+	});
+}
+
+function MoveItem(item, direction) {
+
+    var counter = 0;
+    var previousItem = null;
+    var moveNextItemUp = false;
+    
+    if (direction == 1) {
+        moveNextItemUp = true;
+    } else if ((direction == -1) || (moveNextItemUp == true)) {
+
+           // get the previous <li> element
+        var prev = item.previousSibling
+        while( prev && prev.nodeType != 1 && (prev = prev.previousSibling));
+
+        item.parentNode.insertBefore(item, prev);
+    }
+    previousItem = item;
+    counter = counter + 1;
+}
+
+</script>
+
+<table style="width: 1000px">
+	<tr>
+		<td>
+			<form action="{SITE_URL}/admin/survey/update/surveyId/{ID}" method="post" id="survey">
+				<div class="box-shadow" style=" width: 800px">
+					<div class="box_header">
+						Survey Questions
+					</div>
+					<ul class="form">
+					<div id='surveyForms'>{SELECTED_SURVEYS}</div>
+					<li class="clearfix suveryClearfix" id='-1'>
+							<label id='surveyLabel'>Survey Instructions</label>
+							<textarea id='-1_a' name="instructions" rows='4' cols='50' disabled>{INSTRUCTIONS}</textarea>
+							<br>
+							<a href='#' class='button button_move' onclick='grey("-1"); return false;'>Edit</a><a href='#' class='button button_move' onclick='updateInstructions(this)'>Update</a>
+						</li>
+					<li class="clearfix ">
+							<label>&nbsp;</label>
+							<input type="submit" class="button" value="update" onclick="updateSurveyOrder()">
+						</li>
+					</ul>
+				</div>
+			</form>
+		</td>
+
+		<td>
+			<div class="box-shadow survey_add_buttons" style="width: 150px">
+				<div class="box_header">
+					Add Survey Questions
+				</div>
+				<ul class="form">
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Number" onclick="appendNumberBox()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Text" onclick="appendTextBox()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Checkbox" onclick="appendCheckBox()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Radio" onclick="appendRadioBox()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Dropdown" onclick="appendDropdownBox()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Textarea" onclick="appendTextareaBox()">
+					</li>
+					<!--  
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Facebook" onclick="appendFacebookLoginButton()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="GooglePlus" onclick="appendGooglePlusLoginButton()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Linkedin" onclick="appendLinkedinLoginButton()">
+					</li>
+					<li class="clearfix">
+						<input type="submit" class="button button_survey" value="Twitter" onclick="appendTwitterLoginButton()">
+					</li>
+					-->
+				</ul>
+			</div>
+		</td>
+	</tr>
+</table>

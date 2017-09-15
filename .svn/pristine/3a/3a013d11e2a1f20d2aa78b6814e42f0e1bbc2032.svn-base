@@ -1,0 +1,707 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: AdminView.php 6 2015-06-25 13:55:51Z andreic $
+*/
+
+/**
+* Category View Class
+* class that prepare output related to User controller 
+* @category   DotKernel
+* @package    Admin 
+* @author     Gellert
+*/
+
+class Affiliate_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+		$this->config = Zend_Registry::get('configuration');
+		$this->settings = Zend_Registry::get('settings');
+		$this->session = Zend_Registry::get('session');
+	}
+	
+	/**
+	 * Return name of city before / from $data['flow'] which contains new_yor_city-ca/delivery
+	 * @access public
+	 * @param string $slash
+	 * @param string $category
+	 * @return void
+	 */
+	public function before($slash, $category)
+    {
+        return substr($category, 0, strpos($category, $slash));
+    }
+	
+    /**
+	 * Return name of category after / from $data['flow'] which contains new_yor_city-ca/delivery
+	 * @access public
+	 * @param string $slash
+	 * @param string $category
+	 * @return void
+	 */
+	public function after($slash, $city)
+	{
+		return substr(substr($city, strpos($city, $slash)), 1);
+	}
+	
+	/**
+	 * Display admin user details. It is used for add and update actions
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data [optional]
+	 * @return void
+	 */
+	public function details($templateFile, $data=array(), $cities, $category)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'cities_list', 'cities_list_block');
+		$this->tpl->setBlock('tpl_main', 'category_list', 'category_list_block');
+		
+		if(!empty($data))
+		{
+			$this->tpl->setVar('ID', $data['id']);
+			$this->tpl->setVar('NAME', $data['name']);
+			$this->tpl->setVar('FLOW_CITY', ucwords(str_replace('_', ' ', $this->before('/', $data['flow']))));
+			$this->tpl->setVar('FLOW_CATEGORY', $this->after('/', $data['flow']));
+			// $this->tpl->setVar('LAST_ID', $data['id_last']);
+		}
+		
+		foreach($cities as $key => $value)
+		{
+			$this->tpl->setVar('CITY_LINK', $value['cityLink']);
+			$this->tpl->setVar('CITY_NAME', $value['name']);
+			$this->tpl->parse('cities_list_block', 'cities_list', true);
+		}		
+		
+		foreach($category as $key => $value)
+		{
+			$this->tpl->setVar('CATEGORY', $value['categoryName']);
+			$this->tpl->parse('category_list_block', 'category_list', true);
+		}
+	}
+	
+	public function importFile($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+	}
+
+	/**
+	 * List the admin users and filters
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $list
+	 * @param int $page
+	 * @param array $filterData
+	 * @param bool $ajax - Using ajax, parse only the list content
+	 * @return void
+	 */
+	public function listAffiliateFilter($templateFile, $list, $filterData, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list', 'list_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->addUserToken();
+		$this->tpl->setVar('PAGE', $page);
+		$this->tpl->setVar('ID_FIRST', (isset($filterData['idFirst']))? $filterData['idFirst'] :'');
+		$this->tpl->setVar('ID_LAST', (isset($filterData['idLast']))? $filterData['idLast'] :'');
+		$this->tpl->setVar('NAME_SEARCH', (isset($filterData['nameSearch']))? $filterData['nameSearch'] :'');
+		
+		foreach ($list['data'] as $k => $v)
+		{
+			$this->tpl->setVar('ROW', $k%2);
+		    $this->tpl->setVar('NAME', $v['name']);
+		    $this->tpl->setVar('FLOW', $v['flow']);
+		    $this->tpl->setVar('ID', $v['id']);			
+			$this->tpl->parse('list_block', 'list', true);
+		}
+	}
+
+	/**
+	 * List the admin users and filters
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data
+	 * @return void
+	 */
+	public function affiliateBulkUpdate($templateFile, $data=array(), $cities, $category)
+	{
+	    $this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+	    $this->tpl->setBlock('tpl_main', 'cities_list', 'cities_list_block');
+	    $this->tpl->setBlock('tpl_main', 'category_list', 'category_list_block');
+	    
+	    if(!empty($data))
+		{
+			$this->tpl->setVar('NAME', $data['name']);
+		}
+		foreach($cities as $key => $value)
+		{
+			$this->tpl->setVar('CITY_LINK', $value['cityLink']);
+			$this->tpl->setVar('CITY_NAME', $value['name']);
+			$this->tpl->parse('cities_list_block', 'cities_list', true);
+		}
+		
+		foreach($category as $key => $value)
+		{
+			$this->tpl->setVar('CATEGORY', $value['categoryName']);
+			$this->tpl->parse('category_list_block', 'category_list', true);
+		}
+	}
+
+	/**
+	 * List the affiliate SubId's
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data
+	 * @author Nicu
+	 * @return void
+	 */
+	public function listAffiliateSubId($templateFile = '', $data, $filterData, $page)
+	{
+	    $this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+	    $this->tpl->setBlock('tpl_main', 'list_subId', 'list_subId_block');
+	   	$this->tpl->paginator($data['pages']);
+		$this->tpl->setVar('PAGE', $page);
+		$this->tpl->setVar('PLATFORM_NAME', (isset($filterData['platformSearch']))? $filterData['platformSearch'] :'');
+		$this->tpl->setVar('CITY_NAME', (isset($filterData['citySearch']))? $filterData['citySearch'] :'');
+		$this->tpl->setVar('CATEGORY_SEARCH', (isset($filterData['categorySearch']))? $filterData['categorySearch'] :'');
+
+		$currentUrl = $this->config->website->params->url . '/admin/affiliate/list-sub-id/';
+		foreach ( $filterData as $key => $value )
+		{
+			$currentUrl .= $key . '/' . $value . '/';
+		}
+		$this->tpl->setVar('CURRENT_URL', $currentUrl);
+
+	    foreach($data['data'] as $key => $value)
+		{
+			$this->tpl->setVar('SUB_ID', $value['id']);
+			$this->tpl->setVar('CITY', $value['city']);
+			$this->tpl->setVar('CATEGORY', $value['category']);
+			$this->tpl->parse('list_subId_block', 'list_subId', true);
+		}
+
+	}
+
+/**
+	 * List the affiliate SubId's Details
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data
+	 * @author Nicu
+	 * @return void
+	 */
+	public function listAffiliateSubIdDetails($templateFile = '', $data, $counts, $countsReferer, $uniqueVisits, $users, $subSubIds, $subIdsPerReferer, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list_details', 'list_details_block');
+		$this->tpl->setBlock('tpl_main', 'list_users', 'list_users_block');
+		$this->tpl->setBlock('tpl_main', 'subIdsBlock', 'subIdsBlock_block');
+		$this->tpl->setBlock('subIdsBlock', 'subIdRowValue', 'subIdRowValue_block');
+		$this->tpl->setBlock('subIdsBlock', 'subId_name', 'subId_name_block');
+		$this->tpl->setBlock('subIdRowValue', 'subId_value', 'subId_value_block');
+
+	    foreach ($data as $value) 
+	    {
+	    	$totalCost = $value['cost'] * $counts['visits'];
+	    	if ($counts['reg2'] > 0)
+	    	{
+	    		$cpa = $value['cost'] * $counts['visits'] / $counts['reg2'];
+	    		$cpa = number_format((float)$cpa, 2, '.', '');
+	    	}
+	    	else
+	    	{
+	    		$cpa = $totalCost . " (0 reg 2)";
+	    	}
+	    	
+	    	$this->tpl->setVar('ID', $value['id']);
+	    	$this->tpl->setVar('PLATFORM_NAME', $value['platformName']);
+			$this->tpl->setVar('CITY_STATE', $value['cityState']);
+			$this->tpl->setVar('CATEGORY', $value['category']);
+			$this->tpl->setVar('JOB_TYPE', $value['jobType']);
+			$this->tpl->setVar('TITLE', $value['title']);
+			$this->tpl->setVar('DESCRIPTION', $value['description']);
+
+			$this->tpl->setVar('REFERER', 'TOTAL');
+			// aici lucrez
+
+			$this->tpl->setVar('TRACKING_URL', '');
+
+			$this->tpl->setVar('COUNT_VISITS', $counts['visits']);
+			$this->tpl->setVar('UNIQUE_VISITS', $uniqueVisits);
+			$this->tpl->setVar('CPC', '$' . $value['cost']);
+			$this->tpl->setVar('TOTAL_COST', '$' . $totalCost);
+			$this->tpl->setVar('CPA', '$' . $cpa);
+			$this->tpl->setVar('COUNT_REG1', $counts['reg1']);
+			$this->tpl->setVar('COUNT_REG2', $counts['reg2']);
+			$this->tpl->parse('list_details_block', 'list_details', true);			
+	    }
+
+	    if (!empty($subSubIds))
+	    {
+	    	ksort($subSubIds);
+			$subSubIdsLength = array();
+			foreach ($subSubIds as $subSubId => $subSubIdsValues)
+			{
+				$this->tpl->setVar('SUBID_NAME', $subSubId);
+				$this->tpl->parse('subId_name_block', 'subId_name', true);
+				
+				$count = count($subSubIdsValues);
+				array_push($subSubIdsLength, $count);
+			}
+			
+			$maxCount = max($subSubIdsLength);
+			
+			for ($i=0; $i<=$maxCount - 1; $i++)
+			{
+				foreach ($subSubIds as $subSubId => $values)
+				{
+					if (isset($values[$i]))
+					{
+						$subIdValue = $values[$i];
+					}
+					else 
+					{
+						$subIdValue = '';
+					}
+					
+					$this->tpl->setVar('SUBID_VALUE', $subIdValue);
+					$this->tpl->parse('subId_value_block', 'subId_value', true);
+				}
+				$this->tpl->parse('subIdRowValue_block', 'subIdRowValue', true);
+				$this->tpl->parse('subId_value_block', '');
+			}
+			$this->tpl->parse('subIdsBlock_block', 'subIdsBlock', true);
+	    }
+	    
+	    $platformSubIdUrl = 'http://www.microrecruiting.com/' . $data[0]['city'] . '/' . $data[0]['category'] . '/?id=' . $data[0]['id'];
+	    
+	    foreach ($countsReferer as $key => $value) 
+	    {
+	    	$totalCostPerReferer = $data[0]['cost'] * $value['visits'];
+	    	if ($value['reg2'] > 0)
+	    	{
+	    		$cpa = $data[0]['cost'] * $value['visits'] / $value['reg2'];
+	    	}
+	    	else
+	    	{
+	    		$cpa = $totalCostPerReferer . " (0 reg 2)";
+	    	}
+			
+	    	if (in_array($key, $subIdsPerReferer['referrers']))
+	    	{
+	    		$referrerKey = array_search ($key, $subIdsPerReferer['referrers']);
+
+	    		if (array_key_exists($referrerKey, $subIdsPerReferer['referrersUrls']))
+	    		{
+	    			$urls = $subIdsPerReferer['referrersUrls'][$referrerKey];
+	    			 
+	    			$urlsPerReferrer = '';
+	    			foreach ($urls as $url)
+	    			{
+	    				$urlsPerReferrer .= $platformSubIdUrl . $url . PHP_EOL;
+	    			}
+	    		}
+	    		else 
+	    		{
+	    			$urlsPerReferrer = $platformSubIdUrl;
+	    		}
+	    	}
+	    	
+	    	$this->tpl->setVar('REFERER', $key);
+	    	$this->tpl->setVar('TRACKING_URL', $urlsPerReferrer);
+	    	$this->tpl->setVar('COUNT_VISITS', $value['visits']);
+	    	$this->tpl->setVar('UNIQUE_VISITS', $value['unique']);
+	    	$this->tpl->setVar('CPC', '$' . $data[0]['cost']);
+	    	$this->tpl->setVar('TOTAL_COST', '$' . $totalCostPerReferer);
+	    	$this->tpl->setVar('CPA', '$' . $cpa);
+			$this->tpl->setVar('COUNT_REG1', $value['reg1']);
+			$this->tpl->setVar('COUNT_REG2', $value['reg2']);	
+			$this->tpl->parse('list_details_block', 'list_details', true);		
+	    }
+	    
+	    $subtotal = $totalCost;
+	    $this->tpl->setVar('SUBTOTAL_COST', '$' . $subtotal);
+
+	    foreach ($users as $key => $value) 
+	    {
+			$this->tpl->setVar('USER_ID', $value['id']);		
+			$this->tpl->setVar('USER_EMAIL', $value['email']);	
+			$this->tpl->setVar('USER_DATE', $value['dateCreated']);
+			$this->tpl->parse('list_users_block', 'list_users', true);
+	    }
+	}
+
+	/**
+	 * List all the Details from a Job  in order to Edit and create a new job
+	 * some platforms have JobType and some don't
+	 * 
+	 * @access public
+	 * @param string $templateFile
+	 * @param array $data
+	 * @param array $affiliateJobDetails
+	 * @author Nicu & Razvan
+	 * @return void
+	 */
+	public function listAffiliateSubIdDetailsForEditAndAdd($templateFile = '', $data, $affiliateJobDetails)
+	{
+			$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+			$this->tpl->setBlock('tpl_main', 'cities_list', 'cities_list_block');
+			$this->tpl->setBlock('tpl_main', 'category_list', 'category_list_block');
+			$this->tpl->setBlock('tpl_main', 'jobtype_list', 'jobtype_list_block');
+			$this->tpl->setBlock('tpl_main', 'job_type_not_null', 'job_type_not_null_block');
+			$this->tpl->setBlock('tpl_main', 'platform_list', 'platform_list_block');
+
+			$cities = $affiliateJobDetails['affiliateJobCities'];
+			$category = $affiliateJobDetails['affiliateJobCategory'];
+			$jobType = $affiliateJobDetails['affiliateJobType'];
+			$platform = $affiliateJobDetails['affiliateJobPlatform'];
+		
+			foreach ($data as $key => $value) 
+			{	
+				$this->tpl->setVar('ID', $value['id']);
+		    	$this->tpl->setVar('PLATFORM_SELECTED', $value['platformName']);
+				$this->tpl->setVar('CITY_STATE_SELECTED', $value['cityState']);
+				$this->tpl->setVar('CATEGORY_SELECTED', $value['category']);
+				
+				$this->tpl->setVar('TITLE', $value['title']);
+				$this->tpl->setVar('DESCRIPTION', $value['description']);
+
+				if($value['jobType'] != NULL)
+				{
+					$this->tpl->setVar('JOB_TYPE_SELECTED', $value['jobType']);
+					$this->tpl->parse('job_type_not_null_block', 'job_type_not_null', true);
+				}
+				
+				foreach ($platform as $key => $value) 
+				{
+					$this->tpl->setVar('PLATFORM_ID', $value['platformId']);
+					$this->tpl->setVar('PLATFORM_NAME', $value['platformName']);
+					$this->tpl->parse('jobtype_list_block', 'jobtype_list', true);
+					$this->tpl->parse('platform_list_block', 'platform_list', true);
+				}
+
+				foreach ($cities as $key => $value) 
+				{
+					$this->tpl->setVar('CITY_ID', $value['cityId']);
+					$this->tpl->setVar('CITY_NAME', $value['name']);
+					$this->tpl->parse('cities_list_block', 'cities_list', true);
+				}
+
+				foreach ($category as $key => $value) 
+				{
+					$this->tpl->setVar('CATEGORY_ID', $value['categoryId']);
+					$this->tpl->setVar('CATEGORY_NAME', $value['categoryName']);
+					$this->tpl->parse('category_list_block', 'category_list', true);		
+				}
+
+				foreach ($jobType as $key => $value) 
+				{
+					$this->tpl->setVar('JOBTYPE_ID', $value['jobTypeId']);
+					$this->tpl->setVar('JOB_TYPE_NAME', $value['jobType']);
+					$this->tpl->parse('jobtype_list_block', 'jobtype_list', true);
+				}
+			}		
+	}
+	
+	public function listAffiliateStats($templateFile = '', $visitsData)	
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'platform_list', 'platform_list_block');
+		
+		
+		
+		foreach($visitsData as $key)
+		{
+			$totalCost = $key['cost'] * $key['totalVisits'];
+			
+			$cpa = $key['cost'] * $key['totalVisits'] / $key['reg2'];
+			$cpa = number_format((float)$cpa, 2, '.', '');
+			
+			$this->tpl->setVar('PLATFORM_NAME', $key['platformName']);
+			$this->tpl->setVar('PLATFORM_VISITS', $key['totalVisits']);
+			$this->tpl->setVar('PLATFORM_UNIQUE_VISITS', $key['uniqueVisits']);
+			$this->tpl->setVar('PLATFORM_CPA', $cpa . ' '.'$');
+			$this->tpl->setVar('PLATFORM_CPC', $totalCost . ' '.'$');
+			$this->tpl->setVar('PLATFORM_REG1', $key['reg1']);
+			$this->tpl->setVar('PLATFORM_REG2', $key['reg2']);
+			$this->tpl->parse('platform_list_block', 'platform_list', true);
+		}
+	}
+	
+	public function showPage($templateFile)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'subids_table', 'subids_table_block');
+		$this->tpl->setBlock('subids_table', 'subId', 'subId_block');
+	}
+	
+	public function displaySubIdsLogs($templateFile, $subIds, $date, $subIdsWithNoData)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'subids_table', 'subids_table_block');
+		$this->tpl->setBlock('subids_table', 'subId', 'subId_block');
+		$this->tpl->setVar('DATE', ' - Date range: ' . $date);
+		
+		$data = array('VISITS' => 'visits', 'REG1' => 'reg1', 'REG2' => 'reg2');
+		
+		foreach ($subIds as $subId => $subIdData)
+		{
+			$this->tpl->setVar('SUB_ID', $subId);
+			$this->tpl->setVar('PLATFORM', $subIdData['platform']);
+			
+			foreach ($data as $tplVar => $key)
+			{
+				if (isset($subIdData[$key]))
+				{
+					$this->tpl->setVar($tplVar, $subIdData[$key]);
+				}
+				else 
+				{
+					$this->tpl->setVar($tplVar, '0');
+				}
+				
+			}
+			
+			$this->tpl->parse('subId_block', 'subId', true);
+		}
+		
+		foreach ($subIdsWithNoData as $subIdData)
+		{
+			$this->tpl->setVar('SUB_ID', $subIdData['subId']);
+			$this->tpl->setVar('PLATFORM', $subIdData['platform']);
+			$this->tpl->setVar('VISITS', '0');
+			$this->tpl->setVar('REG1', '0');
+			$this->tpl->setVar('REG2', '0');
+			
+			$this->tpl->parse('subId_block', 'subId', true);
+		}
+		
+		$this->tpl->parse('subids_table_block', 'subids_table', true);
+	}
+	
+	/**
+	 * 
+	 * @param string $templateFile
+	 * @param array $data
+	 * @param array $visits
+	 * @param array $step1
+	 * @param array $step2
+	 * @param array $subSubIds
+	 */
+	
+	public function listSubIdRawClicks($templateFile = '', $data, $visits, $step1, $step2, $subSubIds)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'list_details', 'list_details_block');
+		$this->tpl->setBlock('tpl_main', 'subIdsBlock', 'subIdsBlock_block');
+		$this->tpl->setBlock('tpl_main', 'subIdName', 'subIdName_block');
+		$this->tpl->setBlock('list_details', 'subIdValue', 'subIdValue_block');
+		$this->tpl->setBlock('subIdsBlock', 'subId_name', 'subId_name_block');
+		$this->tpl->setBlock('subIdsBlock', 'subIdRowValue', 'subIdRowValue_block');
+		$this->tpl->setBlock('subIdRowValue', 'subId_value', 'subId_value_block');
+
+		if (!empty($subSubIds))
+		{
+			ksort($subSubIds);
+			$subSubIdsLength = array();
+			foreach ($subSubIds as $subSubId => $subSubIdsValues)
+			{
+				$this->tpl->setVar('SUBID_NAME', $subSubId);
+				$this->tpl->parse('subId_name_block', 'subId_name', true);
+				
+				$count = count($subSubIdsValues);
+				array_push($subSubIdsLength, $count);
+			}
+			
+			$maxCount = max($subSubIdsLength);
+			
+			for ($i=0; $i<=$maxCount - 1; $i++)
+			{
+				foreach ($subSubIds as $subSubId => $values)
+				{
+					if (isset($values[$i]))
+					{
+						$subIdValue = $values[$i];
+					}
+					else 
+					{
+						$subIdValue = '';
+					}
+					
+					$this->tpl->setVar('SUBID_VALUE', $subIdValue);
+					$this->tpl->parse('subId_value_block', 'subId_value', true);
+				}
+				$this->tpl->parse('subIdRowValue_block', 'subIdRowValue', true);
+				$this->tpl->parse('subId_value_block', '');
+			}
+			$this->tpl->parse('subIdsBlock_block', 'subIdsBlock', true);
+		}
+		
+		$nrOfVisists = count($visits);
+		$totals['reg1'] = 0;
+		$totals['reg2'] = 0;
+		
+		if ($data[0]['cost'] == NULL)
+		{
+			$data[0]['cost'] = 0;
+		}
+		$subIdsNames = array_keys($subSubIds);
+		
+		foreach ($subIdsNames as $subIdName)
+		{
+			$this->tpl->setVar('SUB_ID_NAME_HEADER', $subIdName);
+			$this->tpl->parse('subIdName_block', 'subIdName', true);
+		}
+		
+		foreach ($visits as $key => $value)
+		{
+			if (in_array($key, $step1))
+			{
+				$reg1 = '1';
+				$totals['reg1'] += 1;
+			}
+			else 
+			{
+				$reg1 = '0';
+			}
+			
+			if (in_array($key, $step2))
+			{
+				$reg2 = '1';
+				$totals['reg2'] += 1;
+			}
+			else
+			{
+				$reg2 = '0';
+			}
+			
+			$totalCost = $data[0]['cost'] * $nrOfVisists;
+			if ($totals['reg2'] > 0)
+			{
+				$cpa = $data[0]['cost'] * $nrOfVisists / $totals['reg2'];
+				$cpa = number_format((float)$cpa, 2, '.', '');
+			}
+			else
+			{
+				$cpa = $totalCost . " (0 reg 2)";
+			}
+			
+			$subIds = '';
+			foreach ($value as $subIdName => $subIdValue)
+			{
+				$subIds .= '&'.$subIdName . '=' . $subIdValue;
+			}
+
+			$this->tpl->setVar('SUB_IDS', 'http://www.microrecruiting.com/'.$data[0]['city'].'/'.$data[0]['category'].'/?id='.$data[0]['id'].$subIds);
+			
+			foreach ($subIdsNames as $subIdName)
+			{
+				if (array_key_exists($subIdName, $value))
+				{
+					$this->tpl->setVar('SUB_ID_VALUE', $value[$subIdName]);
+					$this->tpl->setVar('REFERER', $value['referer']);
+				}
+				else 
+				{
+					$this->tpl->setVar('SUB_ID_VALUE', '');
+					$this->tpl->setVar('REFERER', '');
+				}
+				
+				$this->tpl->parse('subIdValue_block', 'subIdValue', true);
+			}
+			
+			$this->tpl->setVar('COUNT_VISITS', '1');
+			$this->tpl->setVar('UNIQUE_VISITS', '1');
+			$this->tpl->setVar('CPC', '$' . $data[0]['cost']);
+			$this->tpl->setVar('TOTAL_COST', '$' . $totalCost);
+			$this->tpl->setVar('CPA', '$' . $cpa);
+			$this->tpl->setVar('COUNT_REG1', $reg1);
+			$this->tpl->setVar('COUNT_REG2', $reg2);
+			$this->tpl->parse('list_details_block', 'list_details', true);
+			$this->tpl->parse('subIdValue_block', '');
+		}
+
+		foreach ($data as $key => $value)
+		{
+			$totalCost = $value['cost'] * $nrOfVisists;
+			if ($totals['reg2'] > 0)
+			{
+				$cpa = $value['cost'] * $nrOfVisists / $totals['reg2'];
+				$cpa = number_format((float)$cpa, 2, '.', '');
+			}
+			else
+			{
+				$cpa = $totalCost . " (0 reg 2)";
+			}
+		
+			$this->tpl->setVar('ID', $value['id']);
+			$this->tpl->setVar('PLATFORM_NAME', $value['platformName']);
+			$this->tpl->setVar('CITY_STATE', $value['cityState']);
+			$this->tpl->setVar('CATEGORY', $value['category']);
+			$this->tpl->setVar('JOB_TYPE', $value['jobType']);
+			$this->tpl->setVar('TITLE', $value['title']);
+			$this->tpl->setVar('DESCRIPTION', $value['description']);
+
+			$this->tpl->setVar('SUB_IDS', 'TOTAL');
+			
+			foreach ($subIdsNames as $subIdName)
+			{
+				$this->tpl->setVar('SUB_ID_VALUE', '');
+				$this->tpl->parse('subIdValue_block', 'subIdValue', true);
+			}
+			
+			$this->tpl->setVar('COUNT_VISITS', $nrOfVisists);
+			$this->tpl->setVar('UNIQUE_VISITS', $nrOfVisists);
+			$this->tpl->setVar('CPC', '$' . $value['cost']);
+			$this->tpl->setVar('TOTAL_COST', '$' . $totalCost);
+			$this->tpl->setVar('CPA', '$' . $cpa);
+			$this->tpl->setVar('COUNT_REG1', $totals['reg1']);
+			$this->tpl->setVar('COUNT_REG2', $totals['reg2']);
+			$this->tpl->parse('list_details_block', 'list_details', true);
+		}
+	}
+	
+	public function displayWistiaAppliances($templateFile, $data, $page)
+	{
+		$this->tpl->setFile('tpl_main', 'affiliate/' . $templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'user_appliance', 'user_appliance_block');
+		$this->tpl->paginator($data['pages']);
+		$this->tpl->setVar('PAGE', $page);
+		
+		$flows = array(	'3'	=>	'Wistia Flow 1',
+						'4'	=>	'Wistia Flow 2'
+		);
+		
+		$redirects = array(	'0'	=>	'Not interested',
+							'1'	=>	'handy'
+		);
+		
+		foreach ($data['data'] as $key => $appliance)
+		{
+			if ($appliance['subId'] == '0')
+			{
+				$appliance['subId'] = '';
+			}
+			$this->tpl->setVar('USER_ID', $appliance['userId']);
+			$this->tpl->setVar('EMAIL', $appliance['email']);
+			$this->tpl->setVar('UNIQUE_ID', $appliance['subId']);
+			$this->tpl->setVar('DATE', $appliance['date']);
+			$this->tpl->setVar('FLOW', $flows[$appliance['flow']]);
+			$this->tpl->setVar('REDIRECT', $redirects[$appliance['redirect']]);
+			
+			$this->tpl->parse('user_appliance_block', 'user_appliance', true);
+		}
+	}
+}

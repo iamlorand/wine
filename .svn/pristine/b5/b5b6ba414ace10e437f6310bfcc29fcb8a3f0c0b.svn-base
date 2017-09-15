@@ -1,0 +1,78 @@
+<div id="adminList" class="box-shadow">
+	<table class="big_table"  frame="box" rules="all">
+		<thead>
+			<tr>
+				<th style="text-align: center; width: 50px;"><span># {USER_ID}</span></th>
+				<th><span>User: {USER_EMAIL}</span></th>
+			</tr>
+		</thead>
+		
+		<tbody>
+			<tr>
+				<td><span></span></td>
+				<td style = "padding: 3px 10px;">Registration Type: <span style = "font-weight:bold;">{LOGIN_TYPE}</span></td>
+			</tr>
+			<tr>
+				<td><span></span></td>
+				<td style = "padding: 3px 10px;">Browser Type: <span style = "font-weight:bold;">{BROWSER_TYPE}</span></td>
+			</tr>
+			<tr>
+				<td><span></span></td>
+				<td style = "padding: 3px 10px;">Referrer Url: <span style = "font-weight:bold;">{REFERER_URL}</span></td>
+			</tr>
+			<tr>
+				<td><span></span></td>
+				<td style = "padding: 3px 10px;">Job Type: <span style = "font-weight:bold;">{JOB_TYPE}</span></td>
+			</tr>
+		<!-- BEGIN cat_city -->
+			<tr>
+				<td style="text-align: center; padding: 3px 10px;"><span></span></td>
+				<td style = "padding: 3px 10px; font-weight:bold;">Category: {CATEGORY}</th>
+			</tr>
+			<tr>
+				<td style="text-align: center; width: 20px; padding: 3px 10px;"><span></span></td>
+				<td style = "padding: 3px 10px; font-weight:bold;">City: {CITY}</th>
+			</tr>
+			
+				<!-- BEGIN question_list -->
+					<tr>
+						<td style="text-align: center; padding: 3px 10px;">{ID}</td>
+						<td style = "padding: 3px 5px 5px 30px;">{QUESTION} : {ANSWER}</td>
+					</tr>
+				<!-- END question_list -->
+		<!-- END cat_city -->
+		
+		<!-- BEGIN user_details -->
+		<tr>
+			<td style="text-align: center; padding: 3px 10px;"><span></span></td>
+			<td style = "padding: 3px 10px"> {USER_QUESTION_DETAILS} : {USER_ANSWER_DETAILS} </th>
+		</tr>
+		<!-- END user_details -->
+		</tbody>
+	</table>	
+		<br>
+	<table class="big_table"  frame="box" rules="all">	
+		<thead>
+			<tr>
+				<th style="text-align: left; width: 250px;"><span>Surveys Answers</span></th>
+				<th></th>
+			</tr>
+		</thead>
+		
+		<tbody>
+		<!-- BEGIN survey -->
+			<tr>
+				<td style = "font-weight:bold; background-color:#F6D8CE;">Survey: </td>
+				<td style = "padding: 3px 10px; font-weight:bold; background-color:#F6D8CE;">{SURVEY_NAME}</td>
+			</tr>
+			<!-- BEGIN survey_answer -->
+			<tr>
+				<td>{SURVEY_QUESTION}</td>
+				<td>{SURVEY_ANSWER}</td>
+			</tr>
+			<!-- END survey_answer -->
+			<tr></tr>
+		<!-- END survey -->
+		</tbody>
+	</table>
+</div>

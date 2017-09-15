@@ -1,0 +1,28 @@
+<form action="{SITE_URL}/admin/platform-category/{BUTTON_TYPE}/id/{CATEGORYID}" method="post" >
+	<div class="box-shadow" style="width: 500px">
+		<div class="box_header">
+			Add New Category
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Name<span class="required">*</span></label>
+				<input type="text" name="categoryName" value="{NAME}">
+			</li>
+			<li class="clearfix">
+				<label>Parent Category</label>
+				
+  					<select id="module_select" class="select_module" name="parentId">
+  							<option value="0">No parent Category</option>
+    					<!-- BEGIN allcategories -->
+							<option value="{CATEGORY_ID}" {SELECTED_CATEGORY}><!-- BEGIN categoryTree -->&emsp;<!-- END categoryTree -->{CATEGORY}</option>
+						<!-- END allcategories -->
+					 </select>
+
+			</li>
+			<li class="clearfix">
+				<label>&nbsp;</label>
+				<input type="submit" class="button" value="{BUTTON_TYPE}">
+			</li>
+		</ul>
+	</div>
+</form>

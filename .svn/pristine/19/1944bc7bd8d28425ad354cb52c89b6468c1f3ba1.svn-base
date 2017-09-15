@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+	<dots>
+		<variable option="global">
+			<pageTitle>
+				<action>
+					<show>Map</show>
+				</action>
+			</pageTitle>
+			<validate>
+			</validate>	
+			<forgotPassword>
+			</forgotPassword> 	
+		</variable>
+		<variable option="admin">
+			<errorMessage>			
+				<passwordTwice>You didn't enter the same password twice. Please re-enter it again</passwordTwice>
+				<userExists> already exists ! </userExists>	
+				<trickUserError>Why are you so smart ? &lt;/br&gt; Don't play with the fire !</trickUserError>		
+				<emailNotSent>Password could not be sent to user </emailNotSent>	
+			</errorMessage>
+			<infoMessage>
+			</infoMessage>
+		</variable>
+		<variable option="frontend">
+			<pageTitle>
+				<action>
+					<show>Map</show>
+				</action>
+			</pageTitle>
+			<errorMessage>
+			</errorMessage>
+			<infoMessage>
+			</infoMessage>
+			<warningMessage>
+			</warningMessage>
+			<captchaOptions>
+			</captchaOptions>
+		</variable>	
+	</dots>
+</config>

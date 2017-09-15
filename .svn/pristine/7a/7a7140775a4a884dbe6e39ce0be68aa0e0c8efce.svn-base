@@ -1,0 +1,58 @@
+<section class="container contact_form">  
+	<h1>Contact</h1>
+	<form action="" method="post">
+		<div class="row">
+			<div class="col-md-4 question">
+				Full Name
+            </div>
+            <div class="col-md-8 answer">
+              	<div class="input_container">
+                	<input type="text" name="name" required></input>
+              	</div>
+          	</div>
+        </div>
+
+        <div class="row">
+          	<div class="col-md-4 question">
+            	Email
+            </div>
+            <div class="col-md-8 answer">
+              	<div class="input_container">
+                	<input type="email" name="email" required></input>
+              	</div>
+          	</div>
+		</div>
+
+        <div class="row">
+          	<div class="col-md-4 question">
+            	Subject
+            </div>
+            <div class="col-md-8 answer">
+              	<div class="input_container">
+                	<input type="text" name="subject" required></input>
+              	</div>
+          	</div>
+        </div>
+
+        <div class="row">
+          	<div class="col-md-4 question">
+            	Message
+          	</div>
+          	<div class="col-md-8 answer">
+              	<textarea name='message' rows='10' cols='23' required></textarea>  
+            </div>
+        </div>
+		
+		<div class="row">
+          	<div class="col-md-4 question">
+            	
+            </div>
+            <div class="col-md-8 answer">
+              	<div class="input_container">
+                	<input type="submit" class="button" value="Submit">
+              	</div>
+          	</div>
+		</div>
+
+    </form>
+</div>

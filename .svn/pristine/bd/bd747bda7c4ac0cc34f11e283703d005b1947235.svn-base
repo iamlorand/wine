@@ -1,0 +1,175 @@
+<?php
+/**
+* DotBoost Technologies Inc.
+* DotKernel Application Framework
+*
+* @category   DotKernel
+* @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+* @license    http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
+* @version    $Id: PageView.php 981 2015-06-11 13:51:41Z gabi $
+*/
+
+/**
+* Page View Class
+* functions that prepare output related to Page controller 
+* @category   DotKernel
+* @package    Frontend
+* @author     DotKernel Team <team@dotkernel.com>
+*/
+
+class Page_View extends View
+{
+	/**
+	 * Constructor
+	 * @access public
+	 * @param Dot_Template $tpl
+	 */
+	public function __construct($tpl)
+	{
+		$this->tpl = $tpl;
+	}
+	/**
+	 * Show the content of a page item
+	 * @access public
+	 * @param string $templateFile [optional]
+	 * @param array $city
+	 * @return void
+	 */
+	public function showPage($templateFile = '', $list,$page='1')
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'page/' . $this->templateFile . '.tpl');
+		$this->tpl->setBlock('tpl_main', 'article_list_col', 'article_list_col_block');
+		$this->tpl->setBlock('tpl_main', 'article_list_row', 'article_list_row_block');
+		$this->tpl->paginator($list['pages']);
+		$this->tpl->setVar('PAGE', $page);
+
+		$count = 0;
+	    foreach ($list['data'] as $key => $value) 
+		{
+		    $count++;
+		    $this->tpl->setVar('ARTICLE_ID', $value['id']);
+			$this->tpl->setVar('ARTICLE_TITLE', $value['title']);
+			$value['content']= substr($value['content'], 0, 500);
+			$this->tpl->setVar('ARTICLE_CONTENT', nl2br($value['content']));
+
+			$this->tpl->parse('article_list_col_block', 'article_list_col', true);
+			
+		    if (($count % 3 == 0) || ($count == count($list['data'])))
+	        {
+	            $this->tpl->parse('article_list_row_block', 'article_list_row', true);
+	            $this->tpl->parse('article_list_col_block', '');
+	        } 
+		}
+	}
+
+
+	// show A certain article depending on the Id
+	public function showArticleById($templateFile = '',$articleData)
+	{	
+		
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		$this->tpl->setFile('tpl_main', 'page/' . $this->templateFile . '.tpl');
+
+		$this->tpl->setVar('ARTICLE_ID', $articleData['id']);
+		$this->tpl->setVar('ARTICLE_TITLE', $articleData['title']);
+		$this->tpl->setVar('ARTICLE_DATETIME', $articleData['dateCreated']);
+		$this->tpl->setVar('ARTICLE_CONTENT', nl2br(str_replace("\r\n", "\r\n", $articleData['content'])));
+
+	}
+
+	public function showMenu($templateFile = '', $city = array())
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+		
+		$cityState = new CityState();
+		
+		$this->tpl->setBlock('HOME_SPECIAL', 'city_menu', 'city_menu_block');
+
+		$this->tpl->setBlock('HOME_SPECIAL', 'list_city_sm', 'list_city_sm_block');
+		$this->tpl->setBlock('HOME_SPECIAL', 'list_city_md', 'list_city_md_block');
+   		$this->tpl->setBlock('HOME_SPECIAL', 'list_city_row', 'list_city_row_block');
+   		
+		foreach ($city as $key => $value) 
+		{
+			$displayCity = $cityState->getCityVisible($value);
+			// if the city should not be displayed, skip it
+			if(!$displayCity)
+			{
+				continue;
+			}
+
+			if(substr($value,-3,1)=="-")
+			{
+				
+				$cityView=ucwords(str_replace('_',' ', substr($value,0,-2)));
+			    $stateView=strtoupper(substr($value,-2));
+			    
+		    	$this->tpl->setVar('CITY_NAME', $cityView.$stateView);
+			}
+			else
+			{
+			
+				$cityView=ucwords(str_replace('_',' ', $value));
+				
+		    	$this->tpl->setVar('CITY_NAME', $cityView);
+			}
+
+			
+			$this->tpl->setVar('CITY_ID', $value);
+			$this->tpl->setVar('CITY_URL', $value);
+			$this->tpl->parse('city_menu_block', 'city_menu', true);
+		}
+
+		$count = 0;
+	    foreach ($city as $key => $value) 
+		{
+			$displayCity = $cityState->getCityVisible($value);
+			// if the city should not be displayed, skip it
+			if(!$displayCity)
+			{
+				continue;
+			}
+			
+			if(substr($value,-3,1)=="-")
+			{
+				
+				$cityView=ucwords(str_replace('_',' ', substr($value,0,-2)));
+			    $stateView=strtoupper(substr($value,-2));
+			    
+		    	$this->tpl->setVar('CITY_NAME', $cityView.$stateView);
+			}
+			else
+			{
+			
+				$cityView=ucwords(str_replace('_',' ', $value));
+				
+		    	$this->tpl->setVar('CITY_NAME', $cityView);
+			}
+		    $count++;
+		    $this->tpl->setVar('CITY_URL', $value);
+	
+		    $this->tpl->parse('list_city_sm_block', 'list_city_sm', true);
+			
+		    if (($count % 3 ==0) || ($count == count($city)))
+		    {
+		        $this->tpl->parse('list_city_md_block', 'list_city_md', true);
+		        $this->tpl->parse('list_city_sm_block', '');
+		    }
+		    	
+		    if (($count % 6 ==0) || ($count == count($city)))
+		    {
+		        $this->tpl->parse('list_city_row_block', 'list_city_row', true);
+		        $this->tpl->parse('list_city_md_block', '');
+		    }
+		}
+	}
+
+	public function showHardPages($templateFile = '')
+	{
+		if ($templateFile != '') $this->templateFile = $templateFile;//in some cases we need to overwrite this variable
+
+		$this->tpl->setFile('tpl_main', 'page/' . $this->templateFile . '.tpl');
+	}
+
+}

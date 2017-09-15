@@ -1,0 +1,115 @@
+<script type="text/javascript" src="{TEMPLATES_URL}/js/frontend/remove_facebook_hash.js"></script>
+
+<script>
+	var flow = "{BOOMTRAIN_FLOW}";
+	var flowTextApply = flow.concat('applied_thank_you_page');
+</script>
+
+<!-- BEGIN boomtrain_track_user -->
+<script>
+	var data = '{USER_DATA}';
+	data = JSON.parse(data);
+	_btn.trackAccountSignup(email, data);
+</script>
+<!-- END boomtrain_track_user -->
+
+<script>
+	function applyThankYou() {
+		_btn.track(flowTextApply, {});
+	}
+</script>
+
+<!-- BEGIN vhm_pixel -->
+	<script>document.write('<iframe src="http://www.jobdiagnosis.com/pixel_featured.php?sponsored=MicroRecruiting" id="myIframe" style="display:none;"></iframe>');</script>
+<!-- END vhm_pixel -->
+
+<!-- Facebook Pixel Code --> 
+<script> 
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod? n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n; n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0; t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js'); fbq('init', '537718416391000'); fbq('track', "PageView");
+</script> <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=537718416391000&ev=PageView&noscript=1" /></noscript> 
+<!-- End Facebook Pixel Code -->
+
+<div class="thank-you">
+	<!-- BEGIN thankyou_company_logo -->
+	<div>
+		<img style = "width:100px; height:100px;" src="data:image/jpeg;base64,{COMPANY_LOGO}"/>
+		<p>{COMPANY_NAME}</p>
+	</div>
+    <!-- END thankyou_company_logo -->
+    	
+	<!-- BEGIN thankyou_page_text -->
+		<!-- BEGIN thankyou_page_title -->
+			<h2>{THANKYOU_TITLE}</h2>
+		<!-- END thankyou_page_title -->
+		
+		<!-- BEGIN thankyou_page_text_p -->
+			<div class="thankyou_top">
+				<h3>{THANKYOU_SUBTITLE}</h3>
+				<p>{THANKYOU_DESCRIPTION}</p>
+			</div>
+		<!-- END thankyou_page_text_p -->
+
+		<!-- BEGIN thankyou_page_text_ul -->
+			<div class="thankyou_top">
+				<h3>{THANKYOU_SUBTITLE}</h3>
+				<ul>
+					<!-- BEGIN ul_list -->
+						<li>{THANKYOU_DESCRIPTION}</li>
+					<!-- END ul_list -->
+				</ul>
+			</div>
+		<!-- END thankyou_page_text_ul -->
+
+		<!-- BEGIN thankyou_page_text_ul_none -->
+			<div class="thankyou_top">
+				<h3>{THANKYOU_SUBTITLE}</h3>
+				<ul style="list-style-type:none">
+					<!-- BEGIN ul_none_list -->
+						<li>{THANKYOU_DESCRIPTION}</li>
+					<!-- END ul_none_list -->
+				</ul>
+			</div>
+		<!-- END thankyou_page_text_ul_none -->
+
+		<!-- BEGIN thankyou_page_text_ol -->
+			<div class="thankyou_top">
+				<h3>{THANKYOU_SUBTITLE}</h3>
+				<ol>
+					<!-- BEGIN ol_list -->
+						<li>{THANKYOU_DESCRIPTION}</li>
+					<!-- END ol_list -->
+				</ol>
+			</div>
+		<!-- END thankyou_page_text_ol -->
+
+		<!-- BEGIN thankyou_page_text_image -->
+			<div class="thankyou_top">
+				<h3>{THANKYOU_SUBTITLE}</h3>
+				<img src="{SITE_URL}/templates/frontend/cityState/image/{THANKYOU_DESCRIPTION}.png">
+			</div>
+		<!-- END thankyou_page_text_image -->
+		
+		<!-- BEGIN special_flow_content -->
+			<div class="special_flow">
+				<p style = "font-weight: bold">WE WANTED TO ALSO SUGGEST SEVERAL OTHER JOBS FOR YOUR REVIEW</p>
+				<!-- BEGIN special_job_list -->
+					<div class="special_flow_inner">
+        				<h4>{JOB_TITLE}</h4>
+        				<p class="company" style = "font-style:italic">{JOB_COMPANY}</p><br />
+        				<p style = "font-weight: bold" >{JOB_DESCRIPTION}</p><br />
+        				<p>Category: {JOB_CATEGORY}</p>
+        				<a href = "{JOB_URL}" style = "font-size: 130%; font-weight: bold; text-decoration:underline;" target="_blank">APPLY FOR THIS JOB (CLICK HERE)</a>
+        			</div>
+				<!-- END special_job_list -->
+				<p style = "line-height: 200%;">{SPECIAL_DESCRIPTION}</p>
+			</div>
+		<!-- END special_flow_content -->
+	<!-- END thankyou_page_text -->
+<!-- BEGIN thankyou_page_button -->
+<form method="post">
+	<div class="clearfix register_email">
+		<input type="submit" name = "submit" class="button apply_button" value="{BUTTON_TEXT}" onclick="applyThankYou()">
+	</div>
+</form>
+<!-- END thankyou_page_button -->
+</div>

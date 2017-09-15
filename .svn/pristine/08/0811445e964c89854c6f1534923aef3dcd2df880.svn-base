@@ -1,0 +1,10 @@
+<div class="article" article_id="{ARTICLE_ID}">
+	<div class="clearfix">
+		<h1>{ARTICLE_TITLE}</h1>
+		<p class="article_datetime"> {ARTICLE_DATETIME}</p>
+	</div>
+	
+	<div class="article_content">
+		{ARTICLE_CONTENT}
+	</div>
+</div>

@@ -1,0 +1,453 @@
+<?php
+use Facebook\FacebookSession;
+use Facebook\FacebookRedirectLoginHelper;
+use Facebook\FacebookRequestException;
+use Facebook\FacebookRequest;
+use Facebook\GraphUser;
+use Facebook\Facebook;
+use Facebook\GraphLocation;
+
+class FacebookController extends SocialBase
+{
+    public function login($configArray)
+    {
+    	$session = Zend_Registry::get('session');
+        // init app with app id and secret
+        FacebookSession::setDefaultApplication($configArray['facebook']['key'], $configArray['facebook']['secret']);
+        // login helper with redirect_uri
+        $helper = new FacebookRedirectLoginHelper($configArray['facebook']['redirect_URI']);
+        try {
+            $facebookSession = $helper->getSessionFromRedirect();
+        } catch (FacebookRequestException $ex) {
+            // When Facebook returns an error
+//         	header('Location:' . $configArray['facebook']['redirect_URI']);
+            return false;
+        } catch (Exception $ex) {
+            // When validation fails or other local issues
+//         	header('Location:' . $configArray['facebook']['redirect_URI']);
+            return false;
+        }
+        
+        // see if we have a session
+        if (isset($facebookSession)) {
+            // graph api request for user data
+            $request = new FacebookRequest($facebookSession, 'GET', '/me?fields=id,about,age_range,bio,birthday,devices,education,email,first_name,gender,hometown,last_name,location,locale,name,relationship_status,website,work,cover,link,picture');
+            $response = $request->execute();
+            parent::setClient(array('response' => $response,
+            				'session' => $facebookSession
+            ));
+            unset($session->facebookLoginFlag);
+        }
+        else
+        {
+        	if (isset($_GET['error']) &&  $_GET['error'] == 'access_denied' || isset($session->facebookLoginFlag))
+        	{
+        		unset($session->facebookLoginFlag);
+        		unset($session->socialNetwork);
+        		$config = Zend_Registry::get('configuration');
+        		header('Location: '.$config->website->params->url);
+        		exit;
+        	}
+        	$scopes = array('public_profile','email', 'user_likes', 'user_birthday', 'user_hometown', 'user_location', 'user_relationships', 'user_work_history', 'user_education_history', 'user_about_me', 'user_website', 'user_managed_groups');
+            $loginUrl = $helper->getLoginUrl($scopes);
+			$session->socialNetwork = 'facebook';
+			$session->facebookLoginFlag = 1;
+            $this->redirect($loginUrl);
+            exit;
+        }
+        
+        return true;
+    }
+
+    protected function _getData()
+    {
+    	$parents = parent::getClient();
+        $response = $parents['response'];
+        
+        $facebookSession = $parents['session'];
+        // get response
+        $graphObject = $response->getGraphObject();
+        
+        $values = $this->getFacebookData($graphObject);
+        
+        // checkuser($fuid,$ffname,$femail);
+        if ($facebookSession){ //if we have the FB session
+        
+        	$token_business = new FacebookRequest(
+        							$facebookSession,
+        							'GET',
+        							'/me?fields=token_for_business'
+        	);
+        	 
+        	$response_token = $token_business->execute();
+        	$graphObject_token = $response_token->getGraphObject();
+        	 //from beginning we will consider token being/as facebookId (unique ID)
+        	 //and IDs from business manager (app IDs) will be app IDs
+        	$values['user_details']['facebookId'] = $graphObject_token->getProperty('token_for_business');
+        	 
+        	$request_business = new FacebookRequest(
+        							$facebookSession,
+        							'GET',
+        							'/me/ids_for_business'
+        	);
+        	$response_business = $request_business->execute();
+        	$graphObject_business = $response_business->getGraphObject();
+        	 
+        	$facebookIds = $this->getFacebookTokenId($graphObject_business);
+        	$values['business_manager_ids'] = $facebookIds;
+
+        $user_likes_request = (new FacebookRequest($facebookSession, 'GET', '/me/likes?fields=id,name,category&limit=100'));
+        $user_likes_data = current($user_likes_request->execute()->getGraphObject());
+        $user_likes = (!empty($user_likes_data['data']) ? $user_likes_data['data'] : '');
+        $values['likes'] = $this->getLikes($user_likes);
+        
+        $user_groups_request = (new FacebookRequest($facebookSession, 'GET', '/me/groups'));
+        $user_groups = current($this->objectToArray($user_groups_request->execute()->getGraphObject()));
+        $values['groups'] = (!empty($user_groups['data']) ? $this->getGroups($user_groups['data']) : array());
+        
+        }
+        
+        return $this->setData($values);
+    }
+
+    public function setData($data)
+    {
+    	$keys = array('user_details');
+    	foreach ($keys as $key)
+    	{
+    		if ($key == 'user_details')
+    		{
+    			$data['facebookAppId'] = $data[$key]['id'];
+    			$data[$key] = array(
+    							'facebookId' 	=> $data[$key]['facebookId'],
+    							'email' 		=> $data[$key]['email'],
+    							'firstName' 	=> $data[$key]['first_name'],
+    							'lastName' 		=> $data[$key]['last_name'],
+    							'name' 			=> $data[$key]['name'],
+    							'gender' 		=> $data[$key]['gender'],
+    							'birthday' 		=> $data[$key]['birthday'],
+    							'age'			=> $data[$key]['age'],
+    							'ageRange'		=> $data[$key]['age_range'],
+    							'relationshipStatus' => $data[$key]['relationship_status'],
+    							'bio' 			=> $data[$key]['bio'],
+    							'hometown' 		=> $data[$key]['hometown'],
+    							'location' 		=> $data[$key]['location'],
+    							'locale' 		=> $data[$key]['locale'],
+    							'website' 		=> $data[$key]['website'],
+    							'cover' 		=> $data[$key]['cover'],
+    							'link'			=> $data[$key]['link'],
+    							'picture'		=> $data[$key]['picture']
+    			);
+    		}
+    	}
+    	
+    	return $data;
+    }
+    
+    
+    
+    private function getFacebookData($dataObject)
+    {
+    	$array_keys = array('id', 'email', 'first_name', 'last_name', 'name',
+    					'gender', 'birthday', 'age_range', 'relationship_status', 'bio', 'hometown',
+    					'location', 'locale', 'website', 'cover', 'link', 'picture', 'education', 'work',
+    					'devices');
+    	$values = array();
+    	foreach ($array_keys as $key)
+    	{
+//     		if(!empty($dataObject->getProperty($key)))
+//     		{
+    		if ($key == 'hometown' || $key == 'location')
+    		{
+    			if(!empty($dataObject->getProperty($key)))
+    			{
+    				$values['user_details'][$key] = $dataObject->getProperty($key)->getProperty('name');
+    			}
+    			else 
+    			{
+    				$values['user_details'][$key] = NULL;
+    			}
+    		}
+    		elseif($key == 'cover')
+    		{
+    			if(!empty($dataObject->getProperty($key)))
+    			{
+    				$values['user_details'][$key] = $dataObject->getProperty($key)->getProperty('source');
+    			}
+    			else
+    			{
+    				$values['user_details'][$key] = NULL;
+    			}
+    		}
+    		elseif($key == 'picture')
+    		{
+    			if (!empty($dataObject->getProperty($key)))
+    			{
+    				$picture = current($dataObject->getProperty($key));
+    				if (array_key_exists('url', $picture))
+    				{
+    					$values['user_details'][$key] = $picture['url'];
+    				}
+    			}
+    		}
+    		elseif($key == 'age_range')
+    		{
+    			if(!empty($dataObject->getProperty($key)))
+    			{
+    				$age_range = current($dataObject->getProperty($key));
+    				if (array_key_exists('min', $age_range) && array_key_exists('max', $age_range) == false)
+    				{
+    					$values['user_details'][$key] = $age_range['min'] . '+';
+    				}
+    				elseif(array_key_exists('min', $age_range) == false  && array_key_exists('max', $age_range))
+    				{
+    					$values['user_details'][$key] = '<' . $age_range['max'];
+    				}
+    				elseif(array_key_exists('min', $age_range)  && array_key_exists('max', $age_range))
+    				{
+    					$values['user_details'][$key] = $age_range['min'] . '-' . $age_range['max'];
+    				}
+    			}
+    		}
+    		elseif ($key == 'education')
+    		{
+    			if(!empty($dataObject->getProperty($key)))
+    			{
+    			$education = array();
+    			if (array_key_exists($key, current($dataObject)))
+    			{
+	    			$schools = current($dataObject->getProperty($key));
+	    			foreach ($schools as $school)
+	    			{
+	    				$school_array = array();
+	    				$school_array['schoolId'] = $this->checkIfPropertyExists($school, 'school->id');
+	    				$school_array['type'] = $this->checkIfPropertyExists($school, 'type');
+	    				$school_array['name'] = $this->checkIfPropertyExists($school, 'school->name');
+	    				array_push($education, $school_array);
+	    			}
+    			}
+    			$values['education'] = $education;
+    			}
+    		}
+    		elseif ($key == 'work')
+    		{
+    			if(!empty($dataObject->getProperty($key)))
+    			{
+    			$work = array();
+    			if (array_key_exists($key, current($dataObject)))
+    			{
+	    			$work_places = current($dataObject->getProperty($key));
+	    			foreach ($work_places as $work_place)
+	    			{
+	    				$work_array = array();
+	    				$work_array['employerId'] = $this->checkIfPropertyExists($work_place, 'employer->id');
+	    				$work_array['employerName'] = $this->checkIfPropertyExists($work_place, 'employer->name');
+	    				$work_array['location'] = $this->checkIfPropertyExists($work_place, 'location->name');
+	    				$work_array['description'] = $this->checkIfPropertyExists($work_place, 'description');
+	    				$work_array['startDate'] = $this->checkIfPropertyExists($work_place, 'start_date');
+	    				$work_array['endDate'] = $this->checkIfPropertyExists($work_place, 'end_date');
+	    				array_push($work, $work_array);
+	    			}
+    			}
+    			$values['work'] = $work;
+    		}
+    		}
+    		elseif ($key == 'devices')
+    		{
+    			$devices = array();
+    			if (array_key_exists($key, current($dataObject)))
+    			{
+	    			foreach (current($dataObject->getProperty($key)) as $device)
+	    			{
+	    				$device_array = array();
+	    				$device_array['os'] = $this->checkIfPropertyExists($device, 'os');;
+	    				array_push($devices, $device_array);
+	    			}
+    			}
+    			$values['devices'] = $devices;
+    		}
+    		elseif($key == 'birthday')
+    		{
+    			$values['user_details'][$key] = $dataObject->getProperty($key);
+    			
+    			$birth = new DateTime($dataObject->getProperty($key));
+    			$today = new DateTime();
+    			
+    			$difference = $birth->diff($today);
+    			$age = $difference->y;
+    			$values['user_details']['age'] = $age;
+    		}
+    		else
+    		{
+    			$values['user_details'][$key] = $dataObject->getProperty($key);
+    		}
+//     	}
+    	}	
+    	 
+    	return $values;
+    }
+    
+    /**
+     *  Get Facebook Ids from Business Manager
+     *
+     */
+    public function getFacebookTokenId($graphObject_business)
+    {
+    	$result = (array)($graphObject_business->getProperty('data'));
+    	$business_manager_data=current($result);
+    
+    	$idUserAplication=array();
+    		
+    	foreach ($business_manager_data as $key => $value)
+    	{
+    		$idUserAplication[] = $value->id;
+    	}
+    	return $idUserAplication;
+    }
+    
+    private function checkIfPropertyExists($object, $property)
+    {
+    	if (strpos($property, '->'))
+    	{
+    		$properties_array = explode('->', $property);
+    		
+    		if (property_exists($object, $properties_array[0]))
+    		{
+    			$levelTwoObject = $object->$properties_array[0];
+    			if (property_exists($levelTwoObject, $properties_array[1]))
+    			{
+    				return $levelTwoObject->$properties_array[1];
+    			}
+    			else 
+    			{
+    				return NULL;	
+    			} 		
+    		}
+    		else
+    		{
+    			return NULL;
+    		}
+    	}
+    	
+    	else
+    	{
+    		if (property_exists($object, $property))
+    		{
+    			return $object->$property;
+    		}
+    		else 
+    		{
+    			return NULL;
+    		}
+    	}	
+    }
+    
+    private function setArrayData($data_array, $key)
+    {
+    	$values = array();
+    	foreach ($data_array as $value)
+    	{
+    		$school_array = $this->getArrayData($value);
+    		if (isset($school_array['location-id']))
+    		{
+    			unset($school_array['location-id']);
+    		}
+    		array_push($values, $school_array);
+    	}
+    	
+    	return $values;
+    	
+    }
+    
+    public function logout()
+    {
+        if (isset($_SESSION['facebook']))
+            unset($_SESSION['facebook']);
+    }
+    
+    private function objectToArray($obj) {
+    	if(is_object($obj)) $obj = (array) $obj;
+    	if(is_array($obj)) {
+    		$new = array();
+    		foreach($obj as $key => $val) {
+    			$new[$key] = $this->objectToArray($val);
+    		}
+    	}
+    	else $new = $obj;
+    	return $new;
+    }
+    
+	private function getLinks($links_array)
+	{
+		$links = array();
+		foreach ($links_array as $key => $value)
+		{
+			$link_array = array();
+			$link_array['linkId'] = $value['id'];
+			$link_array['name'] = $value['name'];
+			$link_array['link'] = $value['link'];
+			array_push($links, $link_array);
+		}
+		return $links;
+	}
+
+	private function getGroups($groups_array)
+	{
+		$groups = array();
+		if (!empty($groups_arra))
+		{
+			foreach($groups_array as $key => $value)
+			{
+				$each_array = array();
+				$each_array['groupId'] = $value['id'];
+				$each_array['name'] = $value['name'];
+				$each_array['privacy'] = $value['privacy'];
+				array_push($groups, $each_array);
+			}
+		}
+		
+		return $groups;
+	}
+    
+	private function getLikes($likes_array)
+	{
+		$values = array();
+		if (!empty($likes_array))
+		{
+			foreach ($likes_array as $value)
+			{
+				$like_array = array();
+				$like_array['likeId'] = $value->id;
+				$like_array['name'] = $value->name;
+				$like_array['category'] = $value->category;
+				array_push($values, $like_array);
+			}
+		}
+		
+		return $values;
+	}
+	
+	private function getArrayData($values, $name = '')
+	{
+		$arrayValue = array();
+		foreach($values as $key => $value)
+		{
+			if(is_array($value))
+			{
+				$arrayValue = array_merge($arrayValue, $this->getArrayData($value, $key . '-' . $name));
+			}
+			else
+			{
+				if($name != '')
+				{
+					$arrayValue[$name . $key] = $value;
+				}
+				else
+				{
+					$arrayValue[$key] = $value;
+				}
+			}
+		}
+		return $arrayValue;
+	}
+}

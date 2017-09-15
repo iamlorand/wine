@@ -1,0 +1,62 @@
+<form action="{SITE_URL}/admin/affiliate/update-job/id/{SUB_ID}" method="post" >
+	<div class="box-shadow" style="width: 500px">
+		<div class="box_header">
+			Update Affiliate Job 
+		</div>
+		<ul class="form">
+			<li class="clearfix">
+				<label>Platform<span class="required">*</span></label>
+				<select name = "platformId">
+					<option value = "{PLATFORM_ID}">{PLATFORM_SELECTED}</option>
+					<!-- BEGIN platform_list -->
+						<option value = "{PLATFORM_ID}">{PLATFORM_NAME}</option>
+					<!-- END platform_list -->
+				</select>
+			</li>
+			<li class="clearfix">
+				<label>City-State<span class="required">*</span></label>
+				<select name = "cityId">
+					<option value = "{CITY_ID}">{CITY_STATE_SELECTED}</option>
+					<!-- BEGIN cities_list -->
+						<option value = "{CITY_ID}">{CITY_NAME}</option>
+					<!-- END cities_list -->
+				</select>
+			</li>
+			
+			<li class="clearfix">
+				<label>Category<span class="required">*</span></label>
+				<select name = "categoryId">
+					<option value = "{CATEGORY_ID}">{CATEGORY_SELECTED}</option>
+					<!-- BEGIN category_list -->
+						<option value = "{CATEGORY_ID}">{CATEGORY_NAME}</option>
+					<!-- END category_list -->
+				</select>
+			</li>
+		
+		<!-- BEGIN job_type_not_null -->
+			<li class="clearfix">
+				<label>Job Type<span class="required">*</span></label>
+				<select name = "jobTypeId">
+						<option value = "{JOBTYPE_ID}">{JOB_TYPE_SELECTED}</option>
+					<!-- BEGIN jobtype_list -->
+						<option value = "{JOBTYPE_ID}">{JOB_TYPE_NAME}</option>
+					<!-- END jobtype_list -->
+				</select>
+			</li>
+		<!-- END job_type_not_null -->
+			<li class="clearfix">
+				<label>Title<span class="required">*</span></label>
+				<input type="text" name="title" value="{TITLE}">
+			</li>
+			<li class="clearfix"><label>Description<span
+					class="required">*</span></label> <textarea rows="4" cols="50"
+					name="descriptionId">{DESCRIPTION}</textarea>
+			</li>
+			
+			<li class="clearfix">
+				<label>&nbsp;</label>
+				<input type="submit" class="button" value="add">
+			</li>
+		</ul>
+	</div>
+</form>

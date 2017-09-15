@@ -1,0 +1,328 @@
+<?php
+
+class Survey extends Dot_Model
+{
+	//survey field types (not how they're named in the Database, but how they are named in SurveyView when they are added)
+	//the only difference to the database is radiobox (radio in DB)
+	private $surveyFieldTypes = array(	'number'	=>	'1',
+					'text'		=>	'2',
+					'checkbox'	=>	'3',
+					'radiobox'	=>	'4',
+					'dropdown'	=>	'5',
+					'textarea'	=>	'6'
+	);
+	/**
+	 * Constructor
+	 * @access public
+	 * @return Frontend_Page
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+	}
+	
+	
+	public function getSurveys()
+	{
+		$select = $this->db->select()
+						->from (array('s'	=> 'survey'))
+						->where("id != '3'");
+		return $this->db->fetchAll($select);
+	}
+
+	public function getSurvey($id)
+	{
+		$select = $this->db->select()
+						->from ('survey')
+						->join('surveyField','surveyField.formId = survey.id')
+						->where('survey.id = ?',$id)
+						->order('indexField');
+		$data['surveyFields'] = $this->db->fetchAll($select);
+		$select = $this->db->select()
+						->from ('survey')
+						->where('survey.id = ?',$id);
+		$data['survey'] = $this->db->fetchRow($select);
+		return $data;
+	}
+
+	public function addSurvey($name)
+	{
+		$name['isEnabled'] = 1;
+		$this->db->insert('survey',$name);
+		return $this->db->lastInsertId();
+	}
+
+	public function updateQuestions($questions, $surveyId)
+	{
+		$this->db->delete('surveyField','formId = '.$surveyId);
+		$surveyInstructions = $questions['instructions'];
+		unset($questions['instructions']);
+		$this->db->update('survey', array('instruction' => $surveyInstructions), 'id = ' . $surveyId);
+		foreach($questions as $typeKey=>$value)
+		{
+			$type = explode("_", $typeKey);
+			$data['formId'] = $surveyId;
+			$data['indexField'] = 0;
+			switch($type[0])
+			{
+				case 'number':
+					$data['inputType'] = 1;
+					$data['question'] = $value;
+					$data['value'] = '';
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'text':
+					$data['inputType'] = 2;
+					$data['question'] = $value;
+					$data['value'] = '';
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'checkbox':
+					$data['inputType'] = 3;
+					$data['question'] = $value;
+					$data['value'] = $questions['checkboxValue_'.$type[1]];
+					if(substr($data['value'], -1) == ",")
+					{
+						$data['value'] = trim($data['value'], ",");
+					}
+					unset($questions['checkboxValue_'.$type[1]]);
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'radiobox':
+					$data['inputType'] = 4;
+					$data['question'] = $value;
+					$data['value'] = $questions['radioboxValue_'.$type[1]];
+					if(substr($data['value'], -1) == ",")
+					{
+						$data['value'] = trim($data['value'], ",");
+					}
+					unset($questions['checkboxValue_'.$type[1]]);
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'dropdown':
+					$data['inputType'] = 5;
+					$data['question'] = $value;
+					$data['value'] = $questions['dropdownValue_'.$type[1]];
+					if(substr($data['value'], -1) == ",")
+					{
+						$data['value'] = trim($data['value'], ",");
+					}
+					unset($questions['checkboxValue_'.$type[1]]);
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'textarea':
+					$data['inputType'] = 6;
+					$data['question'] = $value;
+					$data['value'] = '';
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'facebookButton':
+					$data['inputType'] = 8;
+					$data['question'] = NULL;
+					$this->db->insert('surveyField',$data);
+				break;
+				case 'googlePlusButton':
+					$data['inputType'] = 9;
+					$data['question'] = NULL;
+					$this->db->insert('surveyField',$data);
+					break;
+				case 'linkedinButton':
+					$data['inputType'] = 10;
+					$data['question'] = NULL;
+					$this->db->insert('surveyField',$data);
+					break;
+				case 'twitterButton':
+					$data['inputType'] = 11;
+					$data['question'] = NULL;
+					$this->db->insert('surveyField',$data);
+					break;
+			}
+		}
+	}
+
+	public function activateSurvey($id)
+	{
+		$data = $this->getSurvey($id);
+		$isActive = ($data['survey']['isEnabled']) ? 0 : 1;
+		$this->db->update('survey', array('isEnabled' => $isActive), 'id = ' . $id);
+		return $isActive;
+	}
+	
+	/**
+	 * Update data regarding the survey field
+	 * @param array $post
+	 */
+	
+	public function updateSurveyField($post)
+	{
+		$string = "xxxxyxyxyxyyyyyxxxxx";
+		$var = urlencode($post['answerValue']);
+		$var2 = str_replace('%0A', $string, $var);
+		$var2 = urldecode($var2);
+		$post['answerValue'] = str_replace($string, "\r\n", $var2);
+		
+		$surveyFieldId = $post['questionId'];
+//  		$post['answerValue'] = str_replace('%0A', PHP_EOL, $post['answerValue']);
+
+		$oldSurveyFieldData = $this->returnOldSurveyFieldData($surveyFieldId);
+		
+		//insert "dead" survey if doesn't exists
+		$formId = $oldSurveyFieldData['formId'];
+		$isRequired = $oldSurveyFieldData['isRequired'];
+		
+		//check if there already is a survey with removed data for the old survey
+		if (strpos($formId, '999') !== false) {
+			$formIdChanged = $formId;
+		}
+		else 
+		{
+			$formIdChanged = '999' . $formId;
+		}
+		
+		if ($this->checkIfSurveyExists($formIdChanged) == false)
+		{
+			$newSurveyData = array(	'id'			=>	$formIdChanged,
+							'name'			=>	'Removed fields from survey ' . $formId,
+							'indexSurvey'	=>	'0',
+							'isEnabled'		=>	'1',
+							'instruction'	=>	'');
+			$this->db->insert('survey', $newSurveyData);
+		}
+		
+		//insert new field (the field with the changed data)
+		$oldSurveyFieldData['question'] =  $post['questionValue'];
+		$oldSurveyFieldData['value'] =  $post['answerValue'];
+		if($post['required'] == "true")
+		{
+			$oldSurveyFieldData['isRequired'] = "1";
+		}
+		else
+		{
+			$oldSurveyFieldData['isRequired'] = "0";
+		}
+		
+		unset($oldSurveyFieldData['id']);
+		$dataToInsert = $oldSurveyFieldData;
+		$this->db->insert('surveyField', $dataToInsert);
+		
+		//update old field to a "dead" survey
+		$dataToUpdate = array(	'formId'	=>	$formIdChanged, 'isRequired' => $isRequired);
+		$this->db->update('surveyField', $dataToUpdate, 'id =' . $post['questionId']);
+	}
+	
+	/**
+	 * Check if survey exists
+	 * @param string $formIdWithNoUse
+	 * @return string / boolean (false)
+	 */
+	
+	private function checkIfSurveyExists($formIdWithNoUse)
+	{
+		$select = $this->db->select()
+							->from('survey', 'id')
+							->where('id =?', $formIdWithNoUse);
+		
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Return all data for the requested survey field
+	 * @param string $surveyFieldId
+	 * @return array
+	 */
+	
+	private function returnOldSurveyFieldData($surveyFieldId)
+	{
+		$select = $this->db->select()
+						->from('surveyField')
+						->where('id =?', $surveyFieldId);
+		
+		$result = $this->db->fetchRow($select);
+		return $result;
+	}
+	
+	/**
+	 * Update the order of the survey fields
+	 * @param array $surveyFields
+	 */
+	
+	public function updateQuestionOrder($surveyFields)
+	{
+		foreach ($surveyFields as $surveyFieldId => $order)
+		{
+			$data = array('indexField' => $order);
+			$this->db->update('surveyField', $data, 'id=' . $surveyFieldId);
+		}
+	}
+	
+	/**
+	 * Delete survey field from survey
+	 * (actually is not a delete, as we are changing the formId of the survey field
+	 * to a "dead" survey with fields that were removed from that specific survey)
+	 * Example: Survey field with "id = 700" which is allocated to survey id = "106",
+	 * will be re-allocated to survey "id = 999106". 
+	 * The survey with "id = 999106" will usually be used only for exports.
+	 * @param array $post
+	 */
+	
+	public function deleteRow($post)
+	{
+		$surveyFieldId = $post['surveyFieldId'];
+		$oldSurveyId = $this->returnOldSurveyFieldData($surveyFieldId);
+		
+		$formIdChanged = '999' . $oldSurveyId['formId'];
+		$dataToUpdate = array('formId'	=>	$formIdChanged);
+		$this->db->update('surveyField', $dataToUpdate, 'id =' . $surveyFieldId);
+	}
+	
+	public function updateInstructions($surveyId, $instructions)
+	{
+		$data = array('instruction' => $instructions);
+		$this->db->update('survey', $data, 'id =' . $surveyId);
+	}
+	
+	public function addNewFields($post, $surveyId)
+	{
+		foreach ($post as $surveyFieldId => $value)
+		{
+			$names = explode("_", $surveyFieldId);
+			$type = $names[0];
+
+			if (array_key_exists($type, $this->surveyFieldTypes))
+			{
+				$indexField = $names[1];
+				$inputType = $this->surveyFieldTypes[$type];
+				$question = $post[$type . '_' . $indexField];
+				$typesWithValues = array('checkbox', 'radiobox', 'dropdown');
+				$maxId = $this->getMaxId();
+				$currentId = $maxId + 1;
+
+				// if()
+
+				$data = array(	'formId'	=>	$surveyId,
+								'inputType' => 	$inputType,
+								'name'		=>	'question' . $currentId,
+								'question'	=>	$question,
+								'indexField'=>	$indexField,
+								'isRequired'=> "1"
+				);
+				
+				if (in_array($type, $typesWithValues))
+				{
+					$possibleAnswers = $post[$type . 'Value_' . $indexField];
+					$data['value'] = $possibleAnswers;
+				}
+				$this->db->insert('surveyField', $data);
+			}
+		}
+	}
+	
+	private function getMaxId()
+	{
+		$select = $this->db->select()
+						->from('surveyField', array('maxId' => new Zend_Db_Expr('MAX(id)')));
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+}

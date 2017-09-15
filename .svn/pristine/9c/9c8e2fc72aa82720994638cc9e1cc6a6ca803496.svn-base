@@ -1,0 +1,168 @@
+<script src="{SITE_URL}/externals/jquery/autocomplete/jquery.autocomplete.js"></script>
+<script src="{SITE_URL}/externals/bootstrap/js/bootstrap.min.js"></script>
+<script src="{SITE_URL}/templates/js/admin/platform.js"></script>
+<script>
+var totalServiceArea = {TOTAL_SERVICEAREA};
+var totalInvestor = {TOTAL_INVESTOR};
+var SITE_URL = '{SITE_URL}';
+</script>
+
+
+<form action="{SITE_URL}/admin/platform/{BUTTON_TYPE}/id/{PLATFORMID}" method="post" >
+<table style="width: 100%">
+<tr>
+	<td>
+		<div class="box-shadow" style="width: 500px">
+			<div class="box_header">
+				Add New Category
+			</div>
+			<ul class="form">
+				<li class="clearfix">
+					<label>Platform Name<a href="#" data-toggle="platformName" title="Platform name !"> (?)</a><span class="required">*</span></label>
+					<input type="text" name="platformName" value="{PLATFORMNAME}">
+				</li>
+				<li class="clearfix">
+					<label>URL<a href="#" data-toggle="platformUrl" title="Platform url !"> (?)</a></label>
+					<input type="url" name="url" value="{URL}">
+				</li>
+				<li class="clearfix">
+					<label>Platform Category<a href="#" data-toggle="platformCategory" title="Platform category !"> (?)</a></label>
+					<select id="category_select" name="category">
+							<!-- BEGIN allcategories -->
+								<option value="{CATEGORY_ID}" {SELECTED_CATEGORY}><!-- BEGIN categoryTree -->&emsp;<!-- END categoryTree -->{CATEGORY}</option>
+							<!-- END allcategories -->
+					</select>
+				</li>
+				<li class="clearfix">
+					<label>Mailing Street<a href="#" data-toggle="mailStreet" title="Platform mailing street !"> (?)</a></label>
+					<input type="text" name="mailingStreet" value="{MAILINGSTREET}">
+				</li>
+				<li class="clearfix">
+					<label>Mailing City<a href="#" data-toggle="mailCity" title="Platform mailing city !"> (?)</a></label>
+					<input type="text" name="mailingCity" value="{MAILINGCITY}">
+				</li>
+				<li class="clearfix">
+					<label>Mailing State<a href="#" data-toggle="mailState" title="Platform mailing state !"> (?)</a></label>
+					<input type="text" name="mailingState" value="{MAILINGSTATE}" maxlength="2">
+				</li>
+				<li class="clearfix">
+					<label>Mailing Zip<a href="#" data-toggle="mailZip" title="Platform mailing zip !"> (?)</a></label>
+					<input type="text" name="mailingZip" value="{MAILINGZIP}" maxlength="10">
+				</li>
+				<li class="clearfix">
+					<label>Phone<a href="#" data-toggle="phone" title="Platform phone number !"> (?)</a></label>
+					<input type="text" name="phone" value="{PHONE}" maxlength="20">
+				</li>
+				<li class="clearfix">
+					<label>Platform Type<a href="#" data-toggle="phone" title="Platform type !"> (?)</a></label>
+					<select id="platform_select" name="platformType">
+						<option value="P2P">P2P</option>
+						<option value="ODE">ODE</option>
+						<option value="CSP">CSP</option>
+						<option value="CSB">CSB</option>
+					</select>
+				</li>
+				<li class="clearfix">
+					<label>HQ City<a href="#" data-toggle="hqCity" title="Platform headquarter city !"> (?)</a></label>
+					<input type="text" name="hqCity" value="{HQCITY}">
+				</li>
+				<li class="clearfix">
+					<label>Funds Raised<a href="#" data-toggle="fundsRaised" title="Platform founds rised !"> (?)</a></label>
+					<input type="text" name="fundsRaised" value="{FUNDSRAISED}">
+				</li>
+				<li class="clearfix">
+					<label>CEO Name<a href="#" data-toggle="ceoName" title="Platform CEO name !"> (?)</a></label>
+					<input type="text" name="ceoName" value="{CEONAME}">
+				</li>
+				<li class="clearfix">
+					<label>CEO Email<a href="#" data-toggle="ceoEmail" title="Platform CEO email !"> (?)</a></label>
+					<input type="email" name="ceoEmail" value="{CEOEMAIL}">
+				</li>
+				<li class="clearfix">
+					<label>Biz Dev Name<a href="#" data-toggle="bizDevName" title="Platform biz dev name !"> (?)</a></label>
+					<input type="text" name="bizDevName" value="{BIZDEVNAME}">
+				</li>
+				<li class="clearfix">
+					<label>Biz Dev Email<a href="#" data-toggle="bizDevEmail" title="Platform biz dev email !"> (?)</a></label>
+					<input type="text" name="bizDevEmail" value="{BIZDEVEMAIL}">
+				</li>
+				<li class="clearfix">
+					<label>Twitter<a href="#" data-toggle="twitter" title="Platform tritter id !"> (?)</a></label>
+					<input type="text" name="twitter" value="{TWITTER}">
+				</li>
+				<li class="clearfix">
+					<label>FB<a href="#" data-toggle="fb" title="Platform facebook profile link !"> (?)</a></label>
+					<input type="text" name="fb" value="{FB}">
+				</li>
+				<li class="clearfix">
+					<label>LinkedIn<a href="#" data-toggle="linkedIn" title="Platform linkedIn link !"> (?)</a></label>
+					<input type="text" name="linkedIn" value="{LINKEDIN}">
+				</li>
+				<li class="clearfix">
+					<label>Blog<a href="#" data-toggle="blog" title="Platform blog link !"> (?)</a></label>
+					<input type="text" name="blog" value="{BLOG}">
+				</li>
+				<li class="clearfix">
+					<label>Crunchbase<a href="#" data-toggle="crunchbase" title="Platform crunchbase url !"> (?)</a></label>
+					<input type="text" name="crunchbase" value="{CRUNCHBASE}">
+				</li>
+				<li class="clearfix">
+					<label>Crunchbase Category<a href="#" data-toggle="crunchbaseCategory" title="Platform crunchbase category !">(?)</a></label>
+					<input type="text" name="crunchbaseCategory" value="{CRUNCHBASECATEGORY}">
+				</li>
+				<li class="clearfix">
+					<label>Singup URL<a href="#" data-toggle="singUpURL" title="Platform singup url !">(?)</a></label>
+					<input type="text" name="singUpURL" value="{SINGUPURL}">
+				</li>
+				
+				<li class="clearfix">
+				<label id='serviceArea'>Service Area</label>
+			<link rel="stylesheet" type="text/css" href="{SITE_URL}/templates/css/admin/autocomplete/jquery.autocomplete.css" />
+			<li class="clearfix">
+						<input type="button" class="button button_serviceArea" value="Add New Service Area" onclick="appendServiceAreaBox()">
+					</li>
+			<ul class="form">
+				<ul class="form">
+						<div id='serviceAreaForms'>{SELECTED_SERVICEAREA}</div>
+						<li class="clearfix serviceAreaClearfix" id='0'>
+								<label id='serviceArea'>Location</label>
+								<input name="serviceAreaLocation_0" id="serviceAreaLocation"  value="{SERVICEAREA}">
+								<a href='#' class='button'  onclick='deleteServiceArea("0")'>Remove</a>
+								<a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1)'>Move Up</a></li>
+						</li>
+				</ul>
+			</ul>
+				</li>
+		
+			<li class="clearfix">
+				<label id='investor'>Investors</label>
+		<link rel="stylesheet" type="text/css" href="{SITE_URL}/templates/css/admin/autocomplete/jquery.autocomplete.css" />
+					<li class="clearfix">
+						<input type="button" class="button button_investor" value="Add New Investor" onclick="appendInvestorBox()">
+					</li>
+				
+			<ul class="form">
+				<ul class="form">
+				<div id='investorForms'>{SELECTED_INVESTOR}</div>
+						<li class="clearfix investorClearfix" id='invId0'>
+							<label id='investor'>Investor:</label>
+							<input  type="text" name="investorName_0" id="investorName" value="{INVESTOR_NAME}">
+							<label>CBURL</label>
+							<label>{CBURL}</label>
+							<br><br><br><br><br>
+							<a href='#' class='button'  onclick='deleteElement("0")'>Remove</a>
+							<a href='#' class='button button_move'  onclick='MoveItem(this.parentNode, -1)'>Move Up</a></li>
+						</li>
+				</ul>
+				
+				<li class="clearfix">
+						<label>&nbsp;</label>
+						<input type="submit" class="button" value="{BUTTON_TYPE}">
+				</li>
+			</ul>
+			</li>
+		</div>
+	</table>
+	</form>
+
+	

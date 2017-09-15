@@ -1,0 +1,707 @@
+<?php
+/**
+ * DotBoost Technologies Inc.
+ * DotKernel Application Framework
+ *
+ * @category   DotKernel
+ * @copyright  Copyright (c) 2009-2015 DotBoost Technologies Inc. (http://www.dotboost.com)
+ * @license    http://opensource.org/licenses/osl-3.0.php Open Software License (OSL 3.0)
+ * @version    $Id: $
+ */
+
+/**
+ * User Model
+ * Here are all the actions related to the user
+ * @category   DotKernel
+ * @package    Frontend
+ * @author     DotKernel Team <team@dotkernel.com>
+ */
+
+class CityState extends Dot_Model
+{
+	private $session;
+	/**
+	 * Constructor
+	 * @access public
+	 */
+	public function __construct()
+	{
+		parent::__construct();
+		$this->session = Zend_Registry::get('session');
+	}
+
+	/**
+	 * Get City List from db
+	 * @access private
+	 * @return void
+	 */
+	private function getCities()
+	{
+		$select = $this->db->select()
+							->from('microRecruitingCities', 'cityLink');
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get Category list from db
+	 * @access private
+	 * @return void
+	 */
+	private function getCategoryList($display = '1')
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCategory', 'categoryName')
+		->where('microRecruitingCategory.display =?', $display);
+		$result = $this->db->fetchAll($select);
+		return $result;
+	}
+	
+	/**
+	 * Get City menu using private function getCities()
+	 * @access public
+	 * @return array
+	 */
+	public function cityMenu()
+	{
+		$city = $this->getCities();
+		$cityArray = array();
+		
+		foreach($city as $key => $value)
+		{
+			foreach($value as $k => $v)
+			{
+				array_push($cityArray, $v);
+			}
+		}
+		return $cityArray;
+	}
+	
+	/**
+	 * Get Category list using private function getCategoryList()
+	 * @access private
+	 * @return array
+	 */
+	private function categoryList()
+	{
+		$categoryList = $this->getCategoryList();
+		$categories = array();
+	
+		foreach($categoryList as $key => $value)
+		{
+			foreach($value as $k => $v)
+			{
+				array_push($categories, $v);
+			}
+		}
+		return $categories;
+	}
+
+	/**
+	 * Verifying the city for the IndexController overwrite on the $actionPath
+	 * @access public
+	 * @param array $urlCity
+	 * @return void
+	 */
+	public function verifyUrlCity($urlCity)
+	{
+		$cityArray = $this->cityMenu();
+		
+		foreach ($cityArray as $key => $value) 
+		{
+			if($urlCity == $value)
+			{
+				return TRUE;
+			}		
+		}
+		return FALSE;
+	}
+	
+	/**
+	 * Verifying the category for the IndexController overwrite on the $actionPath
+	 * @access public
+	 * @param array $urlCategory
+	 * @return void
+	 */
+	public function verifyUrlCategory($urlCategory)
+		{
+			$category = $this->categoryList();
+			
+			foreach ($category as $key => $value) 
+			{
+				if($urlCategory == $value)
+				{
+					return TRUE;
+				}		
+			}	
+			return FALSE;		
+		}
+
+	/**
+	 * We need to know if there is a state like NJ that doesn't come with a specified city so we will asign one 
+	 * @access public
+	 * @return array
+	 */
+	public function stateWithoutCity()
+	{
+		$state=['connecticut'=>'stamford-ct',
+				'new_jersey'=>'newark-nj'
+				];
+		return $state;
+	}
+	
+	/**
+	 * Get categories for each city using public function cityMenu and private function categoryList
+	 * @access private
+	 * @return array
+	 */
+	private function getCategoriesForCity()
+	{
+		$city = $this->cityMenu();
+		$category = $this->categoryList();
+		
+		$list = array_fill_keys($city, $category);
+		
+		return $list;
+	}
+	
+	/**
+	 * All the categories for each city; In case there are cities with different categories 
+	 * @access public
+	 * @param array $urlCity
+	 * @return array
+	 */
+	public function getCategories($urlCity)
+	{ 
+		$categories = $this->getCategoriesForCity();
+		
+		return $categories[$urlCity];
+	}	
+	
+	/**
+	 * Return category description for each category
+	 * @access public
+	 * @param array $urlCategory
+	 * @return array
+	 */
+	public function industryPersonData($urlCategory)
+	{
+		$select = $this->db->select()
+			->from('microRecruitingCategory', array('categoryName', 'description'));
+		$result = $this->db->fetchAll($select);
+		
+		$category = array();
+		
+		foreach($result as $key)
+		{
+			$category[$key['categoryName']] = $key['description'];
+		}
+
+		$prefix = array("_1b", "_1c", "_1d", "_1e", "_1f");
+		if(in_array(substr($urlCategory, - 3), $prefix))
+		{
+			$categoryToGet = substr($urlCategory, 0 ,strlen($urlCategory) - 3);
+			return $category[$categoryToGet];
+		}
+			return $category[$urlCategory];	
+	}
+
+	/**
+	 * Get a different tpl for main category
+	 * @access public
+	 * @return array
+	 * @author Nicu
+	 */
+	public function possibleCategories($display = '1')
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCategory', 'categoryName')
+		->where('microRecruitingCategory.display=?', $display);
+		$category = $this->db->fetchAll($select);
+
+		$categories = array();
+			foreach ($category as $value) 
+			{
+					array_push($categories, $value['categoryName']);
+			}
+		return $categories;
+	}
+	
+	/**
+	 * Get a different tpl for main category
+	 * @access public
+	 * @return array
+	 * @author Nicu
+	 */
+	public function orphanCategories($display = '0')
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCategory', 'categoryName')
+		->where('microRecruitingCategory.display=?', $display);
+		$category = $this->db->fetchAll($select);
+	
+		$categories = array();
+		foreach ($category as $value)
+		{
+			array_push($categories, $value['categoryName']);
+		}
+		return $categories;
+	}
+
+	/**
+	 * verify if what comes through the URL is a clone or just a mistake
+	 * @access public
+	 * @return array
+	 * @param $target
+	 * @author Nicu
+	 */
+	public function verifyCloneOrNot($target, $clonedPage='1')
+	{
+
+		$select = $this->db->select()
+		->from('microRecruitingCategory', 'categoryName')
+		->where('microRecruitingCategory.cloned =?', $clonedPage);
+		$category = $this->db->fetchAll($select);
+		
+		$categories = array();
+		foreach ($category as $value) 
+			{
+					array_push($categories, $value['categoryName']);
+			}
+
+		if(!in_array($target, $categories))
+			{
+				return false;
+			}
+			else
+			{
+				return true;
+			}
+	}
+	
+	/**
+	 * Get Cities list for page title
+	 * @access public
+	 * @param $urlCity
+	 * @return void
+	 */
+	public function getCitiesListForPageTitle($urlCity)
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCities', 'name')
+		->where('cityLink =?', $urlCity);
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Get Category list for page title
+	 * @access public
+	 * @param $urlCategory
+	 * @return void
+	 */
+	public function getCategoryListForPageTitle($urlCategory)
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCategory', 'categoryName')
+		->where('categoryName =?', $urlCategory);
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Remove part of string that shows us that is a "cloned" category and return the category
+	 * @param string $urlCategory
+	 * @return string
+	 */
+	
+	public function returnCategoryName($urlCategory)
+	{
+		$clones = array('_1b', '_1c', '_1d', '_1e', '_1f');
+		//get last 3 chars of URL category and check if is in clones array
+		$getLast3Chars = substr($urlCategory, -3);
+		
+		if (in_array($getLast3Chars, $clones))
+		{
+			$urlCategory = str_replace($getLast3Chars, "", $urlCategory);
+		}
+
+		return $urlCategory;
+	}
+	
+	/**
+	 * Get Category information
+	 * @access public
+	 * @param $urlCategory
+	 * @return void
+	 */
+	public function getCategoryInformation($urlCategory, $display = '0')
+	{
+		
+		$urlCategory = $this->returnCategoryName($urlCategory);
+		
+		$select = $this->db->select()
+							->from(array('mrc'=>'microRecruitingCategory'), 'categoryName')
+							->join(array('mrci'=>'microRecruitingCategoryInfo'), 'mrc.id=mrci.categoryId', array('title', 'subTitle', 'description', 'order'))
+							->join(array('mrcit'=>'microRecruitingCategoryInfoType'), 'mrcit.id=mrci.inputType', 'type')
+// 							->where('mrc.display=?', $display)
+							->where('categoryName =?', $urlCategory)
+							->order('mrci.order ASC');
+		$result = $this->db->fetchAll($select);
+
+		return $result;
+	}
+	
+	public function setWistiaFlow($urlCategory, $display = '0')
+	{
+		$categoryToCheck = $this->returnCategoryName($urlCategory);
+
+		$select = $this->db->select()
+							->from(array('mrc'=>'microRecruitingCategory'), 'categoryName')
+							->where('mrc.display=?', $display)
+							->where('categoryName =?', $categoryToCheck);
+		
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Get videoCategory (category that will appear in url in video controller) for the requested category
+	 * @param string $category
+	 * @return string
+	 */
+	
+	public function getVideoCategory($category)
+	{
+		$select = $this->db->select()
+		->from('microRecruitingVideoCategory', array('videoCategory'))
+		->where('category =?', $category);
+	
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Check if isset clone flow (day in the life) for current category
+	 * @param string $category
+	 * @return string (flow number: 1, 2, etc) or boolean (false)
+	 */
+	
+	public function checkIfCategoryInDayInTheLifeFlow($category)
+	{
+		$select = $this->db->select()
+						->from(array('mc' => 'microRecruitingCategory'), '')
+						->join(array('mcvcf' => 'microRecruitingVideoCategoryFlow'), 'mc.id=mcvcf.categoryId', array('flow'))
+						->where('mc.categoryName =?', $category);
+						// ->where('flow =?', $this->session->dayInTheLifeFlow);
+		
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Check if category isset for wistia flow
+	 * @param string $category
+	 * @return string (video category)
+	 */
+	
+	public function checkIfCategoryInWistiaFlow($category, $videoCategory = 'cleaning')
+	{
+		$select = $this->db->select()
+						->from('microRecruitingVideoCategory', 'videoCategory')
+						->where('category =?', $category)
+						->where('videoCategory =?', $videoCategory);
+
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * Check if the given city should be displayed on the fronted or not
+	 * The $city parameter should be passed with the format from the microRecruitingCities table cityLink column
+	 * @param stirng $city
+	 * @return boolean
+	 */
+	public function getCityVisible($city)
+	{
+		$select = $this->db->select()
+		->from('microRecruitingCities', 'display')
+		->where('cityLink =?', $city);
+	
+		$result = $this->db->fetchOne($select);
+		return $result;
+	}
+	
+	/**
+	 * 
+	 */
+	public function getOrphanCategoryForUser($userId)
+	{
+	    $select = $this->db->select()
+	                       ->from(array('mat'=>'microRecruitingActionTracking'))
+	                       ->where('mat.userId=?', $userId);
+	    $result = $this->db->fetchAll($select);
+	   
+	    $category = array();
+	    
+	    $clones = array("_1b", "_1c", "_1d", "_1e");
+	    
+	    if(empty($result))
+	    {
+	        return false;
+	    }
+	    else 
+	    {
+	        foreach($result as $key)
+	        {
+	            $category =  substr($key['category'], -3);
+	            
+	            if(in_array($category, $clones))
+	            {
+	                $savedCategory = $key['category'];
+	            }
+	        }
+	        return $savedCategory;
+	    }
+	}
+	
+	public function getOregonCities($urlCity)
+	{
+	    $string = '-or';
+	    
+	    $select = $this->db->select()
+	                       ->from(array('mc'=>'microRecruitingCities'))
+	                       ->where('cityLink=?', $urlCity)
+	                       ->where('cityLink LIKE ?', '%' . $string . '%');
+	    $result = $this->db->fetchRow($select);
+	    
+	    if(empty($result))
+	    {
+	        return false;
+	    }
+	    else 
+	    {
+	        return true;
+	    }
+	}
+	
+	public function getCityId($urlCity)
+	{
+	    $select = $this->db->select()
+                    	    ->from(array('mc'=>'microRecruitingCities', 'id'))
+                    	    ->where('cityLink=?', $urlCity);
+	    $result = $this->db->fetchRow($select);
+	    
+	    if(empty($result))
+	    {
+	        $result = 0;
+	        return $result;
+	    }
+	    else 
+	    {
+	        $cityId = $result['id'];
+	        return $cityId;
+	    }
+	}
+	
+	public function getCategoryId($urlCategory)
+	{
+	    $categoryToCheck = $this->returnCategoryName($urlCategory);
+	    
+	    $select = $this->db->select()
+                    	    ->from(array('mc'=>'microRecruitingCategory', 'id'))
+                    	    ->where('categoryName=?', $categoryToCheck);
+	    $result = $this->db->fetchRow($select);
+	     
+	    if(empty($result))
+	    {
+	        $result = 0;
+	        return $result;
+	    }
+	    else 
+	    {
+	        $categoryId = $result['id'];
+	        return $categoryId;
+	    }
+	}
+	
+	public function getFlowId($check)
+	{
+	    $select = $this->db->select()
+	    ->from('flow', 'id')
+	    ->where('description LIKE ?', '%' . $check . '%');
+	    $result = $this->db->fetchRow($select);
+	    
+	    return $result;
+	}
+	
+	public function getIdForSpecificFlow($urlCity, $urlCategory, $categoryClonesDifferentFlow)
+	{
+	    $clones = array('_1b', '_1c', '_1d', '_1e', '_1f');
+	    
+		//get last 3 chars of URL category and check if is in clones array
+		$getLast3Chars = substr($urlCategory, -3);
+				
+		if (in_array($getLast3Chars, $clones))
+		{
+		    $city = $this->getCitiesListForPageTitle($urlCity);
+		    $categoryToCheck = $this->returnCategoryName($urlCategory);
+
+		    $select = $this->db->select()
+		    ->from('flow', 'id')
+		    ->where('city LIKE ?', '%' . $city . '%')
+		    ->where('category LIKE ?', '%' .  $categoryToCheck . '%');
+		    $result = $this->db->fetchRow($select);
+		    
+		    if(!empty($result))
+		    {
+		        $id = $result['id'];
+		    }
+		    else
+		    {
+		        if(in_array($categoryToCheck, $categoryClonesDifferentFlow))
+		        {
+		            $result = $this->getFlowId($categoryToCheck);
+		        }
+		        else
+		        {
+		            $result = $this->getFlowId($getLast3Chars);
+		        }
+		        
+		        if(!empty($result))
+		        {
+		            $id = $result['id'];
+		        }
+		    }
+		}
+		else 
+		{
+		    $city = $this->getCitiesListForPageTitle($urlCity);
+		    $categoryToCheck = $this->returnCategoryName($urlCategory);
+		    
+		    $select = $this->db->select()
+		    ->from('flow', 'id')
+		    ->where('city LIKE ?', '%' . $city . '%')
+		    ->where('category LIKE ?', '%' .  $urlCategory . '%');
+		    $result = $this->db->fetchRow($select);
+		    
+		    if(!empty($result))
+		    {
+		        $id = $result['id'];
+		    }
+		    else 
+		    {
+		        $select = $this->db->select()
+		        ->from(array('mc'=>'microRecruitingCategory'), array('display'))
+		        ->where('categoryName=?', $categoryToCheck);
+		        $result = $this->db->fetchRow($select);
+		         
+		        if(!empty($result))
+		        {
+		            if($result['display'] == '1')
+		            {
+		                $categoryDisplay = 'Main';
+		            }
+		            else
+		            {
+		                
+		                $categoryDisplay = 'Orphan';
+		            }
+		        }
+		        
+		        $result = $this->getFlowId($categoryDisplay);
+		        
+		        if(!empty($result))
+		        {
+		            $id = $result['id'];
+		        }
+		    }
+		}
+ 	    return $id;
+	}
+
+	/**
+	*	Get all the categories from the microrecruitingVideoCategory and compare it with the one we have
+	*	if they match, return the category, if not return False
+	*	@author Nicu
+	*/
+	public function verifyCleaningVideoCategories($category)
+	{
+		$select = $this->db->select()
+		        			->from(array('mc'=>'microRecruitingVideoCategory'));
+
+		$result = $this->db->fetchAll($select);
+
+		foreach ($result as $value) 
+		{
+			if($category == $value['category'])
+			{
+				return $category;
+			}
+			return FALSE;
+		}
+		
+	}
+	
+	/**
+	 * Set wistia flows
+	 * @param array / boolean $checkIfOrphan
+	 * @param string $formattedCategory
+	 * @param string $checkIfHaveVideosForCategory
+	 */
+	public function setWistiaFlowSession($checkIfOrphan, $formattedCategory, $checkIfHaveVideosForCategory)
+	{
+		if ($checkIfOrphan != false)
+		{
+			if ($checkIfHaveVideosForCategory != false)
+			{
+				if (substr($this->session->category, -3) == "_1b")
+				{
+					$this->session->wistiaFlow = '1';
+					$this->session->conversionTag = '1';
+				}
+				elseif (substr($this->session->category, -3) == "_1c")
+				{
+					$this->session->wistiaFlow = '2';
+					$this->session->conversionTag = '1';
+				}
+				elseif (substr($this->session->category, -3) == "_1e")
+				{
+					$this->session->wistiaFlow = '3';
+					$this->session->conversionTag = '1';
+				}
+				elseif (isset($this->session->wistiaFlow))
+				{
+					unset($this->session->wistiaFlow);
+				}
+					
+				if (isset($this->session->cleaningCloneFlow))
+				{
+					unset($this->session->cleaningCloneFlow);
+				}
+			}
+		}
+		elseif (isset($this->session->wistiaFlow))
+		{
+			unset($this->session->wistiaFlow);
+		}
+	}
+	
+	public function checkCity($cityName, $display = '1')
+	{
+	    $select = $this->db->select()
+                    	    ->from(array('mrc'=>'microRecruitingCities'), array('name'))
+                    	    ->where('name LIKE ?', '%' . $cityName . '%')
+	                        ->where('display=?', $display);
+	    $result = $this->db->fetchRow($select);
+	    
+	    if(!empty($result))
+	    {
+	        return $result;
+	    }
+	    else 
+	    {
+	        return FALSE;
+	    }
+	}
+}

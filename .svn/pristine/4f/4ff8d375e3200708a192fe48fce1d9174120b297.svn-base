@@ -1,0 +1,38 @@
+<script>
+
+$( document ).ready(function() {
+
+	var callToActionText = "{CALL_TO_ACTION_TEXT}";
+	var callToActionRedirect = "{SITE_URL}/user/rotation-matrix";
+	var userEmail = "{EMAIL}";
+
+	window._wq = window._wq || [];
+	_wq.push({ '{VIDEO_HASH}' : {
+	  plugin: {
+	    "postRoll-v1": {
+    	  autoSize: true,
+	      text: callToActionText,
+	      link: callToActionRedirect,
+	    }
+	  }
+	}});
+	
+	window._wq = window._wq || [];
+	_wq.push({ "{VIDEO_HASH}": function(video) {
+		video.email(userEmail);
+	}});
+});
+
+</script>
+
+<div id="wistiaContent">
+	<p class="video_title" style="margin-top:5%; font-weight:bold; font-size:2.4em">{TITLE}</p>
+</div>
+
+<script charset="ISO-8859-1" src="//fast.wistia.com/assets/external/E-v1.js" async></script>
+<div class="wistia_responsive_padding" style="padding:56.25% 0 0 0; margin-top:5%; position:relative;">
+	<div class="wistia_responsive_wrapper" style="height:100%; width:100%;left:0;position:absolute;top:0; margin: auto; left: 0; right: 0;">
+		<div class="wistia_embed wistia_async_{VIDEO_HASH} seo=false autoPlay=true" style="height:100%;width:100%">&nbsp;</div>
+	</div>
+</div>
+<!-- in class -> videoFoam=true -->
