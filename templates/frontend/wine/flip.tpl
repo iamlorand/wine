@@ -68,7 +68,8 @@
         $("#card").flip({
             axis: "y",
             reverse: true,
-            trigger: "click"
+            trigger: "click",
+            speed: 750
         });
     });
 </script>
@@ -93,4 +94,5 @@
                 }
             }
         });
-    }</script>
+    }
+</script>

@@ -11,21 +11,17 @@ class Wine_View extends View
 
     /** Sends all questions from the $questionList to the browser
      * @param string $template
-     * @param array $questionList
+     * @param array $wineQuizQuestion
+     * @param array $wineQuizAnswerList
      */
-    public function showWineQuestions($template = '', $questionList)
+    public function showWineQuizQuestions($template = '', $quizQuestion)
     {
         if (!empty($template))
         {
             $this->template = $template;
             $this->tpl->setFile('tpl_main', 'wine/' . $this->template . '.tpl');
-            $this->tpl->setBlock('tpl_main', 'wine_list', 'wine_list_block');
-            foreach ($questionList as $question) {
-                foreach ($question as $key => $value) {
-                    $this->tpl->setVar('WINE_'.strtoupper($key), $value);
-                }
-                $this->tpl->parse('wine_list_block', 'wine_list', TRUE);
-            }
+            $this->tpl->setVar('QUESTION_QUESTION', $quizQuestion['question']);
+            $this->tpl->setVar('QUESTION_ID', $quizQuestion['id']);
         }
     }
 

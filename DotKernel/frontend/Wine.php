@@ -27,16 +27,30 @@ class Wine extends Dot_Model
             return $result;
         }
     }
-    /** Returns all questions from the table question
+    /** Returns a question from the table question
+     *
+     * @param int $questionId
      *
      * return array $result
      */
-    public function getWineAnswerByQuestionId($questionId) {
+    public function getCorrectAnswerByQuestionId($questionId) {
         $select = $this->db->select()
                             ->from('wineAnswer')
                             ->where('questionId=?', $questionId)
                             ->where('solution=1');
         $result = $this->db->fetchRow($select);
+        return $result;
+    }
+    /** Returns all questions from the table question
+     *
+     * @param int $questionId
+     * return array $result
+     */
+    public function getAllAnswersByQuestionId($questionId) {
+        $select = $this->db->select()
+            ->from('wineAnswer')
+            ->where('questionId=?', $questionId);
+        $result = $this->db->fetchAll($select);
         return $result;
     }
     /** Returns questionIds from the table question

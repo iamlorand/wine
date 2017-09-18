@@ -7,8 +7,8 @@
 	<li class="{SEL_PAGE_HOME}{SEL_PAGE_ABOUT}{SEL_PAGE_WHO-WE-ARE}">
 		<a href="{SITE_URL}">Home</a>
 	</li>
-	<li class="{SEL_PAGE_LIST}">
-		<a href="{SITE_URL}/wine/list/">Wine</a>
+	<li class="{SEL_PAGE_QUIZ}">
+		<a href="{SITE_URL}/wine/quiz/">Wine Quiz</a>
 	</li>
 	<li class="{SEL_PAGE_FLIP}">
 		<a href="{SITE_URL}/wine/flip/">Flip cards</a>
